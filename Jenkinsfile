@@ -41,13 +41,17 @@ pipeline {
             }
         }
 
-        stage('Verify Landing Page Code') {
+        stage('Verify Landing Page Code & Generate SEO Assets') {
             steps {
                 echo "Validating landing page HTML components..."
                 sh 'test -f landingpage/index.html'
                 sh 'test -f landingpage/docs.html'
                 sh 'test -d landingpage/assets'
                 echo "\u2705 HTML files and assets directory verified."
+                
+                echo "Generating dynamic sitemap.xml and robots.txt for SEO..."
+                // Runs sitemap generation script. You can override the target domain here if needed.
+                sh 'python3 landingpage/generate_sitemap.py https://notex.work'
             }
         }
 
