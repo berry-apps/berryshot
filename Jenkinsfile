@@ -53,15 +53,31 @@ pipeline {
 
         stage('Deploy locally to Webroot') {
             when {
-                // Only deploy when changes are pushed or merged directly to the main branch
-                branch 'main'
+                anyOf {
+                    branch 'main'
+                    expression { env.GIT_BRANCH == 'main' }
+                    expression { env.GIT_BRANCH == 'origin/main' }
+                    expression { env.GIT_BRANCH == 'refs/heads/main' }
+                }
             }
             steps {
                 echo "Deploying landing page directly to local directory: ${env.DEPLOY_DIR}..."
                 
+                // Diagnostic checks to help user troubleshoot environment/permissions
+                sh '''
+                    echo "--- Build Environment Diagnostics ---"
+                    echo "Running on host: $(hostname)"
+                    echo "Running as user: $(whoami)"
+                    echo "Current directory: $(pwd)"
+                    echo "Checking /var/www write permissions..."
+                    if [ -w "/var/www" ] || [ -w "/var/www/berryshot" ]; then
+                        echo "Write permission check: SUCCESS"
+                    else
+                        echo "Write permission check: FAILED (Permission Denied)"
+                    fi
+                '''
+                
                 // Synchronize only the contents of the landingpage/ folder.
-                // --delete flag removes files in DEPLOY_DIR that are deleted from source.
-                // The Swift codebase and build scripts are left outside.
                 sh """
                     mkdir -p ${DEPLOY_DIR}
                     rsync -av --delete \
