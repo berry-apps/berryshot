@@ -1,14 +1,17 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    
+
     <!-- SEO Optimization Meta Tags -->
     <title>BerryShot Documentation - User Guide & Configuration for macOS</title>
-    <meta name="description" content="Learn how to install, configure, and use BerryShot on macOS. Detailed guide on annotations, offline OCR, ChatGPT/Claude AI integration, and settings.">
-    <meta name="keywords" content="BerryShot Docs, macOS screenshot help, OCR configuration, AI API setup mac, screen annotation guides">
+    <meta name="description"
+        content="Learn how to install, configure, and use BerryShot on macOS. Detailed guide on annotations, offline OCR, ChatGPT/Claude AI integration, and settings.">
+    <meta name="keywords"
+        content="BerryShot Docs, macOS screenshot help, OCR configuration, AI API setup mac, screen annotation guides">
     <meta name="author" content="BerryShot Team">
     <meta name="robots" content="index, follow">
 
@@ -19,7 +22,9 @@
     <!-- Google Fonts: Outfit & Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
 
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -58,7 +63,12 @@
     <!-- Custom CSS for Scrollbars & Glass Panels -->
     <style>
         /* Remove default focus outlines for cleaner look */
-        a:focus, button:focus, [role="button"]:focus, input:focus, select:focus, textarea:focus {
+        a:focus,
+        button:focus,
+        [role="button"]:focus,
+        input:focus,
+        select:focus,
+        textarea:focus {
             outline: none !important;
             box-shadow: none !important;
         }
@@ -67,6 +77,7 @@
         .scrollbar-none::-webkit-scrollbar {
             display: none;
         }
+
         .scrollbar-none {
             -ms-overflow-style: none;
             scrollbar-width: none;
@@ -77,7 +88,7 @@
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 46, 91, 0.12);
-            box-shadow: 
+            box-shadow:
                 0 4px 30px rgba(0, 0, 0, 0.4),
                 inset 0 1px 1px rgba(255, 255, 255, 0.05);
         }
@@ -96,18 +107,22 @@
             width: 8px;
             height: 8px;
         }
+
         ::-webkit-scrollbar-track {
             background: #050208;
         }
+
         ::-webkit-scrollbar-thumb {
             background: #1f0d2c;
             border-radius: 9999px;
         }
+
         ::-webkit-scrollbar-thumb:hover {
             background: #ff2e5b;
         }
     </style>
 </head>
+
 <body class="bg-darkBg font-sans text-slate-100 overflow-x-hidden relative min-h-screen">
 
     <!-- Glowing Background Highlights -->
@@ -117,26 +132,33 @@
     </div>
 
     <!-- HEADER / NAVIGATION -->
-    <header class="sticky top-0 z-40 w-full border-b border-white/5 backdrop-blur-xl bg-darkBg/70 transition-all duration-300">
+    <header
+        class="sticky top-0 z-40 w-full border-b border-white/5 backdrop-blur-xl bg-darkBg/70 transition-all duration-300">
         <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
             <!-- Logo & Brand Name -->
             <a href="index.html" class="flex items-center gap-4 group">
-                <div class="relative w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 group-hover:border-berry-400 transition-colors duration-300 overflow-hidden shadow-inner">
-                    <img src="./assets/AppIcon.png" alt="BerryShot Logo" class="w-10 h-10 object-contain group-hover:scale-110 transition-transform duration-300">
+                <div
+                    class="relative w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 group-hover:border-berry-400 transition-colors duration-300 overflow-hidden shadow-inner">
+                    <img src="./assets/AppIcon.png" alt="BerryShot Logo"
+                        class="w-10 h-10 object-contain group-hover:scale-110 transition-transform duration-300">
                 </div>
                 <div class="flex flex-col">
-                    <span class="font-display font-bold text-2xl tracking-tight bg-gradient-to-r from-white via-berry-100 to-berry-400 bg-clip-text text-transparent">BerryShot</span>
-                    <span class="text-[10px] text-berry-400 font-mono tracking-widest uppercase font-bold leading-none">Documentation</span>
+                    <span
+                        class="font-display font-bold text-2xl tracking-tight bg-gradient-to-r from-white via-berry-100 to-berry-400 bg-clip-text text-transparent">BerryShot</span>
+                    <span
+                        class="text-[10px] text-berry-400 font-mono tracking-widest uppercase font-bold leading-none">Documentation</span>
                 </div>
             </a>
 
             <!-- Actions buttons -->
             <div class="flex items-center gap-5">
-                <a href="index.html" class="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white font-semibold text-sm rounded-xl transition-all duration-300 border border-white/10 hover:border-white/20">
+                <a href="index.html"
+                    class="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white font-semibold text-sm rounded-xl transition-all duration-300 border border-white/10 hover:border-white/20">
                     <span class="sm:hidden">← Home</span>
                     <span class="hidden sm:inline">← Back to Home</span>
                 </a>
-                <a href="./assets/BerryShot.dmg" class="hidden sm:inline-flex items-center gap-2.5 px-6 py-2.5 bg-gradient-to-r from-berry-500 to-fuchsia-600 hover:from-berry-600 hover:to-fuchsia-700 text-white font-bold text-sm rounded-xl transition-all duration-300 border border-white/10">
+                <a href="./assets/BerryShot.dmg"
+                    class="hidden sm:inline-flex items-center gap-2.5 px-6 py-2.5 bg-gradient-to-r from-berry-500 to-fuchsia-600 hover:from-berry-600 hover:to-fuchsia-700 text-white font-bold text-sm rounded-xl transition-all duration-300 border border-white/10">
                     Download DMG
                 </a>
             </div>
@@ -144,42 +166,67 @@
     </header>
 
     <main class="max-w-7xl mx-auto px-6 py-12 relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-10">
-        
+
         <!-- SIDEBAR NAVIGATION -->
         <aside class="lg:col-span-3 lg:sticky lg:top-32 h-fit space-y-6">
             <div class="glass-panel p-5 sm:p-6 rounded-2xl border border-white/5">
                 <h3 class="font-display font-bold text-base sm:text-lg text-white mb-3 sm:mb-4">Documentation</h3>
-                <nav class="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 text-sm whitespace-nowrap lg:whitespace-normal scrollbar-none border-b border-white/5 lg:border-none">
-                    <a href="#getting-started" class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">1. Getting Started</a>
-                    <a href="#installation" class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">2. Installation Guide</a>
-                    <a href="#general-settings" class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">3. General Settings</a>
-                    <a href="#annotations" class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">4. Annotations & Drawing</a>
-                    <a href="#offline-ocr" class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">5. Local Offline OCR</a>
-                    <a href="#ai-integration" class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">6. ChatGPT / Claude AI</a>
-                    <a href="#cloud-settings" class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">7. Cloud Uploads</a>
-                    <a href="#privacy-security" class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">8. Privacy & Permissions</a>
-                    <a href="#support-contact" class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">9. Support & Contact</a>
+                <nav
+                    class="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 text-sm whitespace-nowrap lg:whitespace-normal scrollbar-none border-b border-white/5 lg:border-none">
+                    <a href="#getting-started"
+                        class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">1.
+                        Getting Started</a>
+                    <a href="#installation"
+                        class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">2.
+                        Installation Guide</a>
+                    <a href="#general-settings"
+                        class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">3.
+                        General Settings</a>
+                    <a href="#annotations"
+                        class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">4.
+                        Annotations & Drawing</a>
+                    <a href="#offline-ocr"
+                        class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">5.
+                        Local Offline OCR</a>
+                    <a href="#ai-integration"
+                        class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">6.
+                        ChatGPT / Claude AI</a>
+                    <a href="#cloud-settings"
+                        class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">7.
+                        Cloud Uploads</a>
+                    <a href="#privacy-security"
+                        class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">8.
+                        Privacy & Permissions</a>
+                    <a href="#support-contact"
+                        class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">9.
+                        Support & Contact</a>
                 </nav>
             </div>
-            
+
             <!-- support widget inside sidebar -->
-            <div class="glass-panel p-5 rounded-2xl border border-white/5 bg-berry-500/5 relative overflow-hidden hidden lg:block">
+            <div
+                class="glass-panel p-5 rounded-2xl border border-white/5 bg-berry-500/5 relative overflow-hidden hidden lg:block">
                 <div class="relative z-10 text-xs">
                     <h4 class="font-bold text-white mb-1">Need help?</h4>
-                    <p class="text-slate-400 mb-3 leading-relaxed">For inquiries, bug reports or questions, contact us via email support.</p>
-                    <a href="mailto:support@notex.work" class="inline-flex font-bold text-berry-400 hover:underline">support@notex.work</a>
+                    <p class="text-slate-400 mb-3 leading-relaxed">For inquiries, bug reports or questions, contact us
+                        via email support.</p>
+                    <a href="mailto:support@notex.work"
+                        class="inline-flex font-bold text-berry-400 hover:underline">support@notex.work</a>
                 </div>
             </div>
         </aside>
 
         <!-- MAIN DOCUMENTATION CONTENT -->
         <article class="lg:col-span-9 space-y-16">
-            
+
             <!-- Introduction Header -->
             <div class="border-b border-white/5 pb-10">
-                <h1 class="font-display font-extrabold text-4xl sm:text-5xl tracking-tight mb-4">BerryShot Documentation</h1>
+                <h1 class="font-display font-extrabold text-4xl sm:text-5xl tracking-tight mb-4">BerryShot Documentation
+                </h1>
                 <p class="text-slate-400 text-lg max-w-3xl leading-relaxed">
-                    Welcome to the official user guide for BerryShot. BerryShot is a fast, lightweight, privacy-first utility that resides silently in your macOS Menu Bar, providing advanced capture tools, native local OCR, and instant AI explanations.
+                    Welcome to the official user guide for BerryShot. BerryShot is a fast, lightweight, privacy-first
+                    utility that resides silently in your macOS Menu Bar, providing advanced capture tools, native local
+                    OCR, and instant AI explanations.
                 </p>
             </div>
 
@@ -187,31 +234,40 @@
             <section id="getting-started" class="space-y-6 scroll-mt-24">
                 <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">1. Getting Started</h2>
                 <p class="text-slate-300 leading-relaxed">
-                    BerryShot is designed exclusively for macOS Sonoma (14.0) or later. The app leverages Apple's native APIs (SwiftUI, Apple Vision OCR, and Sandbox Security) to achieve maximum performance and minimum battery impact.
+                    BerryShot is designed exclusively for macOS Sonoma (14.0) or later. The app leverages Apple's native
+                    APIs (SwiftUI, Apple Vision OCR, and Sandbox Security) to achieve maximum performance and minimum
+                    battery impact.
                 </p>
                 <div class="bg-white/[0.02] border border-white/5 p-6 rounded-2xl space-y-3">
                     <h3 class="font-display font-bold text-lg text-white">Core Capabilities</h3>
                     <ul class="list-disc pl-5 text-sm text-slate-400 space-y-2">
-                        <li><strong class="text-slate-200">Blazing Fast Captures:</strong> Trigger crosshair cropping instantly using customizable hotkeys.</li>
-                        <li><strong class="text-slate-200">Local OCR:</strong> Extract text from images without uploading to the cloud, utilizing Apple's machine learning.</li>
-                        <li><strong class="text-slate-200">AI Assistants:</strong> Query Claude or ChatGPT to explain code snippets, translate languages, or rewrite content on the fly.</li>
-                        <li><strong class="text-slate-200">Cloud Storage:</strong> Configure Amazon S3 or Imgur endpoints for shareable cloud links.</li>
+                        <li><strong class="text-slate-200">Blazing Fast Captures:</strong> Trigger crosshair cropping
+                            instantly using customizable hotkeys.</li>
+                        <li><strong class="text-slate-200">Local OCR:</strong> Extract text from images without
+                            uploading to the cloud, utilizing Apple's machine learning.</li>
+                        <li><strong class="text-slate-200">AI Assistants:</strong> Query Claude or ChatGPT to explain
+                            code snippets, translate languages, or rewrite content on the fly.</li>
+                        <li><strong class="text-slate-200">Cloud Storage:</strong> Configure Amazon S3 or Imgur
+                            endpoints for shareable cloud links.</li>
                     </ul>
                 </div>
-                
+
                 <!-- macOS Screenshot mockup - AboutSettings -->
                 <div class="space-y-2">
-                    <span class="text-xs text-slate-500 font-mono block">Figure 1.1: BerryShot Native App Information Window</span>
+                    <span class="text-xs text-slate-500 font-mono block">Figure 1.1: BerryShot Native App Information
+                        Window</span>
                     <div class="rounded-xl border border-white/10 overflow-hidden bg-slate-950 p-2 shadow-2xl">
                         <!-- Toolbar mimic -->
-                        <div class="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/5 bg-[#170e24] text-[10px] text-slate-400 select-none">
+                        <div
+                            class="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/5 bg-[#170e24] text-[10px] text-slate-400 select-none">
                             <div class="w-2.5 h-2.5 rounded-full bg-[#ff5f56]"></div>
                             <div class="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]"></div>
                             <div class="w-2.5 h-2.5 rounded-full bg-[#27c93f]"></div>
                             <span class="ml-4 font-mono font-bold">About BerryShot Settings</span>
                         </div>
                         <div class="bg-white flex items-center justify-center p-3 sm:p-8 rounded-b-lg select-none">
-                            <img src="./assets/about_settings.png" alt="BerryShot About Settings Interface" class="max-w-full max-h-[380px] object-contain shadow-lg rounded-lg border border-slate-200">
+                            <img src="./assets/about_settings.png" alt="BerryShot About Settings Interface"
+                                class="max-w-full max-h-[380px] object-contain shadow-lg rounded-lg border border-slate-200">
                         </div>
                     </div>
                 </div>
@@ -221,57 +277,86 @@
             <section id="installation" class="space-y-6 scroll-mt-24">
                 <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">2. Installation Guide</h2>
                 <p class="text-slate-300 leading-relaxed">
-                    To maintain standard integrity and prevent zip extraction friction, BerryShot is packaged inside a single mounted Disk Image (<code class="font-mono text-berry-300 bg-white/5 px-1.5 py-0.5 rounded text-xs">.dmg</code>) file.
+                    To maintain standard integrity and prevent zip extraction friction, BerryShot is packaged inside a
+                    single mounted Disk Image (<code
+                        class="font-mono text-berry-300 bg-white/5 px-1.5 py-0.5 rounded text-xs">.dmg</code>) file.
                 </p>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
                     <div class="glass-panel p-6 rounded-2xl border border-white/5 space-y-3">
-                        <div class="w-8 h-8 rounded-full bg-berry-500/10 flex items-center justify-center font-bold text-berry-400 text-sm">1</div>
+                        <div
+                            class="w-8 h-8 rounded-full bg-berry-500/10 flex items-center justify-center font-bold text-berry-400 text-sm">
+                            1</div>
                         <h4 class="font-bold text-white text-sm">Download DMG</h4>
-                        <p class="text-xs text-slate-400 leading-relaxed">Click the Download link on the homepage or header to download <code class="font-mono text-[10px]">BerryShot.dmg</code>.</p>
+                        <p class="text-xs text-slate-400 leading-relaxed">Click the Download link on the homepage or
+                            header to download <code class="font-mono text-[10px]">BerryShot.dmg</code>.</p>
                     </div>
-                    
+
                     <div class="glass-panel p-6 rounded-2xl border border-white/5 space-y-3">
-                        <div class="w-8 h-8 rounded-full bg-berry-500/10 flex items-center justify-center font-bold text-berry-400 text-sm">2</div>
+                        <div
+                            class="w-8 h-8 rounded-full bg-berry-500/10 flex items-center justify-center font-bold text-berry-400 text-sm">
+                            2</div>
                         <h4 class="font-bold text-white text-sm">Mount & Drag</h4>
-                        <p class="text-xs text-slate-400 leading-relaxed">Double-click the downloaded file and drag the <code class="font-mono text-[10px]">BerryShot.app</code> icon to your Applications folder.</p>
+                        <p class="text-xs text-slate-400 leading-relaxed">Double-click the downloaded file and drag the
+                            <code class="font-mono text-[10px]">notex.work</code> icon to your Applications folder.</p>
                     </div>
-                    
+
                     <div class="glass-panel p-6 rounded-2xl border border-white/5 space-y-3">
-                        <div class="w-8 h-8 rounded-full bg-berry-500/10 flex items-center justify-center font-bold text-berry-400 text-sm">3</div>
+                        <div
+                            class="w-8 h-8 rounded-full bg-berry-500/10 flex items-center justify-center font-bold text-berry-400 text-sm">
+                            3</div>
                         <h4 class="font-bold text-white text-sm">Grant Permissions</h4>
-                        <p class="text-xs text-slate-400 leading-relaxed">Open BerryShot from Applications, and allow Screen Recording permissions in System Settings.</p>
+                        <p class="text-xs text-slate-400 leading-relaxed">Open BerryShot from Applications, and allow
+                            Screen Recording permissions in System Settings.</p>
                     </div>
                 </div>
 
                 <!-- Apple Gatekeeper Security Warning Notice -->
                 <div class="glass-panel p-6 rounded-2xl border border-amber-500/20 bg-amber-500/[0.02] space-y-4 mt-6">
                     <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        <div
+                            class="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                                </path>
+                            </svg>
                         </div>
-                        <h4 class="font-display font-bold text-white text-base">Unverified Developer Warning (Gatekeeper Bypass)</h4>
+                        <h4 class="font-display font-bold text-white text-base">Unverified Developer Warning (Gatekeeper
+                            Bypass)</h4>
                     </div>
                     <p class="text-xs text-slate-300 leading-relaxed">
-                        Because <span class="text-white font-medium">BerryShot</span> is a free, self-built, open-source utility and is not signed using a paid Apple Developer Program Certificate ($99/year), macOS Gatekeeper will prevent launch on download showing a warning: <code class="font-mono text-amber-400 bg-black/40 px-1 py-0.5 rounded text-[10px]">Apple could not verify BerryShot is free of malware...</code>
+                        Because <span class="text-white font-medium">BerryShot</span> is a free, self-built, open-source
+                        utility and is not signed using a paid Apple Developer Program Certificate ($99/year), macOS
+                        Gatekeeper will prevent launch on download showing a warning: <code
+                            class="font-mono text-amber-400 bg-black/40 px-1 py-0.5 rounded text-[10px]">Apple could not verify BerryShot is free of malware...</code>
                     </p>
                     <div class="space-y-3 pt-1">
-                        <p class="text-xs text-slate-200 font-semibold">To open and run the app safely, choose one of these two options:</p>
+                        <p class="text-xs text-slate-200 font-semibold">To open and run the app safely, choose one of
+                            these two options:</p>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="bg-black/30 p-4 rounded-xl border border-white/5 space-y-2">
-                                <span class="text-[10px] font-bold text-berry-400 uppercase font-mono">Option 1: Right-Click Open (Recommended)</span>
+                                <span class="text-[10px] font-bold text-berry-400 uppercase font-mono">Option 1:
+                                    Right-Click Open (Recommended)</span>
                                 <ol class="list-decimal list-inside text-xs text-slate-400 space-y-1">
-                                    <li>Open your <span class="text-slate-300">Applications</span> folder in Finder.</li>
-                                    <li>Right-click (or <kbd class="px-1 py-0.5 bg-white/10 rounded text-[9px]">Control</kbd> + click) <code class="text-white">BerryShot.app</code>.</li>
+                                    <li>Open your <span class="text-slate-300">Applications</span> folder in Finder.
+                                    </li>
+                                    <li>Right-click (or <kbd
+                                            class="px-1 py-0.5 bg-white/10 rounded text-[9px]">Control</kbd> + click)
+                                        <code class="text-white">notex.work</code>.</li>
                                     <li>Select <strong class="text-white">Open</strong> from the context menu.</li>
-                                    <li>Click <strong class="text-white">Open</strong> in the prompt. This permanently white-lists the app.</li>
+                                    <li>Click <strong class="text-white">Open</strong> in the prompt. This permanently
+                                        white-lists the app.</li>
                                 </ol>
                             </div>
                             <div class="bg-black/30 p-4 rounded-xl border border-white/5 space-y-2">
-                                <span class="text-[10px] font-bold text-berry-400 uppercase font-mono">Option 2: Terminal Workaround</span>
-                                <p class="text-xs text-slate-400 leading-relaxed mb-1">Remove the quarantine attribute flag assigned by your browser by running this in Terminal:</p>
-                                <div class="bg-black/60 p-2 rounded font-mono text-[11px] text-slate-300 flex justify-between items-center border border-white/10 select-all">
-                                    <code>xattr -cr /Applications/BerryShot.app</code>
+                                <span class="text-[10px] font-bold text-berry-400 uppercase font-mono">Option 2:
+                                    Terminal Workaround</span>
+                                <p class="text-xs text-slate-400 leading-relaxed mb-1">Remove the quarantine attribute
+                                    flag assigned by your browser by running this in Terminal:</p>
+                                <div
+                                    class="bg-black/60 p-2 rounded font-mono text-[11px] text-slate-300 flex justify-between items-center border border-white/10 select-all">
+                                    <code>xattr -cr /Applications/notex.work</code>
                                 </div>
                             </div>
                         </div>
@@ -283,27 +368,34 @@
             <section id="general-settings" class="space-y-6 scroll-mt-24">
                 <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">3. General Settings</h2>
                 <p class="text-slate-300 leading-relaxed">
-                    General configurations allow you to customize how the application interacts with your system, notifications, and menus.
+                    General configurations allow you to customize how the application interacts with your system,
+                    notifications, and menus.
                 </p>
                 <div class="text-sm text-slate-400 space-y-2 pl-4 border-l-2 border-berry-500">
-                    <p><strong class="text-slate-200">Launch at Login:</strong> Automatically starts BerryShot in the background when your Mac turns on.</p>
-                    <p><strong class="text-slate-200">Play Sound Effects:</strong> Triggers camera shutters and success alerts upon screenshot saving.</p>
-                    <p><strong class="text-slate-200">Show Notifications:</strong> Displays transient banners showing cropped preview and action statuses.</p>
+                    <p><strong class="text-slate-200">Launch at Login:</strong> Automatically starts BerryShot in the
+                        background when your Mac turns on.</p>
+                    <p><strong class="text-slate-200">Play Sound Effects:</strong> Triggers camera shutters and success
+                        alerts upon screenshot saving.</p>
+                    <p><strong class="text-slate-200">Show Notifications:</strong> Displays transient banners showing
+                        cropped preview and action statuses.</p>
                 </div>
-                
+
                 <!-- General Settings Screenshot -->
                 <div class="space-y-2 pt-2">
-                    <span class="text-xs text-slate-500 font-mono block">Figure 3.1: General Configurations Window Layout</span>
+                    <span class="text-xs text-slate-500 font-mono block">Figure 3.1: General Configurations Window
+                        Layout</span>
                     <div class="rounded-xl border border-white/10 overflow-hidden bg-slate-950 p-2 shadow-2xl">
                         <!-- Toolbar mimic -->
-                        <div class="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/5 bg-[#170e24] text-[10px] text-slate-400 select-none">
+                        <div
+                            class="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/5 bg-[#170e24] text-[10px] text-slate-400 select-none">
                             <div class="w-2.5 h-2.5 rounded-full bg-[#ff5f56]"></div>
                             <div class="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]"></div>
                             <div class="w-2.5 h-2.5 rounded-full bg-[#27c93f]"></div>
                             <span class="ml-4 font-mono font-bold">General Settings Panel</span>
                         </div>
                         <div class="bg-white flex items-center justify-center p-3 sm:p-8 rounded-b-lg select-none">
-                            <img src="./assets/general_settings.png" alt="BerryShot General Settings" class="max-w-full max-h-[380px] object-contain shadow-lg rounded-lg border border-slate-200">
+                            <img src="./assets/general_settings.png" alt="BerryShot General Settings"
+                                class="max-w-full max-h-[380px] object-contain shadow-lg rounded-lg border border-slate-200">
                         </div>
                     </div>
                 </div>
@@ -313,25 +405,33 @@
             <section id="annotations" class="space-y-6 scroll-mt-24">
                 <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">4. Annotations & Drawing</h2>
                 <p class="text-slate-300 leading-relaxed">
-                    Once a screenshot area is selected, the custom drawing toolbar slides out. You can annotate directly onto the frame before saving or sharing.
+                    Once a screenshot area is selected, the custom drawing toolbar slides out. You can annotate directly
+                    onto the frame before saving or sharing.
                 </p>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bg-white/[0.01] border border-white/5 p-5.5 rounded-xl space-y-2">
                         <h4 class="font-bold text-white text-sm">Annotation Tools</h4>
                         <ul class="list-disc pl-4 text-xs text-slate-400 space-y-1.5 leading-relaxed">
-                            <li><strong class="text-slate-200">Pencil Tool:</strong> Free-hand sketch outlines or doodles.</li>
-                            <li><strong class="text-slate-200">Shape Blocks:</strong> Draw pixel-perfect circles, ovals, and rectangles.</li>
-                            <li><strong class="text-slate-200">Direction Arrows:</strong> Point to UI elements to highlight details.</li>
-                            <li><strong class="text-slate-200">Custom Text:</strong> Type explanatory labels onto the picture.</li>
+                            <li><strong class="text-slate-200">Pencil Tool:</strong> Free-hand sketch outlines or
+                                doodles.</li>
+                            <li><strong class="text-slate-200">Shape Blocks:</strong> Draw pixel-perfect circles, ovals,
+                                and rectangles.</li>
+                            <li><strong class="text-slate-200">Direction Arrows:</strong> Point to UI elements to
+                                highlight details.</li>
+                            <li><strong class="text-slate-200">Custom Text:</strong> Type explanatory labels onto the
+                                picture.</li>
                         </ul>
                     </div>
-                    
+
                     <div class="bg-white/[0.01] border border-white/5 p-5.5 rounded-xl space-y-2">
                         <h4 class="font-bold text-white text-sm">Visual Properties</h4>
                         <ul class="list-disc pl-4 text-xs text-slate-400 space-y-1.5 leading-relaxed">
-                            <li><strong class="text-slate-200">Stroke width:</strong> Tweak annotation lines from fine thin to bold thick.</li>
-                            <li><strong class="text-slate-200">Palette presets:</strong> Choose high-contrast colors (Strawberry Red, Neon Green, Royal Blue, Mustard Yellow).</li>
-                            <li><strong class="text-slate-200">Undo / Redo:</strong> Instantly revert any strokes with standard macOS command.</li>
+                            <li><strong class="text-slate-200">Stroke width:</strong> Tweak annotation lines from fine
+                                thin to bold thick.</li>
+                            <li><strong class="text-slate-200">Palette presets:</strong> Choose high-contrast colors
+                                (Strawberry Red, Neon Green, Royal Blue, Mustard Yellow).</li>
+                            <li><strong class="text-slate-200">Undo / Redo:</strong> Instantly revert any strokes with
+                                standard macOS command.</li>
                         </ul>
                     </div>
                 </div>
@@ -341,45 +441,56 @@
             <section id="offline-ocr" class="space-y-6 scroll-mt-24">
                 <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">5. Local Offline OCR</h2>
                 <p class="text-slate-300 leading-relaxed">
-                    BerryShot stands out by executing optical character recognition (OCR) completely on your local device. Utilizing Apple's core Vision Framework, the app extracts text content in less than 100 milliseconds without internet latency or privacy leaks.
+                    BerryShot stands out by executing optical character recognition (OCR) completely on your local
+                    device. Utilizing Apple's core Vision Framework, the app extracts text content in less than 100
+                    milliseconds without internet latency or privacy leaks.
                 </p>
-                <div class="bg-berry-500/5 border border-berry-500/10 p-5 rounded-2xl text-slate-300 text-sm flex gap-4 leading-relaxed">
+                <div
+                    class="bg-berry-500/5 border border-berry-500/10 p-5 rounded-2xl text-slate-300 text-sm flex gap-4 leading-relaxed">
                     <span class="text-2xl select-none">🛡️</span>
                     <div>
                         <strong class="text-white block mb-0.5">Privacy First Promise</strong>
-                        Your screenshot visual content is processed directly in the CPU/Neural Engine memory space. Nothing is transmitted to external servers, protecting bank numbers, private codes, and documents.
+                        Your screenshot visual content is processed directly in the CPU/Neural Engine memory space.
+                        Nothing is transmitted to external servers, protecting bank numbers, private codes, and
+                        documents.
                     </div>
                 </div>
-                
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                     <!-- Local settings screenshot container -->
                     <div class="space-y-2">
-                        <span class="text-xs text-slate-500 font-mono block">Figure 5.1: OCR Engine Local Configurations</span>
+                        <span class="text-xs text-slate-500 font-mono block">Figure 5.1: OCR Engine Local
+                            Configurations</span>
                         <div class="rounded-xl border border-white/10 overflow-hidden bg-slate-950 p-2 shadow-xl">
-                            <div class="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/5 bg-[#170e24] text-[9px] text-slate-400 select-none">
+                            <div
+                                class="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/5 bg-[#170e24] text-[9px] text-slate-400 select-none">
                                 <div class="w-2 h-2 rounded-full bg-[#ff5f56]"></div>
                                 <div class="w-2 h-2 rounded-full bg-[#ffbd2e]"></div>
                                 <div class="w-2 h-2 rounded-full bg-[#27c93f]"></div>
                                 <span class="ml-2 font-mono">Local OCR Config</span>
                             </div>
                             <div class="bg-white flex items-center justify-center p-3 sm:p-6 rounded-b-lg select-none">
-                                <img src="./assets/local_settings.png" alt="Local OCR Settings" class="max-w-full h-[220px] object-contain shadow rounded">
+                                <img src="./assets/local_settings.png" alt="Local OCR Settings"
+                                    class="max-w-full h-[220px] object-contain shadow rounded">
                             </div>
                         </div>
                     </div>
-                    
+
                     <!-- Privacy settings container -->
                     <div class="space-y-2">
-                        <span class="text-xs text-slate-500 font-mono block">Figure 5.2: Privacy Configurations Window</span>
+                        <span class="text-xs text-slate-500 font-mono block">Figure 5.2: Privacy Configurations
+                            Window</span>
                         <div class="rounded-xl border border-white/10 overflow-hidden bg-slate-950 p-2 shadow-xl">
-                            <div class="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/5 bg-[#170e24] text-[9px] text-slate-400 select-none">
+                            <div
+                                class="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/5 bg-[#170e24] text-[9px] text-slate-400 select-none">
                                 <div class="w-2 h-2 rounded-full bg-[#ff5f56]"></div>
                                 <div class="w-2 h-2 rounded-full bg-[#ffbd2e]"></div>
                                 <div class="w-2 h-2 rounded-full bg-[#27c93f]"></div>
                                 <span class="ml-2 font-mono">Privacy Panel</span>
                             </div>
                             <div class="bg-white flex items-center justify-center p-3 sm:p-6 rounded-b-lg select-none">
-                                <img src="./assets/privacy_settings.png" alt="Privacy Settings" class="max-w-full h-[220px] object-contain shadow rounded">
+                                <img src="./assets/privacy_settings.png" alt="Privacy Settings"
+                                    class="max-w-full h-[220px] object-contain shadow rounded">
                             </div>
                         </div>
                     </div>
@@ -388,34 +499,43 @@
 
             <!-- 6. ChatGPT / Claude AI Explainer -->
             <section id="ai-integration" class="space-y-6 scroll-mt-24">
-                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">6. ChatGPT / Claude AI Explainer</h2>
+                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">6. ChatGPT / Claude AI Explainer
+                </h2>
                 <p class="text-slate-300 leading-relaxed">
-                    Enhance your workflow by pairing extracted OCR text directly with Anthropic Claude or OpenAI ChatGPT models. When enabled, BerryShot sends the text along with prompt configurations to provide instant responses.
+                    Enhance your workflow by pairing extracted OCR text directly with Anthropic Claude or OpenAI ChatGPT
+                    models. When enabled, BerryShot sends the text along with prompt configurations to provide instant
+                    responses.
                 </p>
                 <div class="bg-white/[0.02] border border-white/5 p-6 rounded-2xl space-y-4 text-sm text-slate-400">
                     <h3 class="font-display font-bold text-base text-white">How to Set Up</h3>
                     <ol class="list-decimal pl-5 space-y-2.5">
-                        <li>Open <strong class="text-slate-200">Preferences / Settings</strong> and switch to the <strong class="text-slate-200">AI Tab</strong>.</li>
+                        <li>Open <strong class="text-slate-200">Preferences / Settings</strong> and switch to the
+                            <strong class="text-slate-200">AI Tab</strong>.</li>
                         <li>Toggle "Enable AI Integration".</li>
-                        <li>Choose your Provider: <strong class="text-slate-200">Anthropic Claude</strong> or <strong class="text-slate-200">OpenAI ChatGPT</strong>.</li>
+                        <li>Choose your Provider: <strong class="text-slate-200">Anthropic Claude</strong> or <strong
+                                class="text-slate-200">OpenAI ChatGPT</strong>.</li>
                         <li>Enter your API key safely. The API key is stored securely in your macOS Keychain.</li>
-                        <li>Customize the default System Prompt (e.g. "Explain this code snippet", "Translate this text to Vietnamese", "Summarize this paragraph").</li>
+                        <li>Customize the default System Prompt (e.g. "Explain this code snippet", "Translate this text
+                            to Vietnamese", "Summarize this paragraph").</li>
                     </ol>
                 </div>
-                
+
                 <!-- AI settings screenshot -->
                 <div class="space-y-2 pt-2">
-                    <span class="text-xs text-slate-500 font-mono block">Figure 6.1: AI Integration Preference Screen</span>
+                    <span class="text-xs text-slate-500 font-mono block">Figure 6.1: AI Integration Preference
+                        Screen</span>
                     <div class="rounded-xl border border-white/10 overflow-hidden bg-slate-950 p-2 shadow-2xl">
                         <!-- Toolbar mimic -->
-                        <div class="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/5 bg-[#170e24] text-[10px] text-slate-400 select-none">
+                        <div
+                            class="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/5 bg-[#170e24] text-[10px] text-slate-400 select-none">
                             <div class="w-2.5 h-2.5 rounded-full bg-[#ff5f56]"></div>
                             <div class="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]"></div>
                             <div class="w-2.5 h-2.5 rounded-full bg-[#27c93f]"></div>
                             <span class="ml-4 font-mono font-bold">AI Settings Interface</span>
                         </div>
                         <div class="bg-white flex items-center justify-center p-8 rounded-b-lg select-none">
-                            <img src="./assets/ai_settings.png" alt="AI Configuration Settings Window" class="max-w-full max-h-[380px] object-contain shadow-lg rounded-lg border border-slate-200">
+                            <img src="./assets/ai_settings.png" alt="AI Configuration Settings Window"
+                                class="max-w-full max-h-[380px] object-contain shadow-lg rounded-lg border border-slate-200">
                         </div>
                     </div>
                 </div>
@@ -423,30 +543,37 @@
 
             <!-- 7. Cloud Uploads -->
             <section id="cloud-settings" class="space-y-6 scroll-mt-24">
-                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">7. Cloud Upload Configuration</h2>
+                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">7. Cloud Upload Configuration
+                </h2>
                 <p class="text-slate-300 leading-relaxed">
-                    Easily share screenshots with colleagues by setting up cloud upload endpoints. You can choose to use Imgur for fast image hosting, or standard Amazon Web Services (AWS) S3 buckets for private infrastructure.
+                    Easily share screenshots with colleagues by setting up cloud upload endpoints. You can choose to use
+                    Imgur for fast image hosting, or standard Amazon Web Services (AWS) S3 buckets for private
+                    infrastructure.
                 </p>
-                <div class="bg-white/[0.02] border border-white/5 p-6 rounded-2xl text-xs space-y-2 text-slate-400 font-mono">
+                <div
+                    class="bg-white/[0.02] border border-white/5 p-6 rounded-2xl text-xs space-y-2 text-slate-400 font-mono">
                     <p class="text-sm font-sans font-semibold text-slate-200 mb-2">AWS S3 Configuration parameters:</p>
                     <p>• S3 Bucket Name: "my-screenshots-bucket"</p>
                     <p>• IAM Access Key: "AKIA..." (Stored encrypted)</p>
                     <p>• Region Code: e.g. "us-east-1"</p>
                 </div>
-                
+
                 <!-- Cloud Settings Screenshot -->
                 <div class="space-y-2 pt-2">
-                    <span class="text-xs text-slate-500 font-mono block">Figure 7.1: Cloud Settings & AWS Configuration Screen</span>
+                    <span class="text-xs text-slate-500 font-mono block">Figure 7.1: Cloud Settings & AWS Configuration
+                        Screen</span>
                     <div class="rounded-xl border border-white/10 overflow-hidden bg-slate-950 p-2 shadow-2xl">
                         <!-- Toolbar mimic -->
-                        <div class="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/5 bg-[#170e24] text-[10px] text-slate-400 select-none">
+                        <div
+                            class="flex items-center gap-1.5 px-3 py-1.5 border-b border-white/5 bg-[#170e24] text-[10px] text-slate-400 select-none">
                             <div class="w-2.5 h-2.5 rounded-full bg-[#ff5f56]"></div>
                             <div class="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]"></div>
                             <div class="w-2.5 h-2.5 rounded-full bg-[#27c93f]"></div>
                             <span class="ml-4 font-mono font-bold">Cloud Settings Window</span>
                         </div>
                         <div class="bg-white flex items-center justify-center p-3 sm:p-8 rounded-b-lg select-none">
-                            <img src="./assets/cloud_settings.png" alt="Cloud Upload Settings Screen" class="max-w-full max-h-[380px] object-contain shadow-lg rounded-lg border border-slate-200">
+                            <img src="./assets/cloud_settings.png" alt="Cloud Upload Settings Screen"
+                                class="max-w-full max-h-[380px] object-contain shadow-lg rounded-lg border border-slate-200">
                         </div>
                     </div>
                 </div>
@@ -456,13 +583,18 @@
             <section id="privacy-security" class="space-y-6 scroll-mt-24">
                 <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">8. Privacy & Permissions</h2>
                 <p class="text-slate-300 leading-relaxed">
-                    Because BerryShot is a utility that captures your screen, macOS enforces strict security access checks. You must explicitly authorize Screen Recording capabilities before the app can read your screen contents.
+                    Because BerryShot is a utility that captures your screen, macOS enforces strict security access
+                    checks. You must explicitly authorize Screen Recording capabilities before the app can read your
+                    screen contents.
                 </p>
-                <div class="bg-yellow-500/5 border border-yellow-500/10 p-5 rounded-2xl text-slate-300 text-sm flex gap-4 leading-relaxed">
+                <div
+                    class="bg-yellow-500/5 border border-yellow-500/10 p-5 rounded-2xl text-slate-300 text-sm flex gap-4 leading-relaxed">
                     <span class="text-2xl select-none">⚠️</span>
                     <div>
                         <strong class="text-white block mb-0.5">Authorization Required</strong>
-                        When you launch the app for the first time, a system prompt will ask for "Screen Recording". Please navigate to <strong class="text-white">System Settings > Privacy & Security > Screen Recording</strong>, and toggle BerryShot <strong class="text-white">ON</strong>.
+                        When you launch the app for the first time, a system prompt will ask for "Screen Recording".
+                        Please navigate to <strong class="text-white">System Settings > Privacy & Security > Screen
+                            Recording</strong>, and toggle BerryShot <strong class="text-white">ON</strong>.
                     </div>
                 </div>
             </section>
@@ -471,24 +603,28 @@
             <section id="support-contact" class="space-y-6 scroll-mt-24 border-t border-white/5 pt-12">
                 <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">9. Support & Contact</h2>
                 <p class="text-slate-300 leading-relaxed">
-                    If you run into issues, have feature proposals, or require business assistance, please email our support address.
+                    If you run into issues, have feature proposals, or require business assistance, please email our
+                    support address.
                 </p>
-                
-                <div class="glass-panel p-5 sm:p-8 rounded-3xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden">
+
+                <div
+                    class="glass-panel p-5 sm:p-8 rounded-3xl border border-white/10 flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden">
                     <div class="space-y-3">
                         <h4 class="font-display font-bold text-xl text-white">Contact Developer Team</h4>
                         <p class="text-sm text-slate-400">We respond to email inquiries within 24-48 business hours.</p>
-                        
+
                         <div class="flex items-center gap-2 text-sm">
                             <span class="text-slate-500">Email:</span>
-                            <a href="mailto:support@notex.work" class="font-bold text-berry-400 hover:text-berry-300 transition-colors">support@notex.work</a>
+                            <a href="mailto:support@notex.work"
+                                class="font-bold text-berry-400 hover:text-berry-300 transition-colors">support@notex.work</a>
                         </div>
                     </div>
-                    
+
                     <div class="flex flex-col items-center gap-2">
                         <!-- QR Code image for donation -->
                         <div class="p-2.5 bg-darkBg border border-white/10 rounded-2xl">
-                            <img src="https://img.vietqr.io/image/vcb-0201000212246-compact2.png?amount=50000&addInfo=Donate%20BerryShot&accountName=TAN" alt="VietQR Vietcombank donation code" class="w-[120px] h-[120px] rounded-lg">
+                            <img src="https://img.vietqr.io/image/vcb-0201000212246-compact2.png?amount=50000&addInfo=Donate%20BerryShot&accountName=TAN"
+                                alt="VietQR Vietcombank donation code" class="w-[120px] h-[120px] rounded-lg">
                         </div>
                         <span class="text-[10px] text-slate-500 font-mono">Donate to support development</span>
                     </div>
@@ -501,15 +637,19 @@
 
     <!-- FOOTER -->
     <footer class="border-t border-white/5 py-12 bg-darkBg/90 mt-20 relative z-10">
-        <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+        <div
+            class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
             <span>© 2026 BerryShot. All rights reserved. Built natively for macOS.</span>
             <div class="flex items-center gap-6">
-                <a href="https://dautay.dev" target="_blank" rel="noopener noreferrer" class="hover:text-berry-400 transition-colors font-bold text-berry-400">dautay.dev</a>
-                <a href="mailto:support@notex.work" class="hover:text-berry-400 transition-colors">support@notex.work</a>
+                <a href="https://dautay.dev" target="_blank" rel="noopener noreferrer"
+                    class="hover:text-berry-400 transition-colors font-bold text-berry-400">dautay.dev</a>
+                <a href="mailto:support@notex.work"
+                    class="hover:text-berry-400 transition-colors">support@notex.work</a>
                 <a href="index.html" class="hover:text-berry-400 transition-colors">Back to Home</a>
             </div>
         </div>
     </footer>
 
 </body>
+
 </html>

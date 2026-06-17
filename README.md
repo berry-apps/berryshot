@@ -59,7 +59,7 @@ You can download precompiled versions of BerryShot:
    ```bash
    ./build_app.sh
    ```
-   The generated application bundle will be created at `BerryShot.app`.
+   The generated application bundle will be created at `notex.work`.
 
 ---
 
