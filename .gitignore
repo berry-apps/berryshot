@@ -1,0 +1,11 @@
+DerivedData/
+.build/
+.swiftpm/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+.DS_Store
+.env
+*.pem
+*.zip
+BerryShot.app/

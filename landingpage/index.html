@@ -1,0 +1,2797 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    
+    <!-- SEO Optimization Meta Tags -->
+    <title>BerryShot - Blazing-Fast Screen Capture, OCR & AI for macOS</title>
+    <meta name="description" content="BerryShot is a minimal macOS screenshot utility. Draw annotations, extract text locally in 0.1s using Apple Vision, and analyze images with Claude or OpenAI.">
+    <meta name="keywords" content="BerryShot, macOS screenshot tool, screen capture mac, local OCR mac, extract text from image, AI code explainer, mac annotation tool, Swift utility">
+    <meta name="author" content="BerryShot Team">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://berryshot.app/">
+    <meta property="og:title" content="BerryShot - Blazing-Fast Screen Capture, OCR & AI for macOS">
+    <meta property="og:description" content="Annotate screenshots instantly, extract text offline with native OCR, and explain code or translate text in real-time with ChatGPT & Claude.">
+    <meta property="og:image" content="./assets/app_showcase.webp">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://berryshot.app/">
+    <meta property="twitter:title" content="BerryShot - Blazing-Fast Screen Capture, OCR & AI for macOS">
+    <meta property="twitter:description" content="Annotate screenshots instantly, extract text offline with native OCR, and explain code or translate text in real-time with ChatGPT & Claude.">
+    <meta property="twitter:image" content="./assets/app_showcase.webp">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="./assets/AppIcon.png">
+    <link rel="apple-touch-icon" href="./assets/AppIcon.png">
+
+    <!-- Google Fonts: Outfit & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        berry: {
+                            50: '#fff0f3',
+                            100: '#ffdde3',
+                            200: '#ffc0cb',
+                            300: '#ffa1b3',
+                            400: '#ff6b8b',
+                            500: '#ff2e5b', // Main strawberry red
+                            600: '#e01b47',
+                            700: '#bd1035',
+                            800: '#9c0d2a',
+                            950: '#0f0205',
+                        },
+                        fuchsiaAccent: {
+                            DEFAULT: '#d946ef',
+                        },
+                        darkBg: {
+                            DEFAULT: '#050208',
+                            card: '#0f0617',
+                            border: '#1f0d2c',
+                        }
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 8s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                        'float-delayed': 'float 6s ease-in-out 3s infinite',
+                        'drift-slow': 'drift 20s linear infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-12px)' },
+                        },
+                        drift: {
+                            '0%': { transform: 'rotate(0deg) translate(0px, 0px)' },
+                            '50%': { transform: 'rotate(180deg) translate(20px, 40px)' },
+                            '100%': { transform: 'rotate(360deg) translate(0px, 0px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Custom CSS for Special Effects -->
+    <style>
+        /* Remove default focus outlines for cleaner look */
+        a:focus, button:focus, [role="button"]:focus, input:focus, select:focus, textarea:focus {
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Smooth scroll-reveal transitions */
+        .reveal {
+            opacity: 0;
+            transform: translateY(35px) scale(0.98);
+            transition: opacity 0.85s cubic-bezier(0.16, 1, 0.3, 1),
+                        transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .reveal-visible {
+            opacity: 1;
+            transform: translateY(0px) scale(1);
+        }
+
+        /* Glass sweep button glow effect */
+        .sweep-btn {
+            position: relative;
+            overflow: hidden;
+        }
+        .sweep-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.15),
+                transparent
+            );
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .sweep-btn:hover::before {
+            left: 100%;
+        }
+
+        /* Premium depth shadow & glass */
+        .glass-panel {
+            background: rgba(15, 6, 23, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 46, 91, 0.12);
+            box-shadow: 
+                0 4px 30px rgba(0, 0, 0, 0.4),
+                inset 0 1px 1px rgba(255, 255, 255, 0.05);
+        }
+
+        .glass-card-hover {
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .glass-card-hover:hover {
+            border-color: rgba(255, 46, 91, 0.4);
+            box-shadow: 
+                0 30px 60px -15px rgba(255, 46, 91, 0.2),
+                inset 0 1px 2px rgba(255, 255, 255, 0.1);
+            transform: translateY(-8px) scale(1.01);
+        }
+
+        /* 3D Depth Card Tilt Container */
+        .tilt-card-container {
+            perspective: 1200px;
+        }
+        .tilt-card {
+            transform-style: preserve-3d;
+            transition: transform 0.15s ease-out, box-shadow 0.3s ease;
+        }
+
+        /* Ambient glow spots */
+        .glow-spot {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(130px);
+            opacity: 0.22;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #050208;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1f0d2c;
+            border-radius: 9999px;
+            border: 2px solid #050208;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ff2e5b;
+        }
+
+        /* FAQ Transition */
+        .faq-answer {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .faq-active .faq-answer {
+            max-height: 500px;
+        }
+
+        /* Interactive Simulator Animations */
+        .annotation-element {
+            opacity: 0;
+            transform: scale(0.9);
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .annotation-active {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Modal styling */
+        .modal-overlay {
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+    </style>
+
+    <!-- Schema.org SoftwareApplication JSON-LD -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "BerryShot",
+      "operatingSystem": "macOS 14.0 or later",
+      "applicationCategory": "UtilitiesApplication",
+      "downloadUrl": "https://berryshot.app/assets/BerryShot.dmg",
+      "offers": {
+        "@type": "Offer",
+        "price": "0.00",
+        "priceCurrency": "USD"
+      },
+      "description": "BerryShot is a lightweight screenshot and screen capture app for macOS, featuring drawing annotations, local OCR text extraction, and ChatGPT/Claude AI integration.",
+      "softwareVersion": "1.0.0"
+    }
+    </script>
+</head>
+<body class="bg-darkBg font-sans text-slate-100 overflow-x-hidden relative min-h-screen">
+
+    <!-- Ambient Glowing Backdrops -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div class="glow-spot w-[500px] h-[500px] bg-berry-500 top-[-150px] left-[-150px] animate-pulse-slow"></div>
+        <div class="glow-spot w-[600px] h-[600px] bg-fuchsia-600 top-[25%] right-[-200px] animate-pulse-slow"></div>
+        <div class="glow-spot w-[700px] h-[700px] bg-indigo-900 bottom-[20%] left-[-250px] animate-pulse-slow"></div>
+        <div class="glow-spot w-[400px] h-[400px] bg-berry-600 bottom-[-100px] right-[5%] animate-pulse-slow"></div>
+    </div>
+
+    <!-- HEADER / NAVIGATION -->
+    <header class="sticky top-0 z-40 w-full border-b border-white/5 backdrop-blur-xl bg-darkBg/70 transition-all duration-300">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <!-- Logo & Brand Name -->
+            <a href="#" class="flex items-center gap-4 group">
+                <div class="relative w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 group-hover:border-berry-400 transition-colors duration-300 overflow-hidden shadow-inner">
+                    <img src="./assets/AppIcon.png" alt="BerryShot Logo" class="w-10 h-10 object-contain group-hover:scale-110 transition-transform duration-300">
+                </div>
+                <div class="flex flex-col">
+                    <span class="font-display font-bold text-2xl tracking-tight bg-gradient-to-r from-white via-berry-100 to-berry-400 bg-clip-text text-transparent">BerryShot</span>
+                    <span class="text-[10px] text-berry-400 font-mono tracking-widest uppercase font-bold leading-none">macOS Utility</span>
+                </div>
+            </a>
+
+            <!-- Navigation Links -->
+            <nav class="hidden md:flex items-center gap-9 text-sm font-semibold text-slate-300">
+                <a href="#features" class="hover:text-berry-400 transition-colors duration-200">Features</a>
+                <a href="#interactive-demo" class="hover:text-berry-400 transition-colors duration-200">Live Demo</a>
+                <a href="#how-it-works" class="hover:text-berry-400 transition-colors duration-200">How It Works</a>
+                <a href="#faq" class="hover:text-berry-400 transition-colors duration-200">FAQ</a>
+                <a href="https://dautay.dev" target="_blank" rel="noopener noreferrer" class="hover:text-berry-400 transition-colors duration-200 text-berry-400 font-bold border-b border-berry-500/20 pb-0.5">dautay.dev</a>
+                <a href="docs.html" class="px-3 py-1 bg-white/5 border border-white/10 rounded-lg text-xs font-bold text-slate-200 hover:text-berry-400 hover:border-berry-500/30 transition-all duration-200">Docs</a>
+            </nav>
+
+            <!-- Actions buttons: Donate & Download -->
+            <div class="flex items-center gap-5">
+                <button onclick="openDonateModal()" class="hidden lg:flex px-6 py-3 bg-white/5 hover:bg-white/10 text-slate-200 hover:text-white font-semibold text-sm rounded-xl transition-all duration-300 border border-white/10 hover:border-white/20 active:scale-95 items-center gap-2">
+                    <span>Support Developer ☕️</span>
+                </button>
+
+                <a href="./assets/BerryShot.dmg" class="sweep-btn hidden sm:inline-flex items-center gap-2.5 px-8 py-3.5 bg-gradient-to-r from-berry-500 via-berry-600 to-fuchsia-600 hover:from-berry-600 hover:to-fuchsia-700 text-white font-bold text-sm rounded-xl transition-all duration-300 shadow-xl shadow-berry-500/10 hover:shadow-berry-500/30 hover:scale-[1.03] border border-white/10" id="header-download-btn">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Download for Mac
+                </a>
+                
+                <!-- Mobile Navigation Button -->
+                <button class="md:hidden p-2 text-slate-300 hover:text-white" id="mobile-menu-btn" aria-label="Toggle Menu" onclick="toggleMobileMenu()">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div class="hidden md:hidden bg-darkBg/95 border-b border-white/5 backdrop-blur-lg px-6 py-6 space-y-4" id="mobile-menu">
+            <a href="#features" class="block text-slate-300 hover:text-berry-400 transition-colors py-2" onclick="toggleMobileMenu()">Features</a>
+            <a href="#interactive-demo" class="block text-slate-300 hover:text-berry-400 transition-colors py-2" onclick="toggleMobileMenu()">Live Demo</a>
+            <a href="#how-it-works" class="block text-slate-300 hover:text-berry-400 transition-colors py-2" onclick="toggleMobileMenu()">How It Works</a>
+            <a href="#faq" class="block text-slate-300 hover:text-berry-400 transition-colors py-2" onclick="toggleMobileMenu()">FAQ</a>
+            <a href="https://dautay.dev" target="_blank" rel="noopener noreferrer" class="block text-berry-400 hover:text-berry-300 transition-colors py-2 font-bold" onclick="toggleMobileMenu()">dautay.dev</a>
+            <a href="docs.html" class="block text-slate-300 hover:text-berry-400 transition-colors py-2" onclick="toggleMobileMenu()">Docs</a>
+            <button onclick="toggleMobileMenu(); openDonateModal();" class="w-full text-center py-3 bg-white/5 text-slate-200 border border-white/10 rounded-xl mb-2">Support Developer ☕️</button>
+            <a href="./assets/BerryShot.dmg" class="w-full flex items-center justify-center gap-2 py-3.5 bg-gradient-to-r from-berry-500 to-fuchsia-600 text-white font-bold rounded-xl">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                Download for Mac
+            </a>
+        </div>
+    </header>
+
+    <main class="relative z-10">
+        
+        <!-- HERO SECTION -->
+        <section class="max-w-7xl mx-auto px-6 flex flex-col lg:flex-row items-center justify-between gap-12 min-h-[calc(100vh-80px)] py-12">
+            <!-- Left Column: Text & Buttons -->
+            <div class="flex-1 text-center lg:text-left max-w-2xl space-y-8 flex flex-col items-center lg:items-start">
+                <!-- Badge -->
+                <div class="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full glass-panel text-xs font-bold text-berry-300 border border-berry-500/20 shadow-md">
+                    <span class="flex h-2 w-2 relative">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-berry-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-berry-500"></span>
+                    </span>
+                    Version 1.0.0 — Privacy-First Local OCR & AI
+                </div>
+
+                <!-- Main Heading -->
+                <h1 class="font-display font-extrabold text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-[1.1] text-white">
+                    Capture. Annotate.<br>
+                    <span class="bg-gradient-to-r from-berry-400 via-fuchsia-500 to-indigo-400 bg-clip-text text-transparent mt-2 block sm:inline">
+                        Extract OCR & Explain with AI
+                    </span>
+                </h1>
+
+                <!-- Subtitle -->
+                <p class="text-base sm:text-lg text-slate-400 leading-relaxed max-w-xl">
+                    BerryShot is the ultimate screen capture utility for macOS. Take instant screenshots, sketch annotations pixel-perfect, OCR extract text offline in 0.1s, and explain code instantly with ChatGPT & Claude.
+                </p>
+
+                <!-- CTA Buttons -->
+                <div class="flex flex-col sm:flex-row gap-4 pt-2 w-full justify-center lg:justify-start">
+                    <a href="./assets/BerryShot.dmg" class="sweep-btn w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-berry-500 via-berry-600 to-fuchsia-600 hover:from-berry-600 hover:to-fuchsia-700 text-white font-extrabold text-sm rounded-xl transition-all duration-300 shadow-xl shadow-berry-500/20 hover:shadow-berry-500/40 hover:-translate-y-0.5 active:translate-y-0 border border-white/15">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 170 170">
+                            <path d="M150.37 130.25c-2.45 5.66-5.35 10.87-8.71 15.66-4.58 6.53-8.33 11.05-11.22 13.56-4.48 4.12-9.28 6.23-14.42 6.35-3.69 0-8.14-1.05-13.32-3.18-5.19-2.12-9.97-3.17-14.34-3.17-4.58 0-9.49 1.05-14.75 3.17-5.26 2.13-9.5 3.24-12.74 3.35-4.34.13-9.13-1.92-14.37-6.15-3.46-2.85-7.33-7.72-11.61-14.61-9.18-14.63-15.69-32.96-19.53-55-2.02-11.52-3.03-22.39-3.03-32.61 0-16 3.86-29.47 11.59-40.4 7.73-10.93 17.81-16.48 30.24-16.65 6.02 0 12.35 1.77 18.99 5.31 6.64 3.54 11.39 5.31 14.24 5.31 2.45 0 7.02-1.68 13.68-5.06 6.67-3.38 12.44-4.97 17.33-4.78 17.07 1.05 30.22 7.73 39.46 20.04-14.86 9.07-22.09 21.43-21.69 37.07.41 12.23 5.14 22.42 14.2 30.55 9.07 8.14 19.82 12.63 32.27 13.48-2.61 7.63-6.2 15.11-10.78 22.43zM119.22 32.4c0-7.85 2.76-15.22 8.3-21.1C133.05 5.4 140.23 2.14 148.64 2c.13 8.33-2.67 15.8-8.4 21.69-5.74 5.88-13.11 9.2-21.02 9.2-.18-.16-.18-.32-.18-.49z"/>
+                        </svg>
+                        Download for Mac (.dmg)
+                    </a>
+                    <a href="#interactive-demo" class="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-white/5 text-slate-200 font-bold text-sm border border-white/10 hover:border-berry-500/35 hover:bg-white/[0.08] transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0">
+                        Try Live Simulator
+                    </a>
+                </div>
+
+                <!-- Support Info & Email link -->
+                <div class="flex flex-wrap justify-center lg:justify-start items-center gap-6 text-xs text-slate-500 font-medium pt-2">
+                    <div class="flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                        Support: <a href="mailto:support@notex.work" class="text-slate-400 hover:text-berry-400 transition-colors">support@notex.work</a>
+                    </div>
+                    <span>•</span>
+                    <span>Free & Offline Secure</span>
+                </div>
+            </div>
+
+            <!-- Right Column: 3D Depth Card Visual with floating layers and QR code -->
+            <div class="flex-1 w-full max-w-lg lg:max-w-xl flex items-center justify-center">
+                <div class="tilt-card-container w-full h-[450px] flex items-center justify-center relative select-none">
+                    <!-- Glow background -->
+                    <div class="absolute w-64 h-64 bg-berry-500/10 blur-[80px] rounded-full top-1/4 left-1/4 animate-pulse-slow"></div>
+                    
+                    <!-- The 3D Tilt Card itself -->
+                    <div class="tilt-card w-full max-w-[440px] bg-darkBg-card/85 border border-white/10 rounded-3xl p-6 shadow-2xl backdrop-blur-2xl relative flex flex-col gap-6" id="hero-tilt-card">
+                        
+                        <!-- Mock macOS Window Header / Title Bar -->
+                        <div class="flex items-center justify-between pb-2 border-b border-white/5">
+                            <div class="flex items-center gap-1.5">
+                                <div class="w-3 h-3 rounded-full bg-[#ff5f56]"></div>
+                                <div class="w-3 h-3 rounded-full bg-[#ffbd2e]"></div>
+                                <div class="w-3 h-3 rounded-full bg-[#27c93f]"></div>
+                            </div>
+                            <div class="text-[9px] text-slate-500 font-mono tracking-wider">BERRYSHOT INTERFACE</div>
+                            <div class="w-10"></div>
+                        </div>
+                        
+                        <!-- Floating Mock Layer 1: App Menu bar item representation -->
+                        <div class="glass-panel rounded-xl px-4 py-3 border border-white/10 flex items-center justify-between text-xs text-slate-300 shadow-md animate-float">
+                            <div class="flex items-center gap-2">
+                                <div class="w-2 h-2 rounded-full bg-berry-500 animate-ping"></div>
+                                <span class="font-bold text-white font-display">BerryShot Menubar</span>
+                            </div>
+                            <span class="text-[10px] text-slate-400 font-mono">⌘⌥⇧S</span>
+                        </div>
+                        
+                        <!-- Floating Mock Layer 2: Transparent Screenshot Canvas selection mock with OCR overlay -->
+                        <div class="relative rounded-2xl border border-dashed border-fuchsia-500/50 bg-fuchsia-500/5 p-4 shadow-lg flex flex-col gap-2.5 animate-float-delayed">
+                            <!-- Corner anchors for screenshot box -->
+                            <div class="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-fuchsia-500"></div>
+                            <div class="absolute top-0 right-0 w-2 h-2 border-t-2 border-r-2 border-fuchsia-500"></div>
+                            <div class="absolute bottom-0 left-0 w-2 h-2 border-b-2 border-l-2 border-fuchsia-500"></div>
+                            <div class="absolute bottom-0 right-0 w-2 h-2 border-b-2 border-r-2 border-fuchsia-500"></div>
+                            
+                            <div class="flex justify-between items-center text-[9px] text-fuchsia-400 font-mono font-bold leading-none">
+                                <span>Selection: 640x360</span>
+                                <span class="px-1.5 py-0.5 rounded bg-fuchsia-500/20 text-[8px]">LOCAL OCR ACTIVE</span>
+                            </div>
+                            
+                            <!-- Code block being OCR'd -->
+                            <div class="text-[10px] font-mono text-slate-300 bg-black/40 p-3 rounded-lg border border-white/5 space-y-1 relative">
+                                <div class="h-2 w-32 bg-slate-700/60 rounded"></div>
+                                <div class="h-2 w-48 bg-slate-700/60 rounded"></div>
+                                <div class="h-2 w-28 bg-slate-700/60 rounded"></div>
+                                <!-- Glowing text highlight over code -->
+                                <div class="absolute inset-x-2 top-2 bottom-2 bg-berry-500/10 border border-berry-500/40 rounded flex items-center justify-center backdrop-blur-[1px]">
+                                    <span class="text-[9px] text-berry-300 font-bold font-sans">⚡️ Local OCR: 100% Offline (0.1s)</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Floating Mock Layer 3: QR Code card embedded inside mockup -->
+                        <div class="glass-panel rounded-2xl p-4 border border-white/10 flex flex-col sm:flex-row items-center gap-4 shadow-xl relative group hover:border-berry-500/30 transition-all duration-300">
+                            <div class="p-2 bg-darkBg border border-white/10 rounded-xl relative shrink-0 hidden sm:block">
+                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=https://github.com/berry-apps/berryshot/raw/main/landingpage/assets/BerryShot.dmg&color=ff2e5b&bgcolor=0f0617" alt="QR Code" class="w-[90px] h-[90px] rounded-md select-none relative z-10">
+                            </div>
+                            <div class="text-center sm:text-left flex-1 min-w-0">
+                                <h4 class="font-display font-extrabold text-sm text-white mb-1">
+                                    <span class="sm:hidden">Get BerryShot for Mac</span>
+                                    <span class="hidden sm:inline">Scan to Download</span>
+                                </h4>
+                                <p class="text-[10px] text-slate-400 leading-normal mb-2">
+                                    <span class="sm:hidden">BerryShot is a native macOS application. Click below to copy the download link or download the installer directly.</span>
+                                    <span class="hidden sm:inline">Scan QR code using your phone camera to download the `.dmg` package directly.</span>
+                                </p>
+                                <a href="./assets/BerryShot.dmg" class="inline-flex items-center gap-1 text-[9px] font-bold text-berry-400 hover:text-berry-300 transition-colors uppercase tracking-wider font-mono">
+                                    Download DMG File →
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CORE VALUES -->
+        <section class="reveal-section max-w-7xl mx-auto px-6 py-20 border-t border-white/5 relative">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Security Card -->
+                <div class="flex gap-5 p-8 rounded-2xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.03] transition-all duration-300 shadow-lg">
+                    <div class="w-14 h-14 shrink-0 rounded-xl bg-berry-500/10 border border-berry-500/20 flex items-center justify-center text-berry-400 shadow-md">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="font-display font-bold text-xl mb-3 text-white">100% Offline & Private</h3>
+                        <p class="text-sm text-slate-400 leading-relaxed">Local OCR runs directly on device via Apple's Vision Framework. Images are never uploaded to servers, keeping your confidential data secure.</p>
+                    </div>
+                </div>
+
+                <!-- AI Integration Card -->
+                <div class="flex gap-5 p-8 rounded-2xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.03] transition-all duration-300 shadow-lg">
+                    <div class="w-14 h-14 shrink-0 rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/20 flex items-center justify-center text-fuchsia-400 shadow-md">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="font-display font-bold text-xl mb-3 text-white">AI Explainer & Translate</h3>
+                        <p class="text-sm text-slate-400 leading-relaxed">Connect to Claude or ChatGPT in seconds. Instantly explain algorithms, extract code snippets, translate terms, or draft summaries.</p>
+                    </div>
+                </div>
+
+                <!-- Performance Card -->
+                <div class="flex gap-5 p-8 rounded-2xl border border-white/5 bg-white/[0.01] hover:bg-white/[0.03] transition-all duration-300 shadow-lg">
+                    <div class="w-14 h-14 shrink-0 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-md">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="font-display font-bold text-xl mb-3 text-white">Lightweight & Native</h3>
+                        <p class="text-sm text-slate-400 leading-relaxed">Designed natively using Apple SwiftUI for macOS 14.0+. Runs silently in your Menu Bar, utilizing negligible RAM or battery power.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- INTERACTIVE WORKSPACE SIMULATOR -->
+        <section id="interactive-demo" class="reveal-section max-w-7xl mx-auto px-6 py-20 border-t border-white/5 relative">
+            <div class="text-center max-w-3xl mx-auto mb-16">
+                <span class="text-xs font-mono text-berry-400 uppercase tracking-widest block mb-3">Live Interactive Sandbox</span>
+                <h2 class="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl mb-6">See the Actual App in Action</h2>
+                <p class="text-slate-400">Click the buttons on the floating BerryShot toolbar at the bottom of the code snippet below to interact with the actual features of our app.</p>
+            </div>
+
+            <!-- The Simulator Window Wrapper -->
+            <div class="max-w-5xl mx-auto rounded-3xl border border-white/10 bg-darkBg-card/80 p-2 shadow-2xl relative overflow-hidden glass-panel">
+                <div class="absolute inset-0 bg-gradient-to-br from-berry-500/5 to-fuchsia-500/5 -z-10"></div>
+                
+                <!-- Traffic Light Controls -->
+                <div class="flex items-center justify-between px-4 pb-3 pt-2 border-b border-white/5 mb-2 relative z-10">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3.5 h-3.5 rounded-full bg-red-500/80"></div>
+                        <div class="w-3.5 h-3.5 rounded-full bg-yellow-500/80"></div>
+                        <div class="w-3.5 h-3.5 rounded-full bg-green-500/80"></div>
+                    </div>
+                    <div class="text-xs text-slate-500 font-mono tracking-wider">BerryShot Workspace Simulator (Interact Below)</div>
+                    <div class="w-12"></div>
+                </div>
+
+                <!-- Simulation Area -->
+                <div class="relative w-full rounded-2xl bg-black/60 border border-white/5 overflow-hidden min-h-[500px] flex" id="sim-workspace-area">
+                    
+                    <!-- Simulated Cursor for Autoplay Demo -->
+                    <div id="sim-auto-cursor" class="absolute pointer-events-none transition-all duration-300 z-50 opacity-0" style="width: 17px; height: 22px; top: 200px; left: 200px;">
+                        <svg class="w-full h-full drop-shadow-[0_2px_5px_rgba(0,0,0,0.6)]" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M4.5 3V17.2L8.9 12.8L14.3 22L17.5 20L12.2 11L17.5 11L4.5 3Z" fill="black" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+                        </svg>
+                    </div>
+
+                    <!-- Autoplay Status Badge -->
+                    <div id="sim-demo-badge" class="absolute top-4 right-4 bg-berry-500/90 hover:bg-berry-500 border border-white/10 text-white px-3 py-1.5 rounded-full text-[10px] font-bold tracking-wider uppercase flex items-center gap-1.5 z-40 shadow-lg select-none cursor-pointer transition-all animate-bounce" onclick="toggleDemoAutoplay(event)">
+                        <span id="sim-demo-badge-dot" class="w-2 h-2 rounded-full bg-white animate-ping"></span>
+                        <span id="sim-demo-badge-text">⏸ Running Demo | Click to Draw</span>
+                    </div>
+                    
+                    <!-- Simulator Reset / Closed Overlay -->
+                    <div id="sim-closed-overlay" class="hidden absolute inset-0 bg-black/85 backdrop-filter backdrop-blur-md z-40 flex flex-col items-center justify-center gap-4 text-center p-6">
+                        <svg class="w-12 h-12 text-berry-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        <h3 class="font-display font-extrabold text-xl">BerryShot Screen Capture Closed</h3>
+                        <p class="text-xs text-slate-400 max-w-sm">You closed the capture window (equivalent to pressing ESC). Click below to reboot the workspace simulator.</p>
+                        <button onclick="rebootSimulator()" class="px-5 py-2.5 bg-berry-500 hover:bg-berry-600 font-bold text-xs rounded-xl shadow-lg shadow-berry-500/25 transition-all hover:scale-105">
+                            Re-Capture Screen (Live Preview)
+                        </button>
+                    </div>
+                    
+                    <!-- Left Column: Swift Code Editor with SVGs overlays -->
+                    <div class="flex-1 p-6 font-mono text-sm leading-relaxed overflow-x-auto relative select-none" id="code-editor-area">
+                        <!-- Scrollable Content Wrapper to keep annotations aligned on mobile -->
+                        <div class="min-w-[560px] relative z-0">
+                            <!-- Code lines -->
+                            <div class="flex">
+                                <div class="text-slate-500 select-none pr-4 text-right border-r border-white/5 min-w-[30px] font-mono">
+                                    1<br>2<br>3<br>4<br>5<br>6<br>7<br>8<br>9<br>10<br>11<br>12<br>13<br>14<br>15
+                                </div>
+                                <div class="pl-4 text-slate-300 font-mono">
+                                    <span class="text-fuchsiaAccent">import</span> SwiftUI<br>
+                                    <span class="text-fuchsiaAccent">import</span> Vision<br><br>
+                                    <span class="text-berry-400">public class</span> <span class="text-blue-400">OCRService</span> {<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;<span class="text-berry-400">public func</span> <span class="text-blue-400">extractText</span>(image: CGImage) <span class="text-fuchsiaAccent">async</span> -> String {<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-500">// Initialize request handler locally</span><br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-berry-400">let</span> request = <span class="text-indigo-400">VNRecognizeTextRequest</span> { req, err <span class="text-fuchsiaAccent">in</span><br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-fuchsiaAccent">guard let</span> results = req.results <span class="text-fuchsiaAccent">else</span> { <span class="text-fuchsiaAccent">return</span> }<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-berry-400">let</span> text = results.compactMap { $0.topCandidates(<span class="text-orange-400">1</span>).first?.string }<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;print(<span class="text-green-400">"Extracted text successfully"</span>)<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;request.recognitionLevel = .accurate<br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-fuchsiaAccent">return</span> <span class="text-green-400">"BerryShot OCR"</span><br>
+                                    &nbsp;&nbsp;&nbsp;&nbsp;}<br>
+                                    }
+                                </div>
+                            </div>
+
+                            <!-- SVG overlays representing drawing annotations (Pencil, Rectangle, Arrow) -->
+                            <svg class="absolute inset-0 w-full h-full pointer-events-none z-10" id="sim-svg-annotations">
+                                <defs>
+                                    <marker id="arrowhead-red" markerWidth="6" markerHeight="6" refX="2" refY="3" orient="auto">
+                                        <polygon points="0 0, 6 3, 0 6" fill="#ff2e5b"></polygon>
+                                    </marker>
+                                    <marker id="arrowhead-blue" markerWidth="6" markerHeight="6" refX="2" refY="3" orient="auto">
+                                        <polygon points="0 0, 6 3, 0 6" fill="#3b82f6"></polygon>
+                                    </marker>
+                                    <marker id="arrowhead-green" markerWidth="6" markerHeight="6" refX="2" refY="3" orient="auto">
+                                        <polygon points="0 0, 6 3, 0 6" fill="#10b981"></polygon>
+                                    </marker>
+                                    <marker id="arrowhead-fuchsia" markerWidth="6" markerHeight="6" refX="2" refY="3" orient="auto">
+                                        <polygon points="0 0, 6 3, 0 6" fill="#d946ef"></polygon>
+                                    </marker>
+                                </defs>
+                                <!-- Draw element: Rectangle -->
+                                <rect x="200" y="105" width="280" height="95" rx="8" fill="none" stroke="#ff2e5b" stroke-width="3.5" class="annotation-element annotation-active" id="sim-rect-draw" stroke-dasharray="8 4"></rect>
+                                <!-- Draw element: Arrow -->
+                                <g class="annotation-element annotation-active" id="sim-arrow-draw">
+                                    <path d="M 540 80 L 495 105" fill="none" stroke="#d946ef" stroke-width="4.5" marker-end="url(#arrowhead-fuchsia)"></path>
+                                </g>
+                                <!-- Draw element: Highlight circle -->
+                                <ellipse cx="260" cy="50" rx="90" ry="22" fill="none" stroke="#10b981" stroke-width="3" class="annotation-element annotation-active" id="sim-circle-draw"></ellipse>
+                            </svg>
+
+                            <!-- OCR Highlight Blocks overlay -->
+                            <div class="absolute inset-0 bg-blue-500/10 pointer-events-none z-10 hidden" id="sim-ocr-overlay">
+                                <!-- Simulated highlighted bounding boxes -->
+                                <div class="absolute bg-blue-500/25 border border-blue-400/50 rounded" style="top: 106px; left: 190px; width: 300px; height: 26px;"></div>
+                                <div class="absolute bg-blue-500/25 border border-blue-400/50 rounded" style="top: 134px; left: 220px; width: 330px; height: 26px;"></div>
+                                <div class="absolute bg-blue-500/25 border border-blue-400/50 rounded" style="top: 160px; left: 220px; width: 350px; height: 26px;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Slide-in glassmorphic AI Panel -->
+                    <div class="w-0 bg-darkBg border-l border-white/5 transition-all duration-500 flex flex-col overflow-hidden relative z-20" id="sim-ai-panel">
+                        <div class="p-5 flex items-center justify-between border-b border-white/5 bg-darkBg-card">
+                            <div class="flex items-center gap-2 text-fuchsiaAccent">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.8 12.16 7 10.63 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z"/></svg>
+                                <span class="font-display font-bold text-sm tracking-wider">BerryShot AI Assistant</span>
+                            </div>
+                            <button onclick="closeSimulatorAI()" class="text-slate-500 hover:text-white transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+                        
+                        <!-- Tabs for Simulator AI -->
+                        <div class="px-5 pt-3 flex gap-2 border-b border-white/5 bg-darkBg-card/50 pb-2">
+                            <button onclick="changeSimAiTab('explain')" id="btn-sim-ai-explain" class="px-2 py-1 rounded bg-berry-500 text-white text-[9px] font-bold transition-all border border-berry-500/35">Explain</button>
+                            <button onclick="changeSimAiTab('translate')" id="btn-sim-ai-translate" class="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-[9px] font-bold transition-all border border-white/10">Translate</button>
+                            <button onclick="changeSimAiTab('optimize')" id="btn-sim-ai-optimize" class="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-[9px] font-bold transition-all border border-white/10">Refactor</button>
+                        </div>
+
+                        <div class="flex-1 p-5 overflow-y-auto space-y-4 text-xs">
+                            <div class="p-2.5 bg-black/40 rounded-lg border border-white/5 min-h-[180px] text-left flex flex-col justify-between">
+                                <div class="relative">
+                                    <span class="text-slate-500 font-mono text-[8px] block mb-1 uppercase tracking-wider font-bold">AI Response Output:</span>
+                                    <span id="sim-ai-response-text" class="text-slate-300 font-sans text-[11px] leading-relaxed"></span>
+                                    <span class="inline-block w-1.5 h-3 bg-berry-400 animate-pulse ml-0.5" id="sim-ai-cursor"></span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="p-4 border-t border-white/5 bg-darkBg-card flex gap-2">
+                            <button onclick="copySimulatorAIText()" class="flex-1 py-2 bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white rounded-lg text-[10px] font-bold transition-all border border-white/10 flex items-center justify-center gap-1.5">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+                                Copy Response
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Simulator Toast Popup notification -->
+                    <div class="absolute bottom-24 left-1/2 transform -translate-x-1/2 px-4 py-2.5 bg-green-600 border border-green-500 text-white rounded-xl text-xs font-semibold shadow-2xl opacity-0 scale-95 transition-all duration-300 pointer-events-none z-30" id="sim-toast">
+                        Message Toast
+                    </div>
+                    <!-- Floating simulated toolbar (Exact macOS SwiftUI layout clone) -->
+                    <div id="sim-toolbar-container" class="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-30 w-[92%] sm:w-auto max-w-[500px]">
+                        
+                        <!-- Collapsed Toolbar Button (tiny paintpalette material circle) -->
+                        <button onclick="expandSimToolbar()" id="sim-toolbar-collapsed" class="hidden mx-auto p-2 rounded-full bg-[#140c1c]/90 border border-white/10 hover:bg-white/20 transition-all text-white flex items-center justify-center shadow-2xl hover:scale-110" style="width: 38px; height: 38px; backdrop-filter: blur(20px);" title="Expand Toolbar">
+                            <svg class="w-4 h-4 text-berry-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0-9 9c0 1.93.61 3.72 1.66 5.18l-.66 2.01a1 1 0 0 0 1.27 1.27l2.01-.66A9 9 0 1 0 12 3zm4.5 9c-.83 0-1.5-.67-1.5-1.5S15.67 9 16.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm-3-3c-.83 0-1.5-.67-1.5-1.5S12.67 6 13.5 6s1.5.67 1.5 1.5S14.33 9 13.5 9zm-3 0C9.67 9 9 8.33 9 7.5S9.67 6 10.5 6s1.5.67 1.5 1.5S11.33 9 10.5 9zm-3 3C6.67 12 6 11.33 6 10.5S6.67 9 7.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"></path></svg>
+                        </button>
+
+                        <!-- Expanded Toolbar -->
+                        <div id="sim-toolbar-expanded" class="glass-panel p-2.5 rounded-2xl flex flex-col gap-2 shadow-2xl border border-white/10 w-full" style="background: rgba(20, 12, 28, 0.85); backdrop-filter: blur(20px); border-radius: 12px;">
+                            
+                            <!-- Row 1: HoverableDragBar clone -->
+                            <div class="flex items-center justify-between text-slate-400 text-xs border-b border-white/5 pb-2">
+                                <!-- Left: Traffic Lights & Undo/Redo -->
+                                <div class="flex items-center gap-2">
+                                    <!-- Close (Red) -->
+                                    <div class="w-3 h-3 rounded-full bg-[#ff5f56] cursor-pointer flex items-center justify-center text-[7px] text-black/60 hover:text-black font-bold relative group" onclick="closeCaptureSim()" title="Close Capture">
+                                        <svg class="w-1.5 h-1.5 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                    </div>
+                                    <!-- Collapse (Yellow) -->
+                                    <div class="w-3 h-3 rounded-full bg-[#ffbd2e] cursor-pointer flex items-center justify-center text-[7px] text-black/60 hover:text-black font-bold relative group" onclick="collapseSimToolbar()" title="Collapse Toolbar">
+                                        <svg class="w-1.5 h-1.5 opacity-0 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M20 12H4"></path></svg>
+                                    </div>
+                                    <!-- Lock (Green) -->
+                                    <div class="w-3 h-3 rounded-full bg-[#27c93f] cursor-pointer flex items-center justify-center text-[7px] text-black/60 hover:text-black font-bold relative group" onclick="toggleSimLock()" id="sim-lock-light" title="Toggle Lock (Interaction Mode)">
+                                        <span class="opacity-0 group-hover:opacity-100 transition-opacity font-bold">L</span>
+                                    </div>
+                                    <!-- Help (Blue) -->
+                                    <div class="w-3 h-3 rounded-full bg-[#3b82f6] cursor-pointer flex items-center justify-center text-[7px] text-white/80 hover:text-white font-bold relative group" onclick="toggleSimHelp(event)" title="Help / Shortcuts">
+                                        <span class="opacity-0 group-hover:opacity-100 transition-opacity font-bold">?</span>
+                                    </div>
+                                    
+                                    <div class="w-px h-3.5 bg-white/10 mx-1"></div>
+                                    
+                                    <!-- Undo/Redo -->
+                                    <button onclick="triggerSimUndo()" id="sim-btn-undo" class="p-1 hover:bg-white/10 text-slate-400 hover:text-white rounded disabled:opacity-40" title="Undo (⌘Z)">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
+                                    </button>
+                                    <button onclick="triggerSimRedo()" id="sim-btn-redo" class="p-1 hover:bg-white/10 text-slate-400 hover:text-white rounded disabled:opacity-40" title="Redo (⌘⇧Z)">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 10H11a8 8 0 00-8 8v2M21 10l-6 6m6-6l-6-6"></path></svg>
+                                    </button>
+                                </div>
+                                
+                                <!-- Middle: Drag Handle Capsule -->
+                                <div class="h-1.5 w-10 bg-white/20 rounded-full mx-4 cursor-move"></div>
+                                
+                                <!-- Right Actions: Record, Upload, AI, Complete -->
+                                <div class="flex items-center gap-2">
+                                    <!-- Pause/Resume Record (only visible when recording) -->
+                                    <button onclick="toggleSimRecordPause()" id="sim-record-pause-btn" class="hidden p-1 hover:bg-white/10 text-white rounded" title="Pause / Resume Recording">
+                                        <svg id="sim-pause-icon" class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path></svg>
+                                    </button>
+                                    
+                                    <!-- Record -->
+                                    <button onclick="triggerSimRecord()" id="tool-record" class="p-1 hover:bg-white/10 text-rose-500 rounded flex items-center" title="Record Screen (R)">
+                                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>
+                                    </button>
+                                    
+                                    <div class="w-px h-3.5 bg-white/10 mx-0.5"></div>
+                                    
+                                    <!-- Upload -->
+                                    <button onclick="triggerSimUpload()" class="p-1 hover:bg-white/10 text-sky-400 rounded" title="Upload to Cloud (⌘U)">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                                    </button>
+                                    
+                                    <!-- AI Assistant -->
+                                    <button onclick="triggerSimAI()" class="p-1 hover:bg-white/10 text-fuchsiaAccent rounded" title="Ask AI Assistant (⌘I)">
+                                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7zm2.85 11.1l-.85.6V16h-4v-2.3l-.85-.6C7.8 12.16 7 10.63 7 9c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.63-.8 3.16-2.15 4.1z"/></svg>
+                                    </button>
+                                    
+                                    <!-- Complete & Save -->
+                                    <button onclick="triggerSimSave()" class="p-1 hover:bg-white/10 text-emerald-400 rounded" title="Save Locally (Enter / ⌘S)">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Row 2: Drawing Tools & Colors (HStack) -->
+                            <div class="flex items-center gap-1.5 sm:gap-2 relative">
+                                <!-- Select Tool -->
+                                <button onclick="setSimTool('select')" id="tool-select" class="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all" title="Select / Move Elements (V)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
+                                </button>
+                                <!-- Pencil Tool -->
+                                <button onclick="setSimTool('pencil')" id="tool-pencil" class="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all" title="Pencil Tool (B)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                </button>
+                                <!-- Rectangle Tool -->
+                                <button onclick="setSimTool('rect')" id="tool-rect" class="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all" title="Rectangle Tool (M)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5z"></path></svg>
+                                </button>
+                                <!-- Circle Tool -->
+                                <button onclick="setSimTool('circle')" id="tool-circle" class="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all" title="Circle Tool (C)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 21a9 9 0 100-18 9 9 0 000 18z"></path></svg>
+                                </button>
+                                <!-- Arrow Tool -->
+                                <button onclick="setSimTool('arrow')" id="tool-arrow" class="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all" title="Arrow Tool (A)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                                </button>
+                                <!-- Line Tool -->
+                                <button onclick="setSimTool('line')" id="tool-line" class="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all" title="Straight Line Tool (L)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 4L4 20"></path></svg>
+                                </button>
+                                <!-- Text Tool -->
+                                <button onclick="setSimTool('text')" id="tool-text" class="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all flex items-center justify-center" title="Text Tool (T)">
+                                    <span class="text-xs font-extrabold font-mono tracking-tighter">T</span>
+                                </button>
+                                <!-- Image Tool -->
+                                <button onclick="triggerSimImageUpload()" id="tool-image" class="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg transition-all" title="Import Image (O)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                </button>
+                                <input type="file" id="sim-image-file-input" class="hidden" accept="image/*" onchange="loadSimExternalImage(event)">
+                                
+                                <div class="w-px h-5 bg-white/10"></div>
+                                
+                                <!-- Fill toggle option -->
+                                <button onclick="toggleSimFill()" id="tool-fill" class="p-1.5 hover:bg-white/10 text-slate-400 hover:text-white rounded transition-all" title="Toggle Shape Fill (F)">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                                </button>
+
+                                <!-- Opacity Slider (visible when isFilled is true and shape tool selected) -->
+                                <div id="sim-opacity-container" class="hidden items-center gap-1">
+                                    <input type="range" id="sim-fill-opacity" min="0.1" max="1.0" step="0.05" value="0.4" oninput="changeSimOpacity(this.value)" class="w-12 h-1 accent-berry-400 bg-white/10 rounded-lg appearance-none cursor-pointer" title="Fill Opacity">
+                                </div>
+                                
+                                <div class="w-px h-5 bg-white/10"></div>
+                                
+                                <!-- Color Picker Dropdown button -->
+                                <div class="relative">
+                                    <button onclick="toggleSimColorPicker(event)" id="sim-color-picker-btn" class="flex items-center gap-1 px-1.5 py-1 rounded bg-white/5 border border-white/10 hover:bg-white/10 transition-colors" title="Select Color">
+                                        <div id="sim-color-dot" class="w-3.5 h-3.5 rounded-full bg-[#ff453a] border border-white/20"></div>
+                                        <svg class="w-2.5 h-2.5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7"></path></svg>
+                                    </button>
+                                    
+                                    <!-- Color Popover -->
+                                    <div id="sim-color-popover" class="hidden absolute bottom-10 right-0 bg-[#121214]/95 border border-white/10 p-3 rounded-xl shadow-2xl flex flex-col gap-2.5 z-50 w-[140px] select-none" style="backdrop-filter: blur(10px);">
+                                        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Select Color</div>
+                                        <div class="grid grid-cols-4 gap-2">
+                                            <div onclick="applySimColor('#ff453a')" class="w-5 h-5 rounded-full bg-[#ff453a] border border-white/20 cursor-pointer hover:scale-110 transition-transform" title="Red"></div>
+                                            <div onclick="applySimColor('#ff9f0a')" class="w-5 h-5 rounded-full bg-[#ff9f0a] border border-white/20 cursor-pointer hover:scale-110 transition-transform" title="Orange"></div>
+                                            <div onclick="applySimColor('#ffd60a')" class="w-5 h-5 rounded-full bg-[#ffd60a] border border-white/20 cursor-pointer hover:scale-110 transition-transform" title="Yellow"></div>
+                                            <div onclick="applySimColor('#30d158')" class="w-5 h-5 rounded-full bg-[#30d158] border border-white/20 cursor-pointer hover:scale-110 transition-transform" title="Green"></div>
+                                            <div onclick="applySimColor('#0a84ff')" class="w-5 h-5 rounded-full bg-[#0a84ff] border border-white/20 cursor-pointer hover:scale-110 transition-transform" title="Blue"></div>
+                                            <div onclick="applySimColor('#bf5af2')" class="w-5 h-5 rounded-full bg-[#bf5af2] border border-white/20 cursor-pointer hover:scale-110 transition-transform" title="Purple"></div>
+                                            <div onclick="applySimColor('#000000')" class="w-5 h-5 rounded-full bg-[#000000] border border-white/20 cursor-pointer hover:scale-110 transition-transform" title="Black"></div>
+                                            <div onclick="applySimColor('#ffffff')" class="w-5 h-5 rounded-full bg-[#ffffff] border border-white/20 cursor-pointer hover:scale-110 transition-transform" title="White"></div>
+                                        </div>
+                                        <div class="w-full h-px bg-white/5"></div>
+                                        <button onclick="triggerSimCustomColor()" class="w-full text-center text-[10px] font-semibold text-blue-400 hover:text-blue-300 transition-colors flex items-center justify-center gap-1">
+                                            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                                            Custom...
+                                        </button>
+                                        <input type="color" id="sim-custom-color-input" class="hidden" onchange="applySimColor(this.value)">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Keyboard Shortcuts Popover (SwiftUI Style) -->
+                        <div id="sim-shortcuts-popover" class="hidden absolute bottom-14 left-0 bg-[#121214]/95 border border-white/10 p-4 rounded-xl shadow-2xl flex flex-col gap-3.5 z-50 w-[280px] text-xs leading-normal select-none" style="backdrop-filter: blur(10px);">
+                            <div class="flex items-center gap-2 text-blue-400 border-b border-white/5 pb-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                                <span class="font-bold tracking-wider">Keyboard Shortcuts</span>
+                            </div>
+                            <div class="max-h-[200px] overflow-y-auto space-y-2.5 pr-1 font-mono text-[10px]">
+                                <div class="flex justify-between items-center"><span class="px-1.5 py-0.5 rounded bg-white/10 text-blue-300 font-bold">V</span> <span class="text-slate-400 font-sans text-right">Select / Move</span></div>
+                                <div class="flex justify-between items-center"><span class="px-1.5 py-0.5 rounded bg-white/10 text-blue-300 font-bold">B</span> <span class="text-slate-400 font-sans text-right">Pencil Draw</span></div>
+                                <div class="flex justify-between items-center"><span class="px-1.5 py-0.5 rounded bg-white/10 text-blue-300 font-bold">M</span> <span class="text-slate-400 font-sans text-right">Rectangle</span></div>
+                                <div class="flex justify-between items-center"><span class="px-1.5 py-0.5 rounded bg-white/10 text-blue-300 font-bold">C</span> <span class="text-slate-400 font-sans text-right">Circle / Ellipse</span></div>
+                                <div class="flex justify-between items-center"><span class="px-1.5 py-0.5 rounded bg-white/10 text-blue-300 font-bold">A</span> <span class="text-slate-400 font-sans text-right">Arrow</span></div>
+                                <div class="flex justify-between items-center"><span class="px-1.5 py-0.5 rounded bg-white/10 text-blue-300 font-bold">L</span> <span class="text-slate-400 font-sans text-right">Straight Line</span></div>
+                                <div class="flex justify-between items-center"><span class="px-1.5 py-0.5 rounded bg-white/10 text-blue-300 font-bold">T</span> <span class="text-slate-400 font-sans text-right">Text Annotate</span></div>
+                                <div class="flex justify-between items-center"><span class="px-1.5 py-0.5 rounded bg-white/10 text-blue-300 font-bold">O</span> <span class="text-slate-400 font-sans text-right">Import Image</span></div>
+                                <div class="flex justify-between items-center"><span class="px-1.5 py-0.5 rounded bg-white/10 text-blue-300 font-bold">F</span> <span class="text-slate-400 font-sans text-right">Toggle Fill</span></div>
+                                <div class="flex justify-between items-center"><span class="px-1.5 py-0.5 rounded bg-white/10 text-blue-300 font-bold">I</span> <span class="text-slate-400 font-sans text-right">Toggle Lock</span></div>
+                                <div class="flex justify-between items-center"><span class="px-1.5 py-0.5 rounded bg-white/10 text-blue-300 font-bold">R</span> <span class="text-slate-400 font-sans text-right">Toggle Record</span></div>
+                                <div class="flex justify-between items-center"><span class="px-1.5 py-0.5 rounded bg-white/10 text-blue-300 font-bold">⌘Z</span> <span class="text-slate-400 font-sans text-right">Undo</span></div>
+                                <div class="flex justify-between items-center"><span class="px-1.5 py-0.5 rounded bg-white/10 text-blue-300 font-bold">⌘⇧Z</span> <span class="text-slate-400 font-sans text-right">Redo</span></div>
+                                <div class="flex justify-between items-center"><span class="px-1.5 py-0.5 rounded bg-white/10 text-blue-300 font-bold">Enter</span> <span class="text-slate-400 font-sans text-right">Save Capture</span></div>
+                                <div class="flex justify-between items-center"><span class="px-1.5 py-0.5 rounded bg-white/10 text-blue-300 font-bold">Esc</span> <span class="text-slate-400 font-sans text-right">Close / Reset</span></div>
+                            </div>
+                        </div>
+
+                    </div>                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- APP DETAILED FEATURES SECTION -->
+        <section id="features" class="reveal-section max-w-7xl mx-auto px-6 py-20 space-y-36">
+            
+            <!-- Section Header -->
+            <div class="text-center max-w-3xl mx-auto">
+                <h2 class="font-display font-extrabold text-4xl sm:text-5xl mb-6">Designed to Maximize Your Workflow</h2>
+                <p class="text-slate-400">Whether communicating with developer teammates, copying code snippets, or explaining layouts, BerryShot supplies a complete toolkit.</p>
+            </div>
+
+            <!-- Feature 1: Annotations -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+                <div class="lg:col-span-5 space-y-6">
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-berry-500/10 border border-berry-500/20 rounded-full text-xs font-semibold text-berry-400">
+                        📷 QUICK ANNOTATE
+                    </div>
+                    <h3 class="font-display font-extrabold text-3xl sm:text-4xl leading-tight">Pixel-Perfect Sketching and Annotation Tools</h3>
+                    <p class="text-slate-400 leading-relaxed">
+                        Never load heavy image editors again. Draw attention to errors, highlight key layouts, or redact information directly on your screen selection layout.
+                    </p>
+                    <ul class="space-y-4">
+                        <li class="flex items-center gap-3.5 text-sm text-slate-300">
+                            <span class="w-2 h-2 rounded-full bg-berry-500"></span>
+                            Smooth freehand drawing and straight diagonal lines
+                        </li>
+                        <li class="flex items-center gap-3.5 text-sm text-slate-300">
+                            <span class="w-2 h-2 rounded-full bg-berry-500"></span>
+                            Add rectangles, circles, or outline regions
+                        </li>
+                        <li class="flex items-center gap-3.5 text-sm text-slate-300">
+                            <span class="w-2 h-2 rounded-full bg-berry-500"></span>
+                            Inject direction arrow guides and custom textual labels
+                        </li>
+                    </ul>
+                </div>
+                <!-- Mini Tool Shell Simulator -->
+                <div class="lg:col-span-7 bg-darkBg-card/40 border border-white/5 rounded-3xl p-8 relative overflow-hidden glass-panel">
+                    <div class="absolute inset-0 bg-gradient-to-r from-berry-500/5 to-fuchsia-500/5 -z-10"></div>
+                    
+                    <div class="space-y-6">
+                        <div class="flex items-center justify-between border-b border-white/5 pb-4">
+                            <span class="text-sm font-semibold text-slate-300">Toolbar Tools & Parameters</span>
+                            <div class="flex gap-1.5">
+                                <span class="w-2.5 h-2.5 rounded-full bg-white/15"></span>
+                                <span class="w-2.5 h-2.5 rounded-full bg-white/15"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            <!-- Tool Card -->
+                            <div class="p-5 rounded-2xl border border-white/5 bg-darkBg/60 hover:border-berry-500/25 transition-all text-center">
+                                <div class="text-berry-400 mb-3 flex justify-center">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                </div>
+                                <div class="text-xs font-semibold text-slate-300">Pencil</div>
+                                <div class="text-[10px] text-slate-500 font-mono mt-1">Freehand Drawing</div>
+                            </div>
+                            <!-- Tool Card -->
+                            <div class="p-5 rounded-2xl border border-white/5 bg-darkBg/60 hover:border-berry-500/25 transition-all text-center">
+                                <div class="text-berry-400 mb-3 flex justify-center">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                                </div>
+                                <div class="text-xs font-semibold text-slate-300">Arrow</div>
+                                <div class="text-[10px] text-slate-500 font-mono mt-1">Focus Pointer</div>
+                            </div>
+                            <!-- Tool Card -->
+                            <div class="p-5 rounded-2xl border border-white/5 bg-darkBg/60 hover:border-berry-500/25 transition-all text-center">
+                                <div class="text-berry-400 mb-3 flex justify-center">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path></svg>
+                                </div>
+                                <div class="text-xs font-semibold text-slate-300">Text</div>
+                                <div class="text-[10px] text-slate-500 font-mono mt-1">Text Annotation</div>
+                            </div>
+                            <!-- Tool Card -->
+                            <div class="p-5 rounded-2xl border border-white/5 bg-darkBg/60 hover:border-berry-500/25 transition-all text-center">
+                                <div class="text-berry-400 mb-3 flex justify-center">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5z"></path></svg>
+                                </div>
+                                <div class="text-xs font-semibold text-slate-300">Shape</div>
+                                <div class="text-[10px] text-slate-500 font-mono mt-1">Circle & Rect</div>
+                            </div>
+                        </div>
+
+                        <!-- Keyboard custom panel -->
+                        <div class="p-5 rounded-2xl border border-white/5 bg-darkBg/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl bg-berry-500/20 flex items-center justify-center text-berry-400">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122"></path></svg>
+                                </div>
+                                <div class="text-left">
+                                    <div class="text-xs font-bold text-slate-200">Overlay Window Detection</div>
+                                    <div class="text-[10px] text-slate-500">Auto-aligns selection to windows under cursor perfectly</div>
+                                </div>
+                            </div>
+                            <div class="flex gap-1.5">
+                                <kbd class="px-2.5 py-1 bg-white/5 border border-white/10 rounded-lg text-[10px] font-mono text-slate-400 shadow-sm">Esc</kbd>
+                                <span class="text-xs text-slate-500 self-center">to dismiss</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feature 2: OCR & AI Explainer -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+                <div class="lg:col-span-7 order-last lg:order-first">
+                    <div class="rounded-3xl border border-white/10 bg-darkBg-card/80 p-2 shadow-2xl backdrop-blur-2xl">
+                        <!-- Title Bar -->
+                        <div class="flex items-center justify-between px-4 pb-2 pt-1 border-b border-white/5 mb-2">
+                            <div class="flex items-center gap-2">
+                                <div class="w-3.5 h-3.5 rounded-full bg-red-500/80"></div>
+                                <div class="w-3.5 h-3.5 rounded-full bg-yellow-500/80"></div>
+                                <div class="w-3.5 h-3.5 rounded-full bg-green-500/80"></div>
+                            </div>
+                            <div class="text-xs text-slate-500 font-mono">AI Explainer & Offline OCR Reader</div>
+                            <div class="w-12"></div>
+                        </div>
+                        
+                        <div class="relative overflow-hidden rounded-2xl bg-[#090514] border border-white/5 p-5 min-h-[400px] flex flex-col md:flex-row gap-5 select-none text-left font-sans">
+                            <!-- Code Editor Column (Left) -->
+                            <div class="flex-1 bg-black/60 rounded-xl p-4 border border-white/5 font-mono text-[10px] sm:text-[11px] leading-relaxed relative flex flex-col justify-between">
+                                <div class="absolute inset-0 bg-gradient-to-b from-white/[0.01] to-transparent pointer-events-none rounded-xl"></div>
+                                <!-- Editor Header -->
+                                <div class="flex items-center justify-between pb-2.5 border-b border-white/5 mb-3">
+                                    <span class="text-slate-500 text-[10px]">main.swift</span>
+                                    <span class="text-[9px] text-berry-400 font-bold uppercase tracking-wider">Local OCR Capture</span>
+                                </div>
+                                
+                                <!-- Code Content -->
+                                <div class="space-y-1.5 relative z-10 flex-1 overflow-x-auto">
+                                    <div class="text-slate-600 font-mono">// OCR Extracted Swift Code:</div>
+                                    <div>
+                                        <span class="text-pink-500">import</span> <span class="text-blue-400">Vision</span>
+                                    </div>
+                                    
+                                    <!-- Highlighting code block -->
+                                    <div class="relative py-1 my-1 px-2 bg-berry-500/10 border-l-2 border-berry-500 rounded-r">
+                                        <span class="text-purple-400">class</span> <span class="text-yellow-300">OCRService</span> {
+                                        <div class="pl-4">
+                                            <span class="text-pink-500">let</span> request = <span class="text-blue-400">VNRecognizeTextRequest</span>()
+                                        </div>
+                                        }
+                                        <!-- Highlight badge -->
+                                        <span class="absolute -top-2 right-2 px-1.5 py-0.5 rounded bg-berry-500 text-[7px] font-bold text-white uppercase tracking-wider font-sans">OCR Focus</span>
+                                    </div>
+                                    
+                                    <div>
+                                        <span class="text-pink-500">func</span> <span class="text-blue-400">runLocalOCR</span>() { <span class="text-slate-500">...</span> }
+                                    </div>
+                                </div>
+                                
+                                <!-- Selection buttons -->
+                                <div class="mt-4 pt-3 border-t border-white/5 flex gap-2 justify-center">
+                                    <button onclick="changeAiTab('explain')" id="btn-ai-explain" class="px-3 py-1.5 rounded-lg bg-berry-500 text-white text-[10px] font-bold transition-all border border-berry-500/35">Explain</button>
+                                    <button onclick="changeAiTab('translate')" id="btn-ai-translate" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-[10px] font-bold transition-all border border-white/10">Translate</button>
+                                    <button onclick="changeAiTab('optimize')" id="btn-ai-optimize" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-[10px] font-bold transition-all border border-white/10">Refactor</button>
+                                </div>
+                            </div>
+                            
+                            <!-- AI Assistant Response Column (Right) -->
+                            <div class="w-full md:w-[250px] lg:w-[270px] glass-panel rounded-xl p-4 border border-white/10 flex flex-col justify-between shadow-2xl relative overflow-hidden">
+                                <div class="absolute w-24 h-24 bg-fuchsia-500/5 blur-xl rounded-full top-0 right-0 pointer-events-none"></div>
+                                
+                                <!-- Assistant Header -->
+                                <div class="flex items-center gap-2 pb-2.5 border-b border-white/5 mb-3">
+                                    <div class="w-7 h-7 rounded-lg bg-fuchsia-500/20 border border-fuchsia-500/30 flex items-center justify-center text-fuchsia-400 relative">
+                                        <span class="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-green-500 animate-ping"></span>
+                                        <span class="text-xs">🤖</span>
+                                    </div>
+                                    <div class="text-left leading-tight">
+                                        <div class="text-[11px] font-bold text-white">BerryShot AI</div>
+                                        <div class="text-[8px] text-fuchsia-400 uppercase tracking-widest font-mono">Claude 3.5 Sonnet</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Explanation body -->
+                                <div class="flex-1 font-sans text-slate-300 text-[11px] leading-relaxed relative z-10 flex flex-col justify-start">
+                                    <span class="text-slate-500 font-mono text-[8px] block mb-1.5 uppercase tracking-wider font-bold">AI Response Output:</span>
+                                    
+                                    <div class="bg-black/40 p-2.5 rounded-lg border border-white/5 min-h-[140px] text-left flex flex-col justify-between">
+                                        <span id="ai-response-text" class="text-slate-300 font-sans text-[10.5px]"></span>
+                                        <!-- Typing cursor indicator -->
+                                        <span id="ai-cursor" class="inline-block w-1.5 h-3.5 bg-fuchsia-400 ml-0.5 animate-pulse self-start mt-1"></span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Extra actions -->
+                                <div class="mt-4 pt-2.5 border-t border-white/5 flex items-center justify-between text-[10px] text-slate-500">
+                                    <span>Response Ready</span>
+                                    <button onclick="copyAiFeatureText()" class="text-fuchsia-400 hover:text-fuchsia-300 font-bold transition-colors">Copy Text</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="lg:col-span-5 space-y-6">
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1 bg-fuchsia-500/10 border border-fuchsia-500/20 rounded-full text-xs font-semibold text-fuchsia-400">
+                        🧠 AI & OCR ENGINE
+                    </div>
+                    <h3 class="font-display font-extrabold text-3xl sm:text-4xl leading-tight">Translate, Transcribe, and Transmit via AI</h3>
+                    <p class="text-slate-400 leading-relaxed">
+                        BerryShot doesn't just store pictures. It reads them. Turn screenshots into editable textual arrays instantly or run complex AI requests in milliseconds.
+                    </p>
+                    
+                    <div class="space-y-6">
+                        <div class="flex gap-4">
+                            <div class="w-7 h-7 rounded-lg bg-berry-500/10 flex items-center justify-center shrink-0 text-berry-400 mt-1">✓</div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white">Native OCR in 0.1 Seconds</h4>
+                                <p class="text-xs text-slate-400 mt-0.5">Utilizes Apple Vision libraries optimized for Apple Silicon (M1/M2/M3/M4) chips. Fully localized, no internet connection is required.</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="w-7 h-7 rounded-lg bg-berry-500/10 flex items-center justify-center shrink-0 text-berry-400 mt-1">✓</div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white">Modular AI Providers</h4>
+                                <p class="text-xs text-slate-400 mt-0.5">Easily input your Anthropic or OpenAI API keys in Settings. Query models on-the-fly without paying expensive third-party wrappers.</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-4">
+                            <div class="w-7 h-7 rounded-lg bg-berry-500/10 flex items-center justify-center shrink-0 text-berry-400 mt-1">✓</div>
+                            <div>
+                                <h4 class="text-sm font-bold text-white">Configurable Output Language</h4>
+                                <p class="text-xs text-slate-400 mt-0.5">Toggle default response parameters between English, Vietnamese, or Japanese. Output is formatted and ready to copy.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- KEYBOARD SHORTCUTS / HOW IT WORKS -->
+        <section id="how-it-works" class="reveal-section max-w-7xl mx-auto px-6 py-20 border-t border-white/5 text-center">
+            <div class="max-w-3xl mx-auto mb-16">
+                <span class="text-xs font-mono text-berry-400 uppercase tracking-widest block mb-3">Workflow Flowchart</span>
+                <h2 class="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl mb-6">Designed Around Hotkeys</h2>
+                <p class="text-slate-400 leading-relaxed">
+                    Designed to work asynchronously behind the scenes, BerryShot binds to shortcuts without blocking your desktop layout.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+                <!-- Step 1 -->
+                <div class="p-8 rounded-3xl border border-white/5 bg-darkBg-card/50 text-left relative glass-panel shadow-lg">
+                    <span class="absolute top-4 right-4 text-xs font-mono text-berry-500 font-bold">01</span>
+                    <div class="flex gap-1.5 mb-6 mt-4">
+                        <kbd class="px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-mono text-slate-300 font-bold shadow-md">⌘ Cmd</kbd>
+                        <kbd class="px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-mono text-slate-300 font-bold shadow-md">⇧ Shift</kbd>
+                        <kbd class="px-2.5 py-1.5 bg-berry-500/20 border border-berry-500/30 rounded-lg text-xs font-mono text-berry-400 font-bold shadow-md">X</kbd>
+                    </div>
+                    <h4 class="font-display font-bold text-lg mb-2 text-white">Select Region</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed">Press the global shortcut to freeze the display and draw a selection rectangle over any section.</p>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="p-8 rounded-3xl border border-white/5 bg-darkBg-card/50 text-left relative glass-panel shadow-lg">
+                    <span class="absolute top-4 right-4 text-xs font-mono text-berry-500 font-bold">02</span>
+                    <div class="flex gap-1.5 mb-6 mt-4">
+                        <span class="text-xs text-slate-300 font-semibold">Draw UI overlay</span>
+                    </div>
+                    <h4 class="font-display font-bold text-lg mb-2 text-white">Apply Annotations</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed">Highlight errors with custom arrows, write text blurbs, or draw frames on selected code layouts.</p>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="p-8 rounded-3xl border border-white/5 bg-darkBg-card/50 text-left relative glass-panel shadow-lg">
+                    <span class="absolute top-4 right-4 text-xs font-mono text-berry-500 font-bold">03</span>
+                    <div class="flex gap-1.5 mb-6 mt-4">
+                        <span class="text-xs text-fuchsiaAccent font-semibold">Vision OCR / AI</span>
+                    </div>
+                    <h4 class="font-display font-bold text-lg mb-2 text-white">Run OCR & AI</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed">Tap OCR to copy codes instantly, or call AI to explain blocks without opening separate browser tabs.</p>
+                </div>
+
+                <!-- Step 4 -->
+                <div class="p-8 rounded-3xl border border-white/5 bg-darkBg-card/50 text-left relative glass-panel shadow-lg">
+                    <span class="absolute top-4 right-4 text-xs font-mono text-berry-500 font-bold">04</span>
+                    <div class="flex gap-1.5 mb-6 mt-4">
+                        <kbd class="px-2.5 py-1.5 bg-white/5 border border-white/10 rounded-lg text-xs font-mono text-slate-300 font-bold shadow-md">⏎ Enter</kbd>
+                        <span class="text-xs text-slate-500 self-center">to copy</span>
+                    </div>
+                    <h4 class="font-display font-bold text-lg mb-2 text-white">Copy or Share Link</h4>
+                    <p class="text-xs text-slate-400 leading-relaxed">Files are saved locally or uploaded to cloud storage providers. Shareable URL is copied automatically.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Q&A / FAQ SECTION -->
+        <section id="faq" class="reveal-section max-w-4xl mx-auto px-6 py-20 border-t border-white/5">
+            <div class="text-center mb-16">
+                <span class="text-xs font-mono text-berry-400 uppercase tracking-widest block mb-3">FAQ Section</span>
+                <h2 class="font-display font-extrabold text-3xl sm:text-4xl md:text-5xl mb-4">Frequently Asked Questions</h2>
+                <p class="text-slate-400">Everything you need to know about setting up and configuring BerryShot.</p>
+            </div>
+
+            <!-- Accordion FAQ Container -->
+            <div class="space-y-4">
+                
+                <!-- FAQ Item 1 -->
+                <div class="rounded-2xl border border-white/5 bg-darkBg-card/40 hover:border-white/10 transition-colors duration-200 overflow-hidden" id="faq-item-1">
+                    <button class="w-full px-7 py-5 flex items-center justify-between text-left focus:outline-none" onclick="toggleFaq(1)">
+                        <span class="font-display font-bold text-slate-200 hover:text-white transition-colors">What are the system requirements for BerryShot?</span>
+                        <svg class="w-5 h-5 text-slate-500 transform transition-transform duration-300" id="faq-icon-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="faq-answer max-height-0 overflow-hidden transition-all duration-300" id="faq-content-1">
+                        <div class="px-7 pb-6 text-sm text-slate-400 leading-relaxed">
+                            BerryShot requires <strong>macOS 14.0 (Sonoma) or newer</strong>. It runs natively on both Apple Silicon (M1, M2, M3, M4, etc.) and Intel-based Mac architectures.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 2 -->
+                <div class="rounded-2xl border border-white/5 bg-darkBg-card/40 hover:border-white/10 transition-colors duration-200 overflow-hidden" id="faq-item-2">
+                    <button class="w-full px-7 py-5 flex items-center justify-between text-left focus:outline-none" onclick="toggleFaq(2)">
+                        <span class="font-display font-bold text-slate-200 hover:text-white transition-colors">Does local OCR require an active internet connection?</span>
+                        <svg class="w-5 h-5 text-slate-500 transform transition-transform duration-300" id="faq-icon-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="faq-answer max-height-0 overflow-hidden transition-all duration-300" id="faq-content-2">
+                        <div class="px-7 pb-6 text-sm text-slate-400 leading-relaxed">
+                            <strong>No, it is 100% offline</strong>. Text extraction is performed entirely on your device using macOS Apple Vision libraries. No image data is ever sent to external cloud servers, keeping your screenshots and clipboard completely secure.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 3 -->
+                <div class="rounded-2xl border border-white/5 bg-darkBg-card/40 hover:border-white/10 transition-colors duration-200 overflow-hidden" id="faq-item-3">
+                    <button class="w-full px-7 py-5 flex items-center justify-between text-left focus:outline-none" onclick="toggleFaq(3)">
+                        <span class="font-display font-bold text-slate-200 hover:text-white transition-colors">How do I connect and query the AI Assistant features?</span>
+                        <svg class="w-5 h-5 text-slate-500 transform transition-transform duration-300" id="faq-icon-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="faq-answer max-height-0 overflow-hidden transition-all duration-300" id="faq-content-3">
+                        <div class="px-7 pb-6 text-sm text-slate-400 leading-relaxed">
+                            Open Settings (shortcut: <code>Cmd + ,</code>), navigate to <strong>AI Configuration</strong>, and choose your preferred model provider (Claude, OpenAI, or a Custom OpenAI-Compatible endpoint). Insert your personal API Key, and you can query the model immediately from the capture toolbar.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 4 -->
+                <div class="rounded-2xl border border-white/5 bg-darkBg-card/40 hover:border-white/10 transition-colors duration-200 overflow-hidden" id="faq-item-4">
+                    <button class="w-full px-7 py-5 flex items-center justify-between text-left focus:outline-none" onclick="toggleFaq(4)">
+                        <span class="font-display font-bold text-slate-200 hover:text-white transition-colors">Can I customize global keyboard shortcuts?</span>
+                        <svg class="w-5 h-5 text-slate-500 transform transition-transform duration-300" id="faq-icon-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="faq-answer max-height-0 overflow-hidden transition-all duration-300" id="faq-content-4">
+                        <div class="px-7 pb-6 text-sm text-slate-400 leading-relaxed">
+                            Yes. The default region capture shortcut is <code>Cmd + Shift + X</code>. You can customize this shortcut recorder view under the Settings window to map it to any custom hotkey combo of your choice.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 5 -->
+                <div class="rounded-2xl border border-white/5 bg-darkBg-card/40 hover:border-white/10 transition-colors duration-200 overflow-hidden" id="faq-item-5">
+                    <button class="w-full px-7 py-5 flex items-center justify-between text-left focus:outline-none" onclick="toggleFaq(5)">
+                        <span class="font-display font-bold text-slate-200 hover:text-white transition-colors">Is BerryShot free or open source?</span>
+                        <svg class="w-5 h-5 text-slate-500 transform transition-transform duration-300" id="faq-icon-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                    <div class="faq-answer max-height-0 overflow-hidden transition-all duration-300" id="faq-content-5">
+                        <div class="px-7 pb-6 text-sm text-slate-400 leading-relaxed">
+                            BerryShot is free to download and use for all core operations (capture, annotations, offline OCR, local saving). To support active development, we invite users to donate and support us through the in-app purchase system or our web donation QR code.
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- DOWNLOAD BOX / CALL TO ACTION -->
+        <section id="download" class="reveal-section max-w-6xl mx-auto px-6 py-20 mb-24 relative">
+            <div class="relative rounded-3xl border border-white/10 bg-gradient-to-r from-berry-950/40 via-darkBg-card to-darkBg-card p-6 sm:p-10 md:p-14 overflow-hidden shadow-2xl glass-panel">
+                <!-- Inner Glow behind contents -->
+                <div class="absolute inset-0 bg-gradient-to-tr from-berry-500/10 to-fuchsia-600/10 -z-10"></div>
+                <div class="absolute right-[-100px] bottom-[-100px] w-96 h-96 bg-berry-500 rounded-full filter blur-[120px] opacity-15"></div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center relative z-10">
+                    <div class="lg:col-span-7 space-y-6 text-left">
+                        <div class="flex items-center gap-4">
+                            <div class="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 shadow-lg">
+                                <img src="./assets/AppIcon.png" alt="BerryShot Logo" class="w-12 h-12 object-contain">
+                            </div>
+                            <div>
+                                <h3 class="font-display font-extrabold text-3xl text-white">Elevate Your Screen Workflows</h3>
+                                <p class="text-xs text-berry-400 font-mono tracking-wider font-semibold">MACOS NATIVE UTILITY</p>
+                            </div>
+                        </div>
+                        <p class="text-slate-400 leading-relaxed text-base max-w-xl">
+                            Experience the best way to transcribe images, draw notes on snippets, and query AI models natively from your menu bar. Set up in less than 5 seconds.
+                        </p>
+                        
+                        <!-- Metadata list of files -->
+                        <div class="flex flex-wrap items-center gap-6 text-xs text-slate-500 font-mono">
+                            <span class="flex items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Release: 1.0.0
+                            </span>
+                            <span class="flex items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                Size: ~1.9 MB
+                            </span>
+                            <span class="flex items-center gap-1.5">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Required: macOS 14.0+
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="lg:col-span-5 flex flex-col items-center justify-center gap-4">
+                        <!-- Huge Download Button -->
+                        <a href="./assets/BerryShot.dmg" class="sweep-btn w-full flex items-center justify-center gap-3.5 px-10 py-5 bg-gradient-to-r from-berry-500 via-berry-600 to-fuchsia-600 hover:from-berry-600 hover:to-fuchsia-700 text-white font-bold text-lg rounded-2xl transition-all duration-300 shadow-xl shadow-berry-500/20 hover:shadow-berry-500/40 hover:scale-[1.03] border border-white/15">
+                            <svg class="w-6 h-6 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            Download BerryShot.dmg
+                        </a>
+                        <span class="text-[11px] text-slate-500 text-center font-mono">Double-click and drag into Applications folder to install</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER WITH EXTENDED COLUMNS AND GLOWS -->
+    <footer class="border-t border-white/5 py-16 relative z-10 bg-darkBg/90 overflow-hidden">
+        <div class="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-berry-500/5 to-transparent pointer-events-none"></div>
+        
+        <div class="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-12 gap-10 mb-12 relative z-10">
+            <!-- Left Info Panel -->
+            <div class="md:col-span-5 space-y-5">
+                <a href="#" class="flex items-center gap-3.5 group">
+                    <div class="relative w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 group-hover:border-berry-400 transition-all overflow-hidden shadow-inner">
+                        <img src="./assets/AppIcon.png" alt="BerryShot Logo" class="w-8 h-8 object-contain">
+                    </div>
+                    <span class="font-display font-bold text-xl text-white tracking-tight">BerryShot</span>
+                </a>
+                <p class="text-sm text-slate-400 max-w-sm leading-relaxed">
+                    A beautiful, minimal utility bringing native OCR reading capabilities and Anthropic/OpenAI compatibility directly into your macOS Menu Bar.
+                </p>
+                <div class="flex gap-4 pt-2">
+                    <!-- Social icons (GitHub, Twitter, Coffee) -->
+                    <a href="https://github.com/berry-apps/berryshot" class="w-9 h-9 rounded-lg bg-white/5 border border-white/10 hover:border-berry-500/40 flex items-center justify-center text-slate-400 hover:text-white transition-colors" title="GitHub Repository">
+                        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                    </a>
+                    <button onclick="openDonateModal()" class="w-9 h-9 rounded-lg bg-white/5 border border-white/10 hover:border-berry-500/40 flex items-center justify-center text-slate-400 hover:text-white transition-colors" title="Donate Account QR">
+                        <span class="text-xs">☕️</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Middle Columns (Quick Links) -->
+            <div class="md:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-8 text-sm">
+                <!-- Col 1 -->
+                <div class="space-y-4">
+                    <h4 class="font-bold text-white tracking-wider uppercase text-xs">Product</h4>
+                    <ul class="space-y-2.5 text-slate-400">
+                        <li><a href="#features" class="hover:text-berry-400 transition-colors">Annotation Tools</a></li>
+                        <li><a href="#interactive-demo" class="hover:text-berry-400 transition-colors">Interactive Demo</a></li>
+                        <li><a href="./assets/BerryShot.dmg" class="hover:text-berry-400 transition-colors">Get .dmg Package</a></li>
+                    </ul>
+                </div>
+                <!-- Col 2 -->
+                <div class="space-y-4">
+                    <h4 class="font-bold text-white tracking-wider uppercase text-xs">Developer</h4>
+                    <ul class="space-y-2.5 text-slate-400">
+                        <li><a href="https://dautay.dev" target="_blank" rel="noopener noreferrer" class="hover:text-berry-400 transition-colors font-semibold text-berry-400">Dautay Dev (dautay.dev)</a></li>
+                        <li><a href="https://notex.work/donate" target="_blank" rel="noopener noreferrer" class="hover:text-berry-400 transition-colors">Buy Me a Coffee</a></li>
+                        <li><button onclick="openDonateModal()" class="hover:text-berry-400 text-left transition-colors">VietQR Bank Transfer</button></li>
+                        <li><a href="mailto:support@notex.work" class="hover:text-berry-400 transition-colors">Support Email</a></li>
+                        <li><a href="https://github.com/berry-apps/berryshot" class="hover:text-berry-400 transition-colors">Github Source</a></li>
+                    </ul>
+                </div>
+                <!-- Col 3 -->
+                <div class="space-y-4 col-span-2 sm:col-span-1">
+                    <h4 class="font-bold text-white tracking-wider uppercase text-xs">Resources</h4>
+                    <ul class="space-y-2.5 text-slate-400">
+                        <li><a href="docs.html" class="hover:text-berry-400 transition-colors">Documentation Docs</a></li>
+                        <li><span class="text-slate-600">Swift Package Swift</span></li>
+                        <li><span class="text-slate-600">Privacy Shield</span></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="max-w-7xl mx-auto px-6 border-t border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 relative z-10">
+            <span class="text-xs text-slate-500">© 2026 BerryShot. All rights reserved. Built natively for macOS Sonoma+.</span>
+            <span class="text-[10px] text-slate-600 font-mono">Powered by Apple Vision OCR & Local LLM Frameworks</span>
+        </div>
+    </footer>
+
+    <!-- DONATE POPUP MODAL (VietQR Transfer Details) -->
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-300 bg-black/80 modal-overlay" id="donate-modal">
+        <!-- Modal Card Container -->
+        <div class="relative w-full max-w-md bg-darkBg-card border border-white/10 rounded-3xl p-7 shadow-2xl glass-panel text-center transform scale-95 transition-transform duration-300" id="donate-modal-card">
+            
+            <!-- Close Modal Icon -->
+            <button onclick="closeDonateModal()" class="absolute top-5 right-5 text-slate-400 hover:text-white transition-colors" aria-label="Close Modal">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            
+            <!-- App Logo & Title -->
+            <div class="flex flex-col items-center gap-2 mb-6">
+                <div class="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 shadow-lg">
+                    <img src="./assets/AppIcon.png" alt="BerryShot Logo" class="w-9 h-9 object-contain">
+                </div>
+                <h3 class="font-display font-extrabold text-xl text-white">Support BerryShot Development</h3>
+                <p class="text-xs text-slate-400 leading-normal max-w-xs mx-auto">Scan the VietQR code below to buy the developer a coffee. Your support helps keep this tool open and active!</p>
+            </div>
+            
+            <!-- VietQR Image Dynamic generation -->
+            <div class="p-3 bg-darkBg border border-white/15 rounded-2xl inline-block shadow-inner relative z-10 mb-6">
+                <!-- 0201000212246 VCB dynamic code with 50k template -->
+                <img src="https://img.vietqr.io/image/vcb-0201000212246-compact2.png?amount=50000&addInfo=Donate%20BerryShot&accountName=TAN" alt="VietQR Vietcombank donation code Tan" class="w-[200px] h-[200px] rounded-lg select-none relative z-10">
+                <div class="absolute inset-0 bg-berry-500/5 rounded-2xl pointer-events-none"></div>
+            </div>
+
+            
+            <button onclick="closeDonateModal()" class="w-full py-3.5 bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white rounded-xl text-sm font-semibold transition-all">
+                Dismiss Modal
+            </button>
+        </div>
+    </div>
+
+    <!-- Interactive JS Scripts -->
+    <script>
+        // Interactive AI & OCR Simulator Controller
+        const aiResponses = {
+            explain: "This Swift class (OCRService) utilizes Apple's native Vision library (VNRecognizeTextRequest). Running locally on device, it processes screen matrices offline in 0.1s with zero API fees.",
+            translate: "Vietnamese Translation:\n\nLớp OCRService khởi chạy tiến trình trích xuất chữ ảnh động (VNRecognizeTextRequest) hoàn toàn cục bộ trên macOS, bảo mật dữ liệu tuyệt đối.",
+            optimize: "Refactoring & Performance Tip:\n\nTo prevent thread blocks under heavy load, instantiate VNRecognizeTextRequest as a shared lifecycle singleton and call handlers from background tasks."
+        };
+
+        let activeAiTimer = null;
+
+        function changeAiTab(tab) {
+            const buttons = ['explain', 'translate', 'optimize'];
+            buttons.forEach(b => {
+                const btn = document.getElementById('btn-ai-' + b);
+                if (btn) {
+                    btn.className = "px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-[10px] font-bold transition-all border border-white/10";
+                }
+            });
+            
+            const activeBtn = document.getElementById('btn-ai-' + tab);
+            if (activeBtn) {
+                activeBtn.className = "px-3 py-1.5 rounded-lg bg-berry-500 text-white text-[10px] font-bold transition-all border border-berry-500/35";
+            }
+            
+            typeAiResponse(aiResponses[tab]);
+        }
+
+        function typeAiResponse(text) {
+            if (activeAiTimer) clearInterval(activeAiTimer);
+            const textEl = document.getElementById('ai-response-text');
+            const cursorEl = document.getElementById('ai-cursor');
+            if (!textEl || !cursorEl) return;
+            
+            textEl.innerHTML = "";
+            cursorEl.style.display = "inline-block";
+            
+            let i = 0;
+            activeAiTimer = setInterval(() => {
+                if (i < text.length) {
+                    const char = text.charAt(i);
+                    if (char === '\n') {
+                        textEl.innerHTML += "<br>";
+                    } else {
+                        textEl.innerHTML += char;
+                    }
+                    i++;
+                } else {
+                    clearInterval(activeAiTimer);
+                    cursorEl.style.display = "none";
+                }
+            }, 12);
+        }
+
+        function copyAiFeatureText() {
+            const text = document.getElementById('ai-response-text').innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                showSimToast("✓ AI Response copied to Clipboard!");
+            });
+        }
+
+        // Global DOM Load Setup
+        window.addEventListener('DOMContentLoaded', () => {
+            // Start default typing simulation
+            setTimeout(() => {
+                changeAiTab('explain');
+            }, 400);
+
+            // Setup scroll-triggered fade in animation reveals
+            const revealElements = document.querySelectorAll('.reveal-section');
+            const observer = new IntersectionObserver((entries, obs) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('reveal-visible');
+                        obs.unobserve(entry.target);
+                    }
+                });
+            }, {
+                threshold: 0.08,
+                rootMargin: "0px 0px -40px 0px"
+            });
+            
+            revealElements.forEach(el => {
+                el.classList.add('reveal');
+                observer.observe(el);
+            });
+        });
+
+        // Toggle mobile menu
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        // Toggle FAQ Accordion items
+        function toggleFaq(id) {
+            const item = document.getElementById('faq-item-' + id);
+            const content = document.getElementById('faq-content-' + id);
+            const icon = document.getElementById('faq-icon-' + id);
+            
+            const isOpen = item.classList.contains('faq-active');
+
+            // Close all FAQ items
+            for (let i = 1; i <= 5; i++) {
+                const closeItem = document.getElementById('faq-item-' + i);
+                const closeContent = document.getElementById('faq-content-' + i);
+                const closeIcon = document.getElementById('faq-icon-' + i);
+                if (closeItem) {
+                    closeItem.classList.remove('faq-active');
+                    closeContent.style.maxHeight = '0px';
+                    closeIcon.style.transform = 'rotate(0deg)';
+                }
+            }
+
+            // Open selected if it wasn't open already
+            if (!isOpen) {
+                item.classList.add('faq-active');
+                content.style.maxHeight = content.scrollHeight + 'px';
+                icon.style.transform = 'rotate(180deg)';
+            }
+        }
+
+        // Donate Modal Toggles
+        function openDonateModal() {
+            const modal = document.getElementById('donate-modal');
+            const card = document.getElementById('donate-modal-card');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            card.classList.remove('scale-95');
+            card.classList.add('scale-100');
+        }
+
+        // Close Donate Modal
+        function closeDonateModal() {
+            const modal = document.getElementById('donate-modal');
+            const card = document.getElementById('donate-modal-card');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            card.classList.remove('scale-100');
+            card.classList.add('scale-95');
+        }
+
+        // Copy Account number clipboard
+        function copyAccountNumber() {
+            const accountText = document.getElementById('account-num-text').innerText;
+            const btn = document.getElementById('copy-bank-btn');
+            
+            navigator.clipboard.writeText(accountText).then(() => {
+                const originalText = btn.innerHTML;
+                btn.innerHTML = `✓ Copied`;
+                btn.classList.add('bg-green-600', 'border-green-500', 'text-white');
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.classList.remove('bg-green-600', 'border-green-500', 'text-white');
+                }, 2000);
+            });
+        }
+
+        // 3D Parallax Tilt Effect for Hero Mockup Window
+        const tiltCard = document.getElementById('hero-tilt-card');
+        if (tiltCard) {
+            const container = tiltCard.parentElement;
+            container.addEventListener('mousemove', (e) => {
+                const rect = tiltCard.getBoundingClientRect();
+                const x = e.clientX - rect.left; // mouse position inside bounds
+                const y = e.clientY - rect.top;
+                
+                const width = rect.width;
+                const height = rect.height;
+                
+                const centerX = width / 2;
+                const centerY = height / 2;
+                
+                // Tilt ranges from -10 to +10 degrees
+                const rotateX = ((centerY - y) / centerY) * 8; 
+                const rotateY = ((x - centerX) / centerX) * 8; 
+                
+                tiltCard.style.transform = `perspective(1200px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.025)`;
+                tiltCard.style.boxShadow = `
+                    ${-rotateY * 2}px ${rotateX * 2}px 35px rgba(0,0,0,0.45),
+                    0 30px 60px -15px rgba(255, 46, 91, 0.25)
+                `;
+            });
+            
+            container.addEventListener('mouseleave', () => {
+                tiltCard.style.transform = 'perspective(1200px) rotateX(0deg) rotateY(0deg) scale(1)';
+                tiltCard.style.boxShadow = '';
+            });
+        }
+
+             let activeSimTool = '';
+             let selectedColor = '#ff453a';
+             let isFilled = false;
+             let fillOpacity = 0.4;
+             let isInteractMode = false;
+             let isRecording = false;
+             let isPaused = false;
+             let recordingSeconds = 0;
+             let recordingTimer = null;
+             
+             let undoStack = [];
+             let redoStack = [];
+             
+             // Selection & Drag state
+             let isDrawing = false;
+             let isDraggingElement = false;
+             let draggedElement = null;
+             let startX = 0;
+             let startY = 0;
+             let elementStartX = 0;
+             let elementStartY = 0;
+             let currentElement = null;
+
+             // Inject selection and interactive styling dynamically
+             const style = document.createElement('style');
+             style.innerHTML = `
+                 .annotation-shape {
+                     cursor: pointer;
+                     transition: filter 0.15s, stroke-width 0.15s;
+                     pointer-events: auto !important;
+                 }
+                 .annotation-shape:hover {
+                     filter: drop-shadow(0px 0px 4px rgba(255, 255, 255, 0.7));
+                 }
+                 .annotation-selected {
+                     stroke-dasharray: 4 2 !important;
+                     filter: drop-shadow(0px 0px 5px rgba(255, 46, 91, 0.85)) !important;
+                 }
+             `;
+             document.head.appendChild(style);
+
+             // Helper to save undo state
+             function saveState() {
+                 const svg = document.getElementById('sim-svg-annotations');
+                 const defs = svg.querySelector('defs');
+                 const content = Array.from(svg.children)
+                     .filter(child => child.tagName.toLowerCase() !== 'defs')
+                     .map(child => child.outerHTML)
+                     .join('\n');
+                 
+                 undoStack.push(content);
+                 redoStack = []; // Clear redo stack on new action
+                 updateUndoRedoButtons();
+             }
+
+             function updateUndoRedoButtons() {
+                 const undoBtn = document.getElementById('sim-btn-undo');
+                 const redoBtn = document.getElementById('sim-btn-redo');
+                 if (undoBtn) {
+                     undoBtn.disabled = (undoStack.length === 0);
+                     undoBtn.style.opacity = undoStack.length === 0 ? '0.4' : '1.0';
+                 }
+                 if (redoBtn) {
+                     redoBtn.disabled = (redoStack.length === 0);
+                     redoBtn.style.opacity = redoStack.length === 0 ? '0.4' : '1.0';
+                 }
+             }
+
+             // Tool Selector
+             function setSimTool(tool) {
+                 // Close any popovers
+                 document.getElementById('sim-color-popover').classList.add('hidden');
+                 document.getElementById('sim-shortcuts-popover').classList.add('hidden');
+
+                 // List of tools
+                 const tools = ['select', 'pencil', 'rect', 'circle', 'arrow', 'line', 'text', 'image'];
+                 tools.forEach(t => {
+                     const btn = document.getElementById('tool-' + t);
+                     if (btn) {
+                         btn.classList.remove('bg-white/15', 'text-berry-400');
+                         btn.classList.add('text-slate-400', 'hover:text-white');
+                     }
+                 });
+
+                 const svg = document.getElementById('sim-svg-annotations');
+
+                 // Clear selected element class on tool change
+                 const selected = document.querySelector('.annotation-selected');
+                 if (selected) {
+                     selected.classList.remove('annotation-selected');
+                 }
+
+                 if (activeSimTool === tool) {
+                     activeSimTool = '';
+                     svg.style.pointerEvents = isInteractMode ? 'none' : 'none';
+                     svg.style.cursor = 'default';
+                     updateOpacityContainer();
+                     return;
+                 }
+
+                 activeSimTool = tool;
+
+                 // Clean placeholders on first action
+                 const placeholderRect = document.getElementById('sim-rect-draw');
+                 if (placeholderRect) {
+                     const rectShape = svg.querySelector('rect');
+                     const gShape = svg.querySelector('g');
+                     const ellipseShape = svg.querySelector('ellipse');
+                     if (rectShape) rectShape.remove();
+                     if (gShape) gShape.remove();
+                     if (ellipseShape) ellipseShape.remove();
+                 }
+
+                 const activeBtn = document.getElementById('tool-' + tool);
+                 if (activeBtn) {
+                     activeBtn.classList.add('bg-white/15', 'text-berry-400');
+                     activeBtn.classList.remove('text-slate-400', 'hover:text-white');
+                 }
+
+                 // Update cursor and canvas pointerEvents
+                 if (tool === 'select') {
+                     svg.style.pointerEvents = 'auto';
+                     svg.style.cursor = 'default';
+                     showSimToast("Select Tool: Click shapes to drag or press Delete to remove.");
+                 } else if (tool === 'text') {
+                     svg.style.pointerEvents = 'auto';
+                     svg.style.cursor = 'text';
+                     showSimToast("Text Tool: Click on canvas to type annotation.");
+                 } else if (tool === 'image') {
+                     // Handled separately on button click, reset to select
+                     svg.style.pointerEvents = 'auto';
+                     svg.style.cursor = 'default';
+                 } else {
+                     svg.style.pointerEvents = 'auto';
+                     svg.style.cursor = 'crosshair';
+                     showSimToast(`Tool active: Drag on canvas to draw ${tool}!`);
+                 }
+
+                 updateOpacityContainer();
+             }
+
+             // Fill Toggle
+             function toggleSimFill() {
+                 isFilled = !isFilled;
+                 const fillBtn = document.getElementById('tool-fill');
+                 if (isFilled) {
+                     fillBtn.classList.add('bg-white/15', 'text-berry-400');
+                     fillBtn.classList.remove('text-slate-400', 'hover:text-white');
+                     showSimToast("Shape Fill enabled.");
+                 } else {
+                     fillBtn.classList.remove('bg-white/15', 'text-berry-400');
+                     fillBtn.classList.add('text-slate-400', 'hover:text-white');
+                     showSimToast("Shape Fill disabled.");
+                 }
+
+                 // Apply to selected element if rectangle or circle
+                 const selected = document.querySelector('.annotation-selected');
+                 if (selected) {
+                     const tagName = selected.tagName.toLowerCase();
+                     if (tagName === 'rect' || tagName === 'ellipse') {
+                         selected.setAttribute('fill', isFilled ? selectedColor : 'none');
+                         selected.setAttribute('fill-opacity', fillOpacity);
+                         saveState();
+                     }
+                 }
+
+                 updateOpacityContainer();
+             }
+
+             // Show opacity slider based on active states
+             function updateOpacityContainer() {
+                 const container = document.getElementById('sim-opacity-container');
+                 const isShapeTool = (activeSimTool === 'rect' || activeSimTool === 'circle' || activeSimTool === 'select');
+                 if (isFilled && isShapeTool) {
+                     container.classList.remove('hidden');
+                     container.classList.add('flex');
+                 } else {
+                     container.classList.add('hidden');
+                     container.classList.remove('flex');
+                 }
+             }
+
+             function changeSimOpacity(val) {
+                 fillOpacity = parseFloat(val);
+                 const selected = document.querySelector('.annotation-selected');
+                 if (selected) {
+                     const tagName = selected.tagName.toLowerCase();
+                     if (tagName === 'rect' || tagName === 'ellipse') {
+                         selected.setAttribute('fill-opacity', fillOpacity);
+                         saveState();
+                     }
+                 }
+             }
+
+             // Color selection
+             function toggleSimColorPicker(event) {
+                 event.stopPropagation();
+                 document.getElementById('sim-shortcuts-popover').classList.add('hidden');
+                 const popover = document.getElementById('sim-color-popover');
+                 popover.classList.toggle('hidden');
+             }
+
+             function triggerSimCustomColor() {
+                 document.getElementById('sim-custom-color-input').click();
+             }
+
+             function applySimColor(color) {
+                 selectedColor = color;
+                 document.getElementById('sim-color-dot').style.backgroundColor = color;
+                 document.getElementById('sim-color-popover').classList.add('hidden');
+
+                 // Update selected shape if any
+                 const selected = document.querySelector('.annotation-selected');
+                 if (selected) {
+                     const tagName = selected.tagName.toLowerCase();
+                     if (tagName === 'path' || tagName === 'line') {
+                         selected.setAttribute('stroke', color);
+                         if (selected.getAttribute('marker-end')) {
+                             selected.setAttribute('marker-end', getOrCreateMarkerForColor(color));
+                         }
+                     } else if (tagName === 'rect' || tagName === 'ellipse') {
+                         selected.setAttribute('stroke', color);
+                         if (isFilled) {
+                             selected.setAttribute('fill', color);
+                         }
+                     } else if (tagName === 'text') {
+                         selected.setAttribute('fill', color);
+                     }
+                     saveState();
+                 }
+                 showSimToast(`Color changed to ${color}`);
+             }
+
+             // Generate SVG markers dynamically for arrowhead matching
+             function getOrCreateMarkerForColor(color) {
+                 const cleanColor = color.replace('#', '');
+                 const id = `arrowhead-${cleanColor}`;
+                 const svg = document.getElementById('sim-svg-annotations');
+                 const defs = svg.querySelector('defs') || svg.appendChild(document.createElementNS("http://www.w3.org/2000/svg", "defs"));
+                 if (!document.getElementById(id)) {
+                     const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+                     marker.setAttribute("id", id);
+                     marker.setAttribute("markerWidth", "6");
+                     marker.setAttribute("markerHeight", "6");
+                     marker.setAttribute("refX", "2");
+                     marker.setAttribute("refY", "3");
+                     marker.setAttribute("orient", "auto");
+                     const poly = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+                     poly.setAttribute("points", "0 0, 6 3, 0 6");
+                     poly.setAttribute("fill", color);
+                     marker.appendChild(poly);
+                     defs.appendChild(marker);
+                 }
+                 return `url(#${id})`;
+             }
+
+             // Shortcuts lists popover
+             function toggleSimHelp(event) {
+                 event.stopPropagation();
+                 document.getElementById('sim-color-popover').classList.add('hidden');
+                 const popover = document.getElementById('sim-shortcuts-popover');
+                 popover.classList.toggle('hidden');
+             }
+
+             // Collapse and Expand toolbar
+             function collapseSimToolbar() {
+                 document.getElementById('sim-toolbar-expanded').classList.add('hidden');
+                 document.getElementById('sim-toolbar-collapsed').classList.remove('hidden');
+                 showSimToast("Toolbar collapsed. Click the palette icon to expand!");
+             }
+
+             function expandSimToolbar() {
+                 document.getElementById('sim-toolbar-collapsed').classList.add('hidden');
+                 document.getElementById('sim-toolbar-expanded').classList.remove('hidden');
+             }
+
+             // Lock / Interaction Mode
+             function toggleSimLock() {
+                 isInteractMode = !isInteractMode;
+                 const light = document.getElementById('sim-lock-light');
+                 const svg = document.getElementById('sim-svg-annotations');
+
+                 if (isInteractMode) {
+                     light.style.backgroundColor = '#27272a'; // dark grey locked state
+                     light.title = "Interact Mode: Locked (Canvas edits disabled)";
+                     svg.style.pointerEvents = 'none';
+                     showSimToast("Lock active: Canvas disabled, text selection allowed underneath.");
+                 } else {
+                     light.style.backgroundColor = '#27c93f'; // green active state
+                     light.title = "Interact Mode: Active (Canvas drawing enabled)";
+                     svg.style.pointerEvents = 'auto';
+                     showSimToast("Lock disabled: Canvas drawing reactivated.");
+                 }
+             }
+
+             // Close & Reopen simulation
+             function closeCaptureSim() {
+                 document.getElementById('sim-closed-overlay').classList.remove('hidden');
+                 document.getElementById('sim-toolbar-container').classList.add('hidden');
+                 showSimToast("Capture closed.");
+             }
+
+             function rebootSimulator() {
+                 document.getElementById('sim-closed-overlay').classList.add('hidden');
+                 document.getElementById('sim-toolbar-container').classList.remove('hidden');
+                 resetSimulator();
+             }
+
+             // Initialize canvas click listeners
+             window.addEventListener('load', () => {
+                 const svg = document.getElementById('sim-svg-annotations');
+
+                 svg.addEventListener('mousedown', (e) => {
+                     if (isInteractMode) return;
+
+                     // Text tool logic
+                     if (activeSimTool === 'text') {
+                         e.stopPropagation();
+                         const rect = svg.getBoundingClientRect();
+                         const x = e.clientX - rect.left;
+                         const y = e.clientY - rect.top;
+
+                         // Avoid spawning multiple inputs
+                         if (document.getElementById('sim-active-text-input')) return;
+
+                         const input = document.createElement('input');
+                         input.type = 'text';
+                         input.id = 'sim-active-text-input';
+                         input.style.position = 'absolute';
+                         input.style.left = `${x}px`;
+                         input.style.top = `${y - 12}px`;
+                         input.style.background = 'rgba(20,20,25,0.9)';
+                         input.style.border = `1px dashed ${selectedColor}`;
+                         input.style.color = selectedColor;
+                         input.style.fontFamily = 'sans-serif';
+                         input.style.fontSize = '14px';
+                         input.style.fontWeight = 'bold';
+                         input.style.outline = 'none';
+                         input.style.zIndex = '50';
+                         input.style.padding = '2px 6px';
+                         input.style.borderRadius = '4px';
+                         input.style.minWidth = '120px';
+
+                         document.getElementById('code-editor-area').appendChild(input);
+                         input.focus();
+
+                         const finalizeText = () => {
+                             const textVal = input.value.trim();
+                             if (textVal) {
+                                 const textNode = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                                 textNode.setAttribute("x", x);
+                                 textNode.setAttribute("y", y + 4);
+                                 textNode.setAttribute("fill", selectedColor);
+                                 textNode.setAttribute("font-size", "14px");
+                                 textNode.setAttribute("font-family", "sans-serif");
+                                 textNode.setAttribute("font-weight", "bold");
+                                 textNode.textContent = textVal;
+                                 textNode.classList.add('annotation-shape');
+                                 textNode.id = `sim-shape-${Date.now()}`;
+                                 svg.appendChild(textNode);
+                                 saveState();
+                             }
+                             input.remove();
+                         };
+
+                         input.addEventListener('keydown', (keyEv) => {
+                             if (keyEv.key === 'Enter') finalizeText();
+                             if (keyEv.key === 'Escape') input.remove();
+                         });
+
+                         input.addEventListener('blur', finalizeText);
+                         return;
+                     }
+
+                     // Select shape logic
+                     if (activeSimTool === 'select') {
+                         const clickedShape = e.target.closest('.annotation-shape');
+                         if (clickedShape) {
+                             e.stopPropagation();
+                             const selected = document.querySelector('.annotation-selected');
+                             if (selected) selected.classList.remove('annotation-selected');
+
+                             clickedShape.classList.add('annotation-selected');
+                             isDraggingElement = true;
+                             draggedElement = clickedShape;
+
+                             startX = e.clientX;
+                             startY = e.clientY;
+
+                             // Fetch current transform offset
+                             const transform = clickedShape.getAttribute('transform');
+                             if (transform) {
+                                 const match = transform.match(/translate\(([-\d.]+),\s*([-\d.]+)\)/);
+                                 if (match) {
+                                     elementStartX = parseFloat(match[1]);
+                                     elementStartY = parseFloat(match[2]);
+                                 } else {
+                                     elementStartX = 0;
+                                     elementStartY = 0;
+                                 }
+                             } else {
+                                     elementStartX = 0;
+                                     elementStartY = 0;
+                             }
+                         } else {
+                             const selected = document.querySelector('.annotation-selected');
+                             if (selected) selected.classList.remove('annotation-selected');
+                         }
+                         return;
+                     }
+
+                     // Drawing tool logic
+                     if (!activeSimTool) return;
+                     isDrawing = true;
+                     const rect = svg.getBoundingClientRect();
+                     startX = e.clientX - rect.left;
+                     startY = e.clientY - rect.top;
+
+                     if (activeSimTool === 'pencil') {
+                         currentElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                         currentElement.setAttribute("fill", "none");
+                         currentElement.setAttribute("stroke", selectedColor);
+                         currentElement.setAttribute("stroke-width", "3.5");
+                         currentElement.setAttribute("stroke-linecap", "round");
+                         currentElement.setAttribute("stroke-linejoin", "round");
+                         currentElement.setAttribute("d", `M ${startX} ${startY}`);
+                     } else if (activeSimTool === 'rect') {
+                         currentElement = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                         currentElement.setAttribute("fill", isFilled ? selectedColor : 'none');
+                         currentElement.setAttribute("fill-opacity", fillOpacity);
+                         currentElement.setAttribute("stroke", selectedColor);
+                         currentElement.setAttribute("stroke-width", "3.5");
+                         currentElement.setAttribute("x", startX);
+                         currentElement.setAttribute("y", startY);
+                         currentElement.setAttribute("width", 0);
+                         currentElement.setAttribute("height", 0);
+                         currentElement.setAttribute("rx", 6);
+                     } else if (activeSimTool === 'circle') {
+                         currentElement = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+                         currentElement.setAttribute("fill", isFilled ? selectedColor : 'none');
+                         currentElement.setAttribute("fill-opacity", fillOpacity);
+                         currentElement.setAttribute("stroke", selectedColor);
+                         currentElement.setAttribute("stroke-width", "3.5");
+                         currentElement.setAttribute("cx", startX);
+                         currentElement.setAttribute("cy", startY);
+                         currentElement.setAttribute("rx", 0);
+                         currentElement.setAttribute("ry", 0);
+                     } else if (activeSimTool === 'arrow') {
+                         currentElement = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                         currentElement.setAttribute("fill", "none");
+                         currentElement.setAttribute("stroke", selectedColor);
+                         currentElement.setAttribute("stroke-width", "4.5");
+                         currentElement.setAttribute("marker-end", getOrCreateMarkerForColor(selectedColor));
+                         currentElement.setAttribute("d", `M ${startX} ${startY} L ${startX} ${startY}`);
+                     } else if (activeSimTool === 'line') {
+                         currentElement = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                         currentElement.setAttribute("stroke", selectedColor);
+                         currentElement.setAttribute("stroke-width", "3.5");
+                         currentElement.setAttribute("x1", startX);
+                         currentElement.setAttribute("y1", startY);
+                         currentElement.setAttribute("x2", startX);
+                         currentElement.setAttribute("y2", startY);
+                     }
+
+                     if (currentElement) {
+                         currentElement.classList.add('annotation-shape');
+                         currentElement.id = `sim-shape-${Date.now()}`;
+                         svg.appendChild(currentElement);
+                     }
+                 });
+
+                 svg.addEventListener('mousemove', (e) => {
+                     const rect = svg.getBoundingClientRect();
+                     const curX = e.clientX - rect.left;
+                     const curY = e.clientY - rect.top;
+
+                     // Handled element dragging
+                     if (isDraggingElement && draggedElement) {
+                         const dx = e.clientX - startX;
+                         const dy = e.clientY - startY;
+                         draggedElement.setAttribute('transform', `translate(${elementStartX + dx}, ${elementStartY + dy})`);
+                         return;
+                     }
+
+                     if (!isDrawing || !currentElement) return;
+
+                     if (activeSimTool === 'pencil') {
+                         const d = currentElement.getAttribute("d");
+                         currentElement.setAttribute("d", `${d} L ${curX} ${curY}`);
+                     } else if (activeSimTool === 'rect') {
+                         const x = Math.min(startX, curX);
+                         const y = Math.min(startY, curY);
+                         const w = Math.abs(curX - startX);
+                         const h = Math.abs(curY - startY);
+                         currentElement.setAttribute("x", x);
+                         currentElement.setAttribute("y", y);
+                         currentElement.setAttribute("width", w);
+                         currentElement.setAttribute("height", h);
+                     } else if (activeSimTool === 'circle') {
+                         const cx = (startX + curX) / 2;
+                         const cy = (startY + curY) / 2;
+                         const rx = Math.abs(curX - startX) / 2;
+                         const ry = Math.abs(curY - startY) / 2;
+                         currentElement.setAttribute("cx", cx);
+                         currentElement.setAttribute("cy", cy);
+                         currentElement.setAttribute("rx", rx);
+                         currentElement.setAttribute("ry", ry);
+                     } else if (activeSimTool === 'arrow') {
+                         currentElement.setAttribute("d", `M ${startX} ${startY} L ${curX} ${curY}`);
+                     } else if (activeSimTool === 'line') {
+                         currentElement.setAttribute("x2", curX);
+                         currentElement.setAttribute("y2", curY);
+                     }
+                 });
+
+                 const endDrawing = () => {
+                     if (isDrawing) {
+                         isDrawing = false;
+                         saveState();
+                     }
+                     if (isDraggingElement) {
+                         isDraggingElement = false;
+                         saveState();
+                     }
+                     currentElement = null;
+                 };
+
+                 svg.addEventListener('mouseup', endDrawing);
+                 svg.addEventListener('mouseleave', endDrawing);
+             });
+
+             // Remove active element
+             function deleteSelectedElement() {
+                 const selected = document.querySelector('.annotation-selected');
+                 if (selected) {
+                     selected.remove();
+                     saveState();
+                     showSimToast("Element deleted.");
+                 }
+             }
+
+             // Undo & Redo Actions
+             function triggerSimUndo() {
+                 if (undoStack.length === 0) return;
+                 const svg = document.getElementById('sim-svg-annotations');
+                 const defs = svg.querySelector('defs');
+                 
+                 // Push current state to redo stack
+                 const currentContent = Array.from(svg.children)
+                     .filter(child => child.tagName.toLowerCase() !== 'defs')
+                     .map(child => child.outerHTML)
+                     .join('\n');
+                 redoStack.push(currentContent);
+                 
+                 const prevContent = undoStack.pop();
+                 svg.innerHTML = '';
+                 if (defs) svg.appendChild(defs);
+                 svg.innerHTML += prevContent;
+                 
+                 updateUndoRedoButtons();
+                 showSimToast("Undo action");
+             }
+
+             function triggerSimRedo() {
+                 if (redoStack.length === 0) return;
+                 const svg = document.getElementById('sim-svg-annotations');
+                 const defs = svg.querySelector('defs');
+                 
+                 // Push current state to undo stack
+                 const currentContent = Array.from(svg.children)
+                     .filter(child => child.tagName.toLowerCase() !== 'defs')
+                     .map(child => child.outerHTML)
+                     .join('\n');
+                 undoStack.push(currentContent);
+                 
+                 const nextContent = redoStack.pop();
+                 svg.innerHTML = '';
+                 if (defs) svg.appendChild(defs);
+                 svg.innerHTML += nextContent;
+                 
+                 updateUndoRedoButtons();
+                 showSimToast("Redo action");
+             }
+
+             // Cloud Upload Simulation
+             function triggerSimUpload() {
+                 showSimToast("[Cloud Upload] Sending capture file to Custom API...");
+                 setTimeout(() => {
+                     showSimToast("✓ Cloud Upload complete! Direct URL copied: https://berryshot.app/share/img_4829a.png");
+                 }, 1800);
+             }
+
+             // Local File Saving Simulation
+             function triggerSimSave() {
+                 showSimToast("✓ Capture saved: ~/Library/Application Support/BerryShot/Capture_2026.png");
+             }
+
+             // Dynamic OCR highlight trigger
+             function triggerSimOCR() {
+                 const ocr = document.getElementById('sim-ocr-overlay');
+                 if (ocr.classList.contains('hidden')) {
+                     ocr.classList.remove('hidden');
+                     showSimToast("OCR: Vision engine recognized Swift structures!");
+                     setTimeout(() => {
+                         showSimToast("✓ Text copied: 'public class OCRService { ... }'");
+                     }, 1500);
+                 } else {
+                     ocr.classList.add('hidden');
+                 }
+             }
+
+             // AI Panel sliding toggle
+             const simAiResponses = {
+                 explain: "The selected class (OCRService) initializes Apple's Vision framework (VNRecognizeTextRequest) for text extraction. It compiles with Swift 6.0 and runs natively offline in 0.1s.",
+                 translate: "Vietnamese Translation:\n\nLớp OCRService khởi chạy tiến trình nhận diện và trích xuất chữ ảnh động (VNRecognizeTextRequest) hoàn toàn cục bộ trên macOS, bảo mật dữ liệu tuyệt đối.",
+                 optimize: "Refactoring & Performance Tip:\n\nAvoid re-instantiating VNRecognizeTextRequest on every call. Keeping it as a shared instance inside OCRService will optimize memory allocations."
+             };
+
+             let activeSimAiTimer = null;
+             let activeSimAiTab = 'explain';
+
+             function changeSimAiTab(tab) {
+                 activeSimAiTab = tab;
+                 const buttons = ['explain', 'translate', 'optimize'];
+                 buttons.forEach(b => {
+                     const btn = document.getElementById('btn-sim-ai-' + b);
+                     if (btn) {
+                         btn.className = "px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white text-[9px] font-bold transition-all border border-white/10";
+                     }
+                 });
+                 
+                 const activeBtn = document.getElementById('btn-sim-ai-' + tab);
+                 if (activeBtn) {
+                     activeBtn.className = "px-2 py-1 rounded bg-berry-500 text-white text-[9px] font-bold transition-all border border-berry-500/35";
+                 }
+                 
+                 typeSimAiResponse(simAiResponses[tab]);
+             }
+
+             function typeSimAiResponse(text) {
+                 if (activeSimAiTimer) clearInterval(activeSimAiTimer);
+                 const textEl = document.getElementById('sim-ai-response-text');
+                 const cursorEl = document.getElementById('sim-ai-cursor');
+                 if (!textEl || !cursorEl) return;
+                 
+                 textEl.innerHTML = "";
+                 cursorEl.style.display = "inline-block";
+                 
+                 let i = 0;
+                 activeSimAiTimer = setInterval(() => {
+                     if (i < text.length) {
+                         const char = text.charAt(i);
+                         if (char === '\n') {
+                             textEl.innerHTML += "<br>";
+                         } else {
+                             textEl.innerHTML += char;
+                         }
+                         i++;
+                     } else {
+                         clearInterval(activeSimAiTimer);
+                         cursorEl.style.display = "none";
+                     }
+                 }, 12);
+             }
+
+             function triggerSimAI() {
+                 const panel = document.getElementById('sim-ai-panel');
+                 const isOpen = panel.style.width === '320px' || panel.style.width === '100%';
+                 if (isOpen) {
+                     closeSimulatorAI();
+                 } else {
+                     if (window.innerWidth < 640) {
+                         panel.style.position = 'absolute';
+                         panel.style.right = '0';
+                         panel.style.top = '0';
+                         panel.style.bottom = '0';
+                         panel.style.height = '100%';
+                         panel.style.width = '100%';
+                         panel.style.borderLeft = 'none';
+                     } else {
+                         panel.style.position = 'relative';
+                         panel.style.width = '320px';
+                     }
+                     showSimToast("BerryShot AI Engine: Reviewing code explanation...");
+                     setTimeout(() => {
+                         changeSimAiTab(activeSimAiTab || 'explain');
+                     }, 300);
+                 }
+             }
+
+             function closeSimulatorAI() {
+                 const panel = document.getElementById('sim-ai-panel');
+                 panel.style.width = '0px';
+                 if (activeSimAiTimer) clearInterval(activeSimAiTimer);
+                 setTimeout(() => {
+                     panel.style.position = '';
+                     panel.style.right = '';
+                     panel.style.top = '';
+                     panel.style.bottom = '';
+                     panel.style.height = '';
+                     panel.style.borderLeft = '';
+                 }, 500);
+             }
+
+             function copySimulatorAIText() {
+                 const text = document.getElementById('sim-ai-response-text').innerText;
+                 navigator.clipboard.writeText(text).then(() => {
+                     showSimToast("✓ AI Response copied to Clipboard!");
+                 });
+             }
+
+             // Recording manager simulation
+             function triggerSimRecord() {
+                 const recBtn = document.getElementById('tool-record');
+                 const pauseBtn = document.getElementById('sim-record-pause-btn');
+
+                 if (isRecording) {
+                     // Stop recording
+                     isRecording = false;
+                     isPaused = false;
+                     clearInterval(recordingTimer);
+                     recBtn.innerHTML = `<svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle></svg>`;
+                     recBtn.classList.remove('animate-pulse');
+                     recBtn.style.color = '#f43f5e'; // Back to standard red circle
+                     pauseBtn.classList.add('hidden');
+                     
+                     showSimToast(`✓ Recording finished! Saved video to ~/Library/Application Support/BerryShot/Record_2026.mp4 (${recordingSeconds}s)`);
+                 } else {
+                     // Start recording
+                     isRecording = true;
+                     isPaused = false;
+                     recordingSeconds = 0;
+                     
+                     recBtn.innerHTML = `<svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>`;
+                     recBtn.classList.add('animate-pulse');
+                     recBtn.style.color = '#ef4444'; // Flashing red
+                     pauseBtn.classList.remove('hidden');
+                     document.getElementById('sim-pause-icon').innerHTML = `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path>`; // Pause icon
+                     
+                     recordingTimer = setInterval(() => {
+                         if (!isPaused) {
+                             recordingSeconds++;
+                         }
+                     }, 1000);
+
+                     showSimToast("Screen recording started... Highlight actions now!");
+                 }
+             }
+
+             function toggleSimRecordPause() {
+                 isPaused = !isPaused;
+                 const icon = document.getElementById('sim-pause-icon');
+                 if (isPaused) {
+                     icon.innerHTML = `<path d="M8 5v14l11-7z"></path>`; // Play icon
+                     showSimToast("Recording paused.");
+                 } else {
+                     icon.innerHTML = `<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path>`; // Pause icon
+                     showSimToast("Recording resumed.");
+                 }
+             }
+
+             // External Image importing simulation
+             function triggerSimImageUpload() {
+                 document.getElementById('sim-image-file-input').click();
+             }
+
+             function loadSimExternalImage(event) {
+                 const file = event.target.files[0];
+                 if (!file) return;
+
+                 const reader = new FileReader();
+                 reader.onload = (e) => {
+                     const dataUrl = e.target.result;
+                     const svg = document.getElementById('sim-svg-annotations');
+                     
+                     const svgImage = document.createElementNS("http://www.w3.org/2000/svg", "image");
+                     svgImage.setAttributeNS('http://www.w3.org/1999/xlink', 'href', dataUrl);
+                     svgImage.setAttribute("x", 120);
+                     svgImage.setAttribute("y", 90);
+                     svgImage.setAttribute("width", 160);
+                     svgImage.setAttribute("height", 110);
+                     svgImage.classList.add('annotation-shape');
+                     svgImage.id = `sim-shape-${Date.now()}`;
+                     
+                     svg.appendChild(svgImage);
+                     saveState();
+                     
+                     // Reset tool to select so they can move the image
+                     setSimTool('select');
+                     showSimToast("✓ External image loaded! Select & Drag to reposition.");
+                 };
+                 reader.readAsDataURL(file);
+             }
+
+             // Clean workspace
+             function resetSimulator() {
+                 setSimTool('');
+                 document.getElementById('sim-ocr-overlay').classList.add('hidden');
+                 closeSimulatorAI();
+                 
+                 const svg = document.getElementById('sim-svg-annotations');
+                 const defs = svg.querySelector('defs');
+                 svg.innerHTML = '';
+                 if (defs) svg.appendChild(defs);
+                 
+                 // Restore default demo annotations
+                 svg.innerHTML += `
+                     <rect x="200" y="105" width="280" height="95" rx="8" fill="none" stroke="#ff2e5b" stroke-width="3.5" class="annotation-shape annotation-active" id="sim-rect-draw" stroke-dasharray="8 4"></rect>
+                     <g class="annotation-active" id="sim-arrow-draw">
+                         <path class="annotation-shape" d="M 540 80 L 495 105" fill="none" stroke="#d946ef" stroke-width="4.5" marker-end="url(#arrowhead-fuchsia)"></path>
+                     </g>
+                     <ellipse cx="260" cy="50" rx="90" ry="22" fill="none" stroke="#10b981" stroke-width="3" class="annotation-shape annotation-active" id="sim-circle-draw"></ellipse>
+                 `;
+                 
+                 undoStack = [];
+                 redoStack = [];
+                 updateUndoRedoButtons();
+                 
+                 showSimToast("Simulator workspace reset.");
+             }
+
+             // Global key listener
+             window.addEventListener('keydown', (e) => {
+                 // Prevent shortcuts when typing in inputs
+                 if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+                     return;
+                 }
+
+                 const isCmd = e.metaKey || e.ctrlKey;
+                 const isShift = e.shiftKey;
+
+                 if (isCmd) {
+                     if (e.key.toLowerCase() === 'z') {
+                         e.preventDefault();
+                         if (isShift) {
+                             triggerSimRedo();
+                         } else {
+                             triggerSimUndo();
+                         }
+                     } else if (e.key.toLowerCase() === 's') {
+                         e.preventDefault();
+                         triggerSimSave();
+                     } else if (e.key.toLowerCase() === 'u') {
+                         e.preventDefault();
+                         triggerSimUpload();
+                     } else if (e.key.toLowerCase() === 'i') {
+                         e.preventDefault();
+                         triggerSimAI();
+                     }
+                 } else {
+                     switch (e.key.toLowerCase()) {
+                         case 'v':
+                             setSimTool('select');
+                             break;
+                         case 'b':
+                             setSimTool('pencil');
+                             break;
+                         case 'm':
+                             setSimTool('rect');
+                             break;
+                         case 'c':
+                             setSimTool('circle');
+                             break;
+                         case 'a':
+                             setSimTool('arrow');
+                             break;
+                         case 'l':
+                             setSimTool('line');
+                             break;
+                         case 't':
+                             setSimTool('text');
+                             break;
+                         case 'o':
+                             triggerSimImageUpload();
+                             break;
+                         case 'f':
+                             toggleSimFill();
+                             break;
+                         case 'i':
+                             toggleSimLock();
+                             break;
+                         case 'r':
+                             triggerSimRecord();
+                             break;
+                         case 'enter':
+                             triggerSimSave();
+                             break;
+                         case 'escape':
+                             closeCaptureSim();
+                             break;
+                         case 'delete':
+                         case 'backspace':
+                             deleteSelectedElement();
+                             break;
+                     }
+                 }
+             });
+
+             function showSimToast(message) {
+                 const toast = document.getElementById('sim-toast');
+                 toast.innerText = message;
+                 toast.classList.remove('opacity-0', 'scale-95', 'pointer-events-none');
+                 toast.classList.add('opacity-100', 'scale-100');
+
+                 if (window.toastTimeout) clearTimeout(window.toastTimeout);
+                 
+                 window.toastTimeout = setTimeout(() => {
+                     toast.classList.remove('opacity-100', 'scale-100');
+                     toast.classList.add('opacity-0', 'scale-95', 'pointer-events-none');
+                 }, 3000);
+             }
+
+             // Autoplay walkthrough system
+             let autoplayActive = false;
+             let autoplayPromise = null;
+             let activeTimelineTimers = [];
+
+             const sleep = ms => new Promise(resolve => {
+                 const t = setTimeout(resolve, ms);
+                 activeTimelineTimers.push(t);
+             });
+
+             function clearTimelineTimers() {
+                 activeTimelineTimers.forEach(t => clearTimeout(t));
+                 activeTimelineTimers = [];
+             }
+
+             // Move simulated cursor
+             function moveCursorTo(x, y, duration) {
+                 return new Promise((resolve) => {
+                     if (!autoplayActive) { resolve(); return; }
+                     const cursor = document.getElementById('sim-auto-cursor');
+                     if (!cursor) { resolve(); return; }
+                     cursor.style.opacity = '1';
+                     cursor.style.transition = `left ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94), top ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+                     cursor.style.left = `${x}px`;
+                     cursor.style.top = `${y}px`;
+                     const t = setTimeout(resolve, duration);
+                     activeTimelineTimers.push(t);
+                 });
+             }
+
+             // Drag draw shapes simulation
+             function simulateDragDraw(tool, sX, sY, eX, eY, duration) {
+                 return new Promise((resolve) => {
+                     if (!autoplayActive) { resolve(); return; }
+                     const cursor = document.getElementById('sim-auto-cursor');
+                     const svg = document.getElementById('sim-svg-annotations');
+                     if (!cursor || !svg) { resolve(); return; }
+                     
+                     cursor.style.opacity = '1';
+                     cursor.style.left = `${sX}px`;
+                     cursor.style.top = `${sY}px`;
+                     
+                     let el = null;
+                     if (tool === 'rect') {
+                         el = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                         el.setAttribute("fill", isFilled ? selectedColor : 'none');
+                         el.setAttribute("fill-opacity", fillOpacity);
+                         el.setAttribute("stroke", selectedColor);
+                         el.setAttribute("stroke-width", "3.5");
+                         el.setAttribute("x", sX);
+                         el.setAttribute("y", sY);
+                         el.setAttribute("rx", 6);
+                     } else if (tool === 'arrow') {
+                         el = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                         el.setAttribute("fill", "none");
+                         el.setAttribute("stroke", selectedColor);
+                         el.setAttribute("stroke-width", "4.5");
+                         el.setAttribute("marker-end", getOrCreateMarkerForColor(selectedColor));
+                         el.setAttribute("d", `M ${sX} ${sY} L ${sX} ${sY}`);
+                     } else if (tool === 'circle') {
+                         el = document.createElementNS("http://www.w3.org/2000/svg", "ellipse");
+                         el.setAttribute("fill", isFilled ? selectedColor : 'none');
+                         el.setAttribute("fill-opacity", fillOpacity);
+                         el.setAttribute("stroke", selectedColor);
+                         el.setAttribute("stroke-width", "3.5");
+                         el.setAttribute("cx", sX);
+                         el.setAttribute("cy", sY);
+                         el.setAttribute("rx", 0);
+                         el.setAttribute("ry", 0);
+                     } else if (tool === 'line') {
+                         el = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                         el.setAttribute("stroke", selectedColor);
+                         el.setAttribute("stroke-width", "3.5");
+                         el.setAttribute("x1", sX);
+                         el.setAttribute("y1", sY);
+                         el.setAttribute("x2", sX);
+                         el.setAttribute("y2", sY);
+                     }
+                     
+                     if (el) {
+                         el.classList.add('annotation-shape');
+                         el.id = `sim-shape-${Date.now()}`;
+                         svg.appendChild(el);
+                     }
+                     
+                     const steps = 25;
+                     const interval = duration / steps;
+                     let step = 0;
+                     
+                     const drawInterval = setInterval(() => {
+                         if (!autoplayActive) {
+                             clearInterval(drawInterval);
+                             resolve();
+                             return;
+                         }
+                         step++;
+                         const t = step / steps;
+                         const curX = sX + (eX - sX) * t;
+                         const curY = sY + (eY - sY) * t;
+                         
+                         cursor.style.left = `${curX}px`;
+                         cursor.style.top = `${curY}px`;
+                         
+                         if (el) {
+                             if (tool === 'rect') {
+                                 const x = Math.min(sX, curX);
+                                 const y = Math.min(sY, curY);
+                                 const w = Math.abs(curX - sX);
+                                 const h = Math.abs(curY - sY);
+                                 el.setAttribute("x", x);
+                                 el.setAttribute("y", y);
+                                 el.setAttribute("width", w);
+                                 el.setAttribute("height", h);
+                             } else if (tool === 'arrow') {
+                                 el.setAttribute("d", `M ${sX} ${sY} L ${curX} ${curY}`);
+                             } else if (tool === 'circle') {
+                                 const cx = (sX + curX) / 2;
+                                 const cy = (sY + curY) / 2;
+                                 const rx = Math.abs(curX - sX) / 2;
+                                 const ry = Math.abs(curY - sY) / 2;
+                                 el.setAttribute("cx", cx);
+                                 el.setAttribute("cy", cy);
+                                 el.setAttribute("rx", rx);
+                                 el.setAttribute("ry", ry);
+                             } else if (tool === 'line') {
+                                 el.setAttribute("x2", curX);
+                                 el.setAttribute("y2", curY);
+                             }
+                         }
+                         
+                         if (step >= steps) {
+                             clearInterval(drawInterval);
+                             saveState();
+                             resolve();
+                         }
+                     }, interval);
+                 });
+             }
+
+             // Simulated text typing annotation
+             function simulateTypingText(x, y, text, duration) {
+                 return new Promise((resolve) => {
+                     if (!autoplayActive) { resolve(); return; }
+                     const svg = document.getElementById('sim-svg-annotations');
+                     if (!svg) { resolve(); return; }
+                     
+                     const textNode = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                     textNode.setAttribute("x", x);
+                     textNode.setAttribute("y", y + 4);
+                     textNode.setAttribute("fill", selectedColor);
+                     textNode.setAttribute("font-size", "14px");
+                     textNode.setAttribute("font-family", "sans-serif");
+                     textNode.setAttribute("font-weight", "bold");
+                     textNode.classList.add('annotation-shape');
+                     textNode.id = `sim-shape-${Date.now()}`;
+                     svg.appendChild(textNode);
+                     
+                     const chars = text.split('');
+                     const stepTime = duration / chars.length;
+                     let i = 0;
+                     
+                     const typeInterval = setInterval(() => {
+                         if (!autoplayActive) {
+                             clearInterval(typeInterval);
+                             resolve();
+                             return;
+                         }
+                         textNode.textContent += chars[i];
+                         i++;
+                         if (i >= chars.length) {
+                             clearInterval(typeInterval);
+                             saveState();
+                             resolve();
+                         }
+                     }, stepTime);
+                 });
+             }
+
+             // Main AutoPlay thread loop
+             async function runAutoplayLoop() {
+                 while (autoplayActive) {
+                     // 1. Reset simulator canvas
+                     resetSimulator();
+                     await sleep(1000);
+                     if (!autoplayActive) break;
+
+                     const workspace = document.getElementById('sim-workspace-area');
+                     const workspaceRect = workspace.getBoundingClientRect();
+
+                     // 2. Rect tool selection
+                     const rectBtn = document.getElementById('tool-rect');
+                     const rectBtnBounds = rectBtn.getBoundingClientRect();
+                     let targetX = rectBtnBounds.left - workspaceRect.left + rectBtnBounds.width / 2;
+                     let targetY = rectBtnBounds.top - workspaceRect.top + rectBtnBounds.height / 2;
+
+                     await moveCursorTo(targetX, targetY, 800);
+                     if (!autoplayActive) break;
+                     setSimTool('rect');
+                     await sleep(400);
+                     if (!autoplayActive) break;
+
+                     // 3. Drag draw rect
+                     await simulateDragDraw('rect', 200, 105, 480, 200, 1000);
+                     await sleep(600);
+                     if (!autoplayActive) break;
+
+                     // 4. Arrow tool selection
+                     const arrowBtn = document.getElementById('tool-arrow');
+                     const arrowBtnBounds = arrowBtn.getBoundingClientRect();
+                     targetX = arrowBtnBounds.left - workspaceRect.left + arrowBtnBounds.width / 2;
+                     targetY = arrowBtnBounds.top - workspaceRect.top + arrowBtnBounds.height / 2;
+
+                     await moveCursorTo(targetX, targetY, 700);
+                     if (!autoplayActive) break;
+                     setSimTool('arrow');
+                     await sleep(400);
+                     if (!autoplayActive) break;
+
+                     // 5. Drag draw arrow
+                     await simulateDragDraw('arrow', 540, 80, 495, 105, 800);
+                     await sleep(600);
+                     if (!autoplayActive) break;
+
+                     // 6. Text tool selection
+                     const textBtn = document.getElementById('tool-text');
+                     const textBtnBounds = textBtn.getBoundingClientRect();
+                     targetX = textBtnBounds.left - workspaceRect.left + textBtnBounds.width / 2;
+                     targetY = textBtnBounds.top - workspaceRect.top + textBtnBounds.height / 2;
+
+                     await moveCursorTo(targetX, targetY, 600);
+                     if (!autoplayActive) break;
+                     setSimTool('text');
+                     await sleep(400);
+                     if (!autoplayActive) break;
+
+                     // 7. Click to type text annotation
+                     await moveCursorTo(545, 60, 400);
+                     if (!autoplayActive) break;
+                     await simulateTypingText(545, 60, "Local Vision OCR API", 1200);
+                     await sleep(800);
+                     if (!autoplayActive) break;
+
+                     // 8. Select tool selection
+                     const selectBtn = document.getElementById('tool-select');
+                     const selectBtnBounds = selectBtn.getBoundingClientRect();
+                     targetX = selectBtnBounds.left - workspaceRect.left + selectBtnBounds.width / 2;
+                     targetY = selectBtnBounds.top - workspaceRect.top + selectBtnBounds.height / 2;
+
+                     await moveCursorTo(targetX, targetY, 600);
+                     if (!autoplayActive) break;
+                     setSimTool('select');
+                     await sleep(500);
+                     if (!autoplayActive) break;
+
+                     // 9. Ask AI vision breakdown
+                     const aiBtn = document.querySelector('[title="Ask AI Assistant (⌘I)"]');
+                     const aiBtnBounds = aiBtn.getBoundingClientRect();
+                     targetX = aiBtnBounds.left - workspaceRect.left + aiBtnBounds.width / 2;
+                     targetY = aiBtnBounds.top - workspaceRect.top + aiBtnBounds.height / 2;
+
+                     await moveCursorTo(targetX, targetY, 800);
+                     if (!autoplayActive) break;
+                     triggerSimAI();
+                     await sleep(4500); // Allow time for AI typing simulation
+                     if (!autoplayActive) break;
+
+                     // 10. Upload capture to custom server
+                     const uploadBtn = document.querySelector('[title="Upload to Cloud (⌘U)"]');
+                     const uploadBtnBounds = uploadBtn.getBoundingClientRect();
+                     targetX = uploadBtnBounds.left - workspaceRect.left + uploadBtnBounds.width / 2;
+                     targetY = uploadBtnBounds.top - workspaceRect.top + uploadBtnBounds.height / 2;
+
+                     await moveCursorTo(targetX, targetY, 700);
+                     if (!autoplayActive) break;
+                     triggerSimUpload();
+                     await sleep(3500); // Allow upload notification sequence
+                     if (!autoplayActive) break;
+
+                     // Close AI vision panel before resetting loop
+                     closeSimulatorAI();
+                     await sleep(1500);
+                 }
+             }
+
+             function startAutoplayDemo() {
+                 if (autoplayActive) return;
+                 autoplayActive = true;
+                 
+                 const badge = document.getElementById('sim-demo-badge');
+                 const dot = document.getElementById('sim-demo-badge-dot');
+                 const txt = document.getElementById('sim-demo-badge-text');
+                 if (badge) {
+                     badge.classList.remove('bg-emerald-500', 'hover:bg-emerald-600');
+                     badge.classList.add('bg-berry-500/90', 'hover:bg-berry-500', 'animate-bounce');
+                     dot.classList.add('animate-ping');
+                     dot.style.backgroundColor = '#ffffff';
+                     txt.innerHTML = "⏸ Running Demo | Click to Draw";
+                 }
+                 
+                 runAutoplayLoop();
+             }
+
+             function stopAutoplay() {
+                 if (!autoplayActive) return;
+                 autoplayActive = false;
+                 clearTimelineTimers();
+                 
+                 const cursor = document.getElementById('sim-auto-cursor');
+                 if (cursor) cursor.style.opacity = '0';
+                 
+                 const badge = document.getElementById('sim-demo-badge');
+                 const dot = document.getElementById('sim-demo-badge-dot');
+                 const txt = document.getElementById('sim-demo-badge-text');
+                 if (badge) {
+                     badge.classList.remove('bg-berry-500/90', 'hover:bg-berry-500', 'animate-bounce');
+                     badge.classList.add('bg-emerald-500', 'hover:bg-emerald-600');
+                     dot.classList.remove('animate-ping');
+                     dot.style.backgroundColor = '#10b981';
+                     txt.innerHTML = "▶ Play Auto Demo";
+                 }
+                 
+                 showSimToast("Demo stopped. Interactive Mode enabled!");
+             }
+
+             function toggleDemoAutoplay(event) {
+                 if (event) event.stopPropagation();
+                 if (autoplayActive) {
+                     stopAutoplay();
+                 } else {
+                     startAutoplayDemo();
+                 }
+             }
+
+             // Stop autoplay immediately if user attempts to draw or interact
+             document.getElementById('sim-workspace-area').addEventListener('mousedown', (e) => {
+                 // Ignore click triggers on the badge itself
+                 if (e.target.closest('#sim-demo-badge')) return;
+                 if (autoplayActive) {
+                     stopAutoplay();
+                 }
+             });
+
+             // Start autoplay tutorial on page load automatically!
+             window.addEventListener('load', () => {
+                 // Start after a minor delay for visual entry animation completion
+                 setTimeout(startAutoplayDemo, 2200);
+             });
+
+             // Click-out listeners to close color and shortcuts popovers
+             window.addEventListener('click', (e) => {
+                 if (!e.target.closest('#sim-color-picker-btn') && !e.target.closest('#sim-color-popover')) {
+                     document.getElementById('sim-color-popover').classList.add('hidden');
+                 }
+                 if (!e.target.closest('[onclick="toggleSimHelp(event)"]') && !e.target.closest('#sim-shortcuts-popover')) {
+                     document.getElementById('sim-shortcuts-popover').classList.add('hidden');
+                 }
+             });
+         </script>
+</body>
+</html>
