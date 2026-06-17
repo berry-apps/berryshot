@@ -243,6 +243,40 @@
                         <p class="text-xs text-slate-400 leading-relaxed">Open BerryShot from Applications, and allow Screen Recording permissions in System Settings.</p>
                     </div>
                 </div>
+
+                <!-- Apple Gatekeeper Security Warning Notice -->
+                <div class="glass-panel p-6 rounded-2xl border border-amber-500/20 bg-amber-500/[0.02] space-y-4 mt-6">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        </div>
+                        <h4 class="font-display font-bold text-white text-base">Unverified Developer Warning (Gatekeeper Bypass)</h4>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Because <span class="text-white font-medium">BerryShot</span> is a free, self-built, open-source utility and is not signed using a paid Apple Developer Program Certificate ($99/year), macOS Gatekeeper will prevent launch on download showing a warning: <code class="font-mono text-amber-400 bg-black/40 px-1 py-0.5 rounded text-[10px]">Apple could not verify BerryShot is free of malware...</code>
+                    </p>
+                    <div class="space-y-3 pt-1">
+                        <p class="text-xs text-slate-200 font-semibold">To open and run the app safely, choose one of these two options:</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-black/30 p-4 rounded-xl border border-white/5 space-y-2">
+                                <span class="text-[10px] font-bold text-berry-400 uppercase font-mono">Option 1: Right-Click Open (Recommended)</span>
+                                <ol class="list-decimal list-inside text-xs text-slate-400 space-y-1">
+                                    <li>Open your <span class="text-slate-300">Applications</span> folder in Finder.</li>
+                                    <li>Right-click (or <kbd class="px-1 py-0.5 bg-white/10 rounded text-[9px]">Control</kbd> + click) <code class="text-white">BerryShot.app</code>.</li>
+                                    <li>Select <strong class="text-white">Open</strong> from the context menu.</li>
+                                    <li>Click <strong class="text-white">Open</strong> in the prompt. This permanently white-lists the app.</li>
+                                </ol>
+                            </div>
+                            <div class="bg-black/30 p-4 rounded-xl border border-white/5 space-y-2">
+                                <span class="text-[10px] font-bold text-berry-400 uppercase font-mono">Option 2: Terminal Workaround</span>
+                                <p class="text-xs text-slate-400 leading-relaxed mb-1">Remove the quarantine attribute flag assigned by your browser by running this in Terminal:</p>
+                                <div class="bg-black/60 p-2 rounded font-mono text-[11px] text-slate-300 flex justify-between items-center border border-white/10 select-all">
+                                    <code>xattr -cr /Applications/BerryShot.app</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </section>
 
             <!-- 3. General Settings -->
