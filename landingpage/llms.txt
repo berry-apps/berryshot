@@ -1,0 +1,12 @@
+# BerryShot
+
+BerryShot is a lightweight screenshot and screen capture app for macOS, featuring drawing annotations, local OCR text extraction, and ChatGPT/Claude AI integration.
+
+## Documentation and Navigation
+- [BerryShot Landing Page](/index.html): The main page showcasing features and interactive demo.
+- [BerryShot Documentation](/docs.html): Detailed documentation and user guide for BerryShot.
+
+## Features
+- **Local Vision OCR**: 100% offline, privacy-focused text extraction using Apple's Vision framework.
+- **AI Integration**: Ask AI to explain code, translate text, or summarize content directly from screenshots.
+- **Native SwiftUI App**: Fast, lightweight, and seamlessly integrated into the macOS menubar.

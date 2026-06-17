@@ -32,8 +32,8 @@
     <meta property="twitter:image" content="./assets/app_showcase.webp">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="./assets/AppIcon.png">
-    <link rel="apple-touch-icon" href="./assets/AppIcon.png">
+    <link rel="icon" type="image/png" href="./assets/AppIcon.webp">
+    <link rel="apple-touch-icon" href="./assets/AppIcon.webp">
 
     <!-- Google Fonts: Outfit & Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -42,59 +42,8 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
 
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        display: ['Outfit', 'sans-serif'],
-                    },
-                    colors: {
-                        berry: {
-                            50: '#fff0f3',
-                            100: '#ffdde3',
-                            200: '#ffc0cb',
-                            300: '#ffa1b3',
-                            400: '#ff6b8b',
-                            500: '#ff2e5b', // Main strawberry red
-                            600: '#e01b47',
-                            700: '#bd1035',
-                            800: '#9c0d2a',
-                            950: '#0f0205',
-                        },
-                        fuchsiaAccent: {
-                            DEFAULT: '#d946ef',
-                        },
-                        darkBg: {
-                            DEFAULT: '#050208',
-                            card: '#0f0617',
-                            border: '#1f0d2c',
-                        }
-                    },
-                    animation: {
-                        'pulse-slow': 'pulse 8s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                        'float': 'float 6s ease-in-out infinite',
-                        'float-delayed': 'float 6s ease-in-out 3s infinite',
-                        'drift-slow': 'drift 20s linear infinite',
-                    },
-                    keyframes: {
-                        float: {
-                            '0%, 100%': { transform: 'translateY(0px)' },
-                            '50%': { transform: 'translateY(-12px)' },
-                        },
-                        drift: {
-                            '0%': { transform: 'rotate(0deg) translate(0px, 0px)' },
-                            '50%': { transform: 'rotate(180deg) translate(20px, 40px)' },
-                            '100%': { transform: 'rotate(360deg) translate(0px, 0px)' },
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Tailwind CSS -->
+    <link href="./assets/style.css" rel="stylesheet">
 
     <!-- Custom CSS for Special Effects -->
     <style>
@@ -279,7 +228,7 @@
             <a href="#" class="flex items-center gap-4 group">
                 <div
                     class="relative w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 group-hover:border-berry-400 transition-colors duration-300 overflow-hidden shadow-inner">
-                    <img src="./assets/AppIcon.png" alt="BerryShot Logo"
+                    <img src="./assets/AppIcon.webp" alt="BerryShot Logo"
                         class="w-10 h-10 object-contain group-hover:scale-110 transition-transform duration-300">
                 </div>
                 <div class="flex flex-col">
@@ -436,7 +385,7 @@
 
                 <!-- Support Info & Email link -->
                 <div
-                    class="flex flex-wrap justify-center lg:justify-start items-center gap-6 text-xs text-slate-500 font-medium pt-2">
+                    class="flex flex-wrap justify-center lg:justify-start items-center gap-6 text-xs text-slate-300 font-medium pt-2">
                     <div class="flex items-center gap-1.5">
                         <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
@@ -444,7 +393,7 @@
                             </path>
                         </svg>
                         Support: <a href="mailto:support@notex.work"
-                            class="text-slate-400 hover:text-berry-400 transition-colors">support@notex.work</a>
+                            class="text-slate-300 hover:text-berry-400 transition-colors">support@notex.work</a>
                     </div>
                     <span>•</span>
                     <span>Free & Offline Secure</span>
@@ -470,7 +419,7 @@
                                 <div class="w-3 h-3 rounded-full bg-[#ffbd2e]"></div>
                                 <div class="w-3 h-3 rounded-full bg-[#27c93f]"></div>
                             </div>
-                            <div class="text-[9px] text-slate-500 font-mono tracking-wider">BERRYSHOT INTERFACE</div>
+                            <div class="text-[9px] text-slate-400 font-mono tracking-wider">BERRYSHOT INTERFACE</div>
                             <div class="w-10"></div>
                         </div>
 
@@ -521,14 +470,14 @@
                             class="glass-panel rounded-2xl p-4 border border-white/10 flex flex-col sm:flex-row items-center gap-4 shadow-xl relative group hover:border-berry-500/30 transition-all duration-300">
                             <div
                                 class="p-2 bg-darkBg border border-white/10 rounded-xl relative shrink-0 hidden sm:block">
-                                <img src="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=https://github.com/berry-apps/berryshot/raw/main/landingpage/assets/BerryShot.dmg&color=ff2e5b&bgcolor=0f0617"
+                                <img src="./assets/qr_download.webp"
                                     alt="QR Code" class="w-[90px] h-[90px] rounded-md select-none relative z-10">
                             </div>
                             <div class="text-center sm:text-left flex-1 min-w-0">
-                                <h4 class="font-display font-extrabold text-sm text-white mb-1">
+                                <h2 class="font-display font-extrabold text-sm text-white mb-1">
                                     <span class="sm:hidden">Get BerryShot for Mac</span>
                                     <span class="hidden sm:inline">Scan to Download</span>
-                                </h4>
+                                </h2>
                                 <p class="text-[10px] text-slate-400 leading-normal mb-2">
                                     <span class="sm:hidden">BerryShot is a native macOS application. Click below to copy
                                         the download link or download the installer directly.</span>
@@ -643,7 +592,7 @@
                     <!-- Simulated Cursor for Autoplay Demo -->
                     <div id="sim-auto-cursor"
                         class="absolute pointer-events-none transition-all duration-300 z-50 opacity-0"
-                        style="width: 17px; height: 22px; top: 200px; left: 200px;">
+                        style="width: 17px; height: 22px; transform: translate(200px, 200px);">
                         <svg class="w-full h-full drop-shadow-[0_2px_5px_rgba(0,0,0,0.6)]" viewBox="0 0 24 24"
                             fill="currentColor" xmlns="http://www.w3.org/2000/svg">
                             <path d="M4.5 3V17.2L8.9 12.8L14.3 22L17.5 20L12.2 11L17.5 11L4.5 3Z" fill="black"
@@ -784,7 +733,7 @@
                                 <span class="font-display font-bold text-sm tracking-wider">BerryShot AI
                                     Assistant</span>
                             </div>
-                            <button onclick="closeSimulatorAI()"
+                            <button onclick="closeSimulatorAI()" aria-label="Đóng trình mô phỏng AI"
                                 class="text-slate-500 hover:text-white transition-colors">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -1485,7 +1434,7 @@
                                 class="w-7 h-7 rounded-lg bg-berry-500/10 flex items-center justify-center shrink-0 text-berry-400 mt-1">
                                 ✓</div>
                             <div>
-                                <h4 class="text-sm font-bold text-white">Native OCR in 0.1 Seconds</h4>
+                                <h4 class="text-sm font-bold text-white">Native OCR in 0.1 Seconds</h2>
                                 <p class="text-xs text-slate-400 mt-0.5">Utilizes Apple Vision libraries optimized for
                                     Apple Silicon (M1/M2/M3/M4) chips. Fully localized, no internet connection is
                                     required.</p>
@@ -1496,7 +1445,7 @@
                                 class="w-7 h-7 rounded-lg bg-berry-500/10 flex items-center justify-center shrink-0 text-berry-400 mt-1">
                                 ✓</div>
                             <div>
-                                <h4 class="text-sm font-bold text-white">Modular AI Providers</h4>
+                                <h4 class="text-sm font-bold text-white">Modular AI Providers</h2>
                                 <p class="text-xs text-slate-400 mt-0.5">Easily input your Anthropic or OpenAI API keys
                                     in Settings. Query models on-the-fly without paying expensive third-party wrappers.
                                 </p>
@@ -1507,7 +1456,7 @@
                                 class="w-7 h-7 rounded-lg bg-berry-500/10 flex items-center justify-center shrink-0 text-berry-400 mt-1">
                                 ✓</div>
                             <div>
-                                <h4 class="text-sm font-bold text-white">Configurable Output Language</h4>
+                                <h4 class="text-sm font-bold text-white">Configurable Output Language</h2>
                                 <p class="text-xs text-slate-400 mt-0.5">Toggle default response parameters between
                                     English, Vietnamese, or Japanese. Output is formatted and ready to copy.</p>
                             </div>
@@ -1547,7 +1496,7 @@
                         <kbd
                             class="px-2.5 py-1.5 bg-berry-500/20 border border-berry-500/30 rounded-lg text-xs font-mono text-berry-400 font-bold shadow-md">X</kbd>
                     </div>
-                    <h4 class="font-display font-bold text-lg mb-2 text-white">Select Region</h4>
+                    <h4 class="font-display font-bold text-lg mb-2 text-white">Select Region</h2>
                     <p class="text-xs text-slate-400 leading-relaxed">Press the global shortcut to freeze the display
                         and draw a selection rectangle over any section.</p>
                 </div>
@@ -1559,7 +1508,7 @@
                     <div class="flex gap-1.5 mb-6 mt-4">
                         <span class="text-xs text-slate-300 font-semibold">Draw UI overlay</span>
                     </div>
-                    <h4 class="font-display font-bold text-lg mb-2 text-white">Apply Annotations</h4>
+                    <h4 class="font-display font-bold text-lg mb-2 text-white">Apply Annotations</h2>
                     <p class="text-xs text-slate-400 leading-relaxed">Highlight errors with custom arrows, write text
                         blurbs, or draw frames on selected code layouts.</p>
                 </div>
@@ -1571,7 +1520,7 @@
                     <div class="flex gap-1.5 mb-6 mt-4">
                         <span class="text-xs text-fuchsiaAccent font-semibold">Vision OCR / AI</span>
                     </div>
-                    <h4 class="font-display font-bold text-lg mb-2 text-white">Run OCR & AI</h4>
+                    <h4 class="font-display font-bold text-lg mb-2 text-white">Run OCR & AI</h2>
                     <p class="text-xs text-slate-400 leading-relaxed">Tap OCR to copy codes instantly, or call AI to
                         explain blocks without opening separate browser tabs.</p>
                 </div>
@@ -1586,7 +1535,7 @@
                             Enter</kbd>
                         <span class="text-xs text-slate-500 self-center">to copy</span>
                     </div>
-                    <h4 class="font-display font-bold text-lg mb-2 text-white">Copy or Share Link</h4>
+                    <h4 class="font-display font-bold text-lg mb-2 text-white">Copy or Share Link</h2>
                     <p class="text-xs text-slate-400 leading-relaxed">Files are saved locally or uploaded to cloud
                         storage providers. Shareable URL is copied automatically.</p>
                 </div>
@@ -1733,7 +1682,7 @@
                         <div class="flex items-center gap-4">
                             <div
                                 class="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 shadow-lg">
-                                <img src="./assets/AppIcon.png" alt="BerryShot Logo" class="w-12 h-12 object-contain">
+                                <img src="./assets/AppIcon.webp" alt="BerryShot Logo" class="w-12 h-12 object-contain">
                             </div>
                             <div>
                                 <h3 class="font-display font-extrabold text-3xl text-white">Elevate Your Screen
@@ -1814,7 +1763,7 @@
                 <a href="#" class="flex items-center gap-3.5 group">
                     <div
                         class="relative w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center border border-white/10 group-hover:border-berry-400 transition-all overflow-hidden shadow-inner">
-                        <img src="./assets/AppIcon.png" alt="BerryShot Logo" class="w-8 h-8 object-contain">
+                        <img src="./assets/AppIcon.webp" alt="BerryShot Logo" class="w-8 h-8 object-contain">
                     </div>
                     <span class="font-display font-bold text-xl text-white tracking-tight">BerryShot</span>
                 </a>
@@ -1844,7 +1793,7 @@
             <div class="md:col-span-7 grid grid-cols-2 sm:grid-cols-3 gap-8 text-sm">
                 <!-- Col 1 -->
                 <div class="space-y-4">
-                    <h4 class="font-bold text-white tracking-wider uppercase text-xs">Product</h4>
+                    <h4 class="font-bold text-white tracking-wider uppercase text-xs">Product</h2>
                     <ul class="space-y-2.5 text-slate-400">
                         <li><a href="#features" class="hover:text-berry-400 transition-colors">Annotation Tools</a></li>
                         <li><a href="#interactive-demo" class="hover:text-berry-400 transition-colors">Interactive
@@ -1855,7 +1804,7 @@
                 </div>
                 <!-- Col 2 -->
                 <div class="space-y-4">
-                    <h4 class="font-bold text-white tracking-wider uppercase text-xs">Developer</h4>
+                    <h4 class="font-bold text-white tracking-wider uppercase text-xs">Developer</h2>
                     <ul class="space-y-2.5 text-slate-400">
                         <li><a href="https://dautay.dev" target="_blank" rel="noopener noreferrer"
                                 class="flex items-center gap-1.5 hover:text-berry-400 transition-colors font-semibold text-berry-400">
@@ -1884,7 +1833,7 @@
                 </div>
                 <!-- Col 3 -->
                 <div class="space-y-4 col-span-2 sm:col-span-1">
-                    <h4 class="font-bold text-white tracking-wider uppercase text-xs">Resources</h4>
+                    <h4 class="font-bold text-white tracking-wider uppercase text-xs">Resources</h2>
                     <ul class="space-y-2.5 text-slate-400">
                         <li><a href="docs.html" class="hover:text-berry-400 transition-colors">Documentation Docs</a>
                         </li>
@@ -1924,7 +1873,7 @@
             <div class="flex flex-col items-center gap-2 mb-6">
                 <div
                     class="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 shadow-lg">
-                    <img src="./assets/AppIcon.png" alt="BerryShot Logo" class="w-9 h-9 object-contain">
+                    <img src="./assets/AppIcon.webp" alt="BerryShot Logo" class="w-9 h-9 object-contain">
                 </div>
                 <h3 class="font-display font-extrabold text-xl text-white">Support BerryShot Development</h3>
                 <p class="text-xs text-slate-400 leading-normal max-w-xs mx-auto">Scan the VietQR code below to buy the
@@ -1934,7 +1883,7 @@
             <!-- VietQR Image Dynamic generation -->
             <div class="p-3 bg-darkBg border border-white/15 rounded-2xl inline-block shadow-inner relative z-10 mb-6">
                 <!-- 0201000212246 VCB dynamic code with 50k template -->
-                <img src="https://img.vietqr.io/image/vcb-0201000212246-compact2.png?amount=50000&addInfo=Donate%20BerryShot&accountName=TAN"
+                <img src="./assets/vietqr.webp"
                     alt="VietQR Vietcombank donation code Tan"
                     class="w-[200px] h-[200px] rounded-lg select-none relative z-10">
                 <div class="absolute inset-0 bg-berry-500/5 rounded-2xl pointer-events-none"></div>
@@ -3070,9 +3019,8 @@
                 const cursor = document.getElementById('sim-auto-cursor');
                 if (!cursor) { resolve(); return; }
                 cursor.style.opacity = '1';
-                cursor.style.transition = `left ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94), top ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
-                cursor.style.left = `${x}px`;
-                cursor.style.top = `${y}px`;
+                cursor.style.transition = `transform ${duration}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)`;
+                cursor.style.transform = `translate(${x}px, ${y}px)`;
                 const t = setTimeout(resolve, duration);
                 activeTimelineTimers.push(t);
             });
@@ -3087,8 +3035,7 @@
                 if (!cursor || !svg) { resolve(); return; }
 
                 cursor.style.opacity = '1';
-                cursor.style.left = `${sX}px`;
-                cursor.style.top = `${sY}px`;
+                cursor.style.transform = `translate(${sX}px, ${sY}px)`;
 
                 let el = null;
                 if (tool === 'rect') {
@@ -3148,8 +3095,7 @@
                     const curX = sX + (eX - sX) * t;
                     const curY = sY + (eY - sY) * t;
 
-                    cursor.style.left = `${curX}px`;
-                    cursor.style.top = `${curY}px`;
+                    cursor.style.transform = `translate(${curX}px, ${curY}px)`;
 
                     if (el) {
                         if (tool === 'rect') {
