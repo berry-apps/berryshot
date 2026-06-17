@@ -77,6 +77,20 @@ curl -X POST "<Endpoint URL>" \
 The server response should be a JSON payload. By specifying a path in **Callback URL** (e.g. `{json:data.url}` or `data.url`), BerryShot will parse the JSON response to retrieve the direct image URL and copy it straight to your clipboard.
 
 ---
+---
+
+## 🚀 CI/CD Pipeline (Jenkins)
+
+BerryShot includes an automated declarative [Jenkinsfile](Jenkinsfile) pipeline setup in the root workspace to manage landing page deployments. 
+
+### Pipeline Trigger Actions
+- **Trigger**: Activates automatically via the `githubPush()` trigger hook when changes are pushed or a pull request is merged into the `main` branch.
+- **Workflow Stages**:
+  1. **Build macOS Binaries (Optional)**: Automatically triggers `./build_app.sh` on macOS Jenkins runners to compile and sign the latest `.dmg` and `.zip` distribution bundles.
+  2. **Verify Code Integrity**: Confirms formatting and structure of static HTML layouts (`index.html` and `docs.html`).
+  3. **Local Deployment**: Runs local `rsync` with the `--delete` flag to synchronize *only* the contents of the `landingpage/` folder directly to the local webroot (e.g. `/var/www/berryshot`), leaving all Swift application source code files safely outside the target deployment webroot.
+
+---
 
 ## 📄 License
 
