@@ -10,22 +10,22 @@ public class UploadResultWindowManager {
     
     public func showLoading() {
         let view = UploadLoadingView()
-        presentPanel(title: "Uploading to Cloud...", view: AnyView(view))
+        presentPanel(title: "Uploading to Cloud...", view: AnyView(view), height: 120)
     }
     
     public func show(url: String) {
         let view = UploadResultView(url: url)
-        presentPanel(title: "Cloud Upload Successful", view: AnyView(view))
+        presentPanel(title: "Cloud Upload Successful", view: AnyView(view), height: 120)
     }
     
     public func showError(_ message: String) {
         let view = UploadErrorView(message: message)
-        presentPanel(title: "Upload Failed", view: AnyView(view))
+        presentPanel(title: "Upload Failed", view: AnyView(view), height: 250)
     }
     
-    private func presentPanel(title: String, view: AnyView) {
+    private func presentPanel(title: String, view: AnyView, height: CGFloat) {
         if window == nil {
-            let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 450, height: 120),
+            let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 450, height: height),
                                 styleMask: [.titled, .closable, .fullSizeContentView, .nonactivatingPanel],
                                 backing: .buffered,
                                 defer: false)
@@ -35,6 +35,7 @@ public class UploadResultWindowManager {
             self.window = panel
         }
         
+        window?.setContentSize(NSSize(width: 450, height: height))
         window?.title = title
         window?.contentView = NSHostingView(rootView: view)
         
@@ -56,14 +57,19 @@ struct UploadErrorView: View {
                     .font(.headline)
             }
             
-            Text(message)
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
+            ScrollView {
+                Text(message)
+                    .font(.system(size: 13, design: .monospaced))
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .padding()
+            }
+            .background(Color.black.opacity(0.05))
+            .cornerRadius(8)
+            .padding(.horizontal)
         }
         .padding(20)
-        .frame(width: 450, height: 120)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

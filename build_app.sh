@@ -17,6 +17,11 @@ mkdir -p "$RESOURCES_DIR"
 echo "Copying executable..."
 cp .build/release/$APP_NAME "$MACOS_DIR/"
 
+echo "Copying resources bundle..."
+if [ -d ".build/release/BerryShot_BerryShot.bundle" ]; then
+    cp -R ".build/release/BerryShot_BerryShot.bundle" "$RESOURCES_DIR/"
+fi
+
 echo "Generating Info.plist..."
 cat << PLIST > "$CONTENTS_DIR/Info.plist"
 <?xml version="1.0" encoding="UTF-8"?>
@@ -36,13 +41,19 @@ cat << PLIST > "$CONTENTS_DIR/Info.plist"
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.1</string>
+    <string>v1.0.2</string>
     <key>CFBundleVersion</key>
     <string>2</string>
     <key>LSMinimumSystemVersion</key>
     <string>13.0</string>
     <key>LSUIElement</key>
     <true/>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>BerryShot needs screen capture access to take screenshots and record your screen.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>BerryShot needs microphone access to record audio along with your screen recordings.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>BerryShot needs camera access for future video recording features.</string>
 </dict>
 </plist>
 PLIST
@@ -73,13 +84,21 @@ echo "Signing the app bundle with an ad-hoc signature to prevent repeated permis
 codesign --force --deep --sign - "$APP_DIR"
 
 echo "Creating Zip archive..."
-rm -f BerryShot.zip
-zip -r BerryShot.zip "$APP_DIR" > /dev/null
-cp BerryShot.zip landingpage/assets/
+rm -f landingpage/assets/BerryShot.zip
+zip -r landingpage/assets/BerryShot.zip "$APP_DIR" > /dev/null
 
 echo "Creating DMG package..."
-rm -f BerryShot.dmg
-hdiutil create -volname "BerryShot" -srcfolder "$APP_DIR" -ov -format UDZO BerryShot.dmg > /dev/null
-cp BerryShot.dmg landingpage/assets/
+rm -f landingpage/assets/BerryShot.dmg
+DMG_STAGING_DIR="dmg_staging"
+rm -rf "$DMG_STAGING_DIR"
+mkdir -p "$DMG_STAGING_DIR"
+cp -R "$APP_DIR" "$DMG_STAGING_DIR/"
+ln -s /Applications "$DMG_STAGING_DIR/Applications"
 
-echo "App bundle created at $APP_DIR, synced to landingpage/assets/"
+hdiutil create -volname "BerryShot" -srcfolder "$DMG_STAGING_DIR" -ov -format UDZO landingpage/assets/BerryShot.dmg > /dev/null
+rm -rf "$DMG_STAGING_DIR"
+
+echo "Cleaning up temporary build files..."
+rm -rf "$APP_DIR"
+
+echo "App bundle packaged successfully and saved to landingpage/assets/"

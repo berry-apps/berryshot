@@ -7,7 +7,7 @@ public class CaptureCoordinator: ObservableObject {
     public static let shared = CaptureCoordinator()
     
     private let captureManager = ScreenCaptureManager()
-    private var aiResultWindowController: AIResultWindowController?
+    private var aiResultWindowControllers: [AIResultWindowController] = []
     
     private init() {
         setupHotkeys()
@@ -76,7 +76,12 @@ public class CaptureCoordinator: ObservableObject {
     public func handleAIAnalysis(cgImage: CGImage, rect: CGRect, screenBounds: CGRect, actionType: AIActionType = .explain) {
         // Show loading window
         let windowController = AIResultWindowController(rect: rect, screenBounds: screenBounds)
-        self.aiResultWindowController = windowController
+        self.aiResultWindowControllers.append(windowController)
+        
+        windowController.onClose = { [weak self, weak windowController] in
+            self?.aiResultWindowControllers.removeAll { $0 === windowController }
+        }
+        
         windowController.show()
         
         Task {
@@ -124,9 +129,7 @@ public class CaptureCoordinator: ObservableObject {
     private func processCapture(cgImage: CGImage, rect: CGRect, action: CaptureAction) {
         self.overlayWindowController?.hide()
         self.overlayWindowController = nil
-        self.aiResultWindowController?.hide()
-        self.aiResultWindowController?.close()
-        self.aiResultWindowController = nil
+        self.closeAIWindow()
         
         let scale = NSScreen.main?.backingScaleFactor ?? 2.0
         let cropRect = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
@@ -190,17 +193,13 @@ public class CaptureCoordinator: ObservableObject {
     public func cancelCapture() {
         overlayWindowController?.hide()
         overlayWindowController = nil
-        aiResultWindowController?.hide()
-        aiResultWindowController?.close()
-        aiResultWindowController = nil
+        closeAIWindow()
     }
     
     public func copyToClipboard(cgImage: CGImage, rect: CGRect) {
         self.overlayWindowController?.hide()
         self.overlayWindowController = nil
-        self.aiResultWindowController?.hide()
-        self.aiResultWindowController?.close()
-        self.aiResultWindowController = nil
+        self.closeAIWindow()
         
         let scale = NSScreen.main?.backingScaleFactor ?? 2.0
         let cropRect = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
@@ -235,5 +234,13 @@ public class CaptureCoordinator: ObservableObject {
         
         try? pngData.write(to: fileURL)
         return fileURL
+    }
+    
+    public func closeAIWindow() {
+        self.aiResultWindowControllers.forEach { controller in
+            controller.hide()
+            controller.close()
+        }
+        self.aiResultWindowControllers.removeAll()
     }
 }

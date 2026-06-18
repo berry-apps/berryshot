@@ -15,20 +15,24 @@ public struct AIResultView: View {
                     Button(action: {
                         onClose()
                     }) {
-                        Circle()
-                            .fill(Color(red: 0.95, green: 0.36, blue: 0.34))
-                            .frame(width: 12, height: 12)
-                            .overlay(
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 6, weight: .bold))
-                                    .foregroundColor(.black.opacity(0.6))
-                            )
+                        ZStack {
+                            Circle()
+                                .fill(Color(red: 0.95, green: 0.36, blue: 0.34))
+                                .frame(width: 12, height: 12)
+                            
+                            Image(systemName: "xmark")
+                                .font(.system(size: 6, weight: .bold))
+                                .foregroundColor(.black.opacity(0.6))
+                                .opacity(isCloseHovered ? 1.0 : 0.0)
+                        }
+                        .frame(width: 24, height: 24)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .onHover { hover in
                         isCloseHovered = hover
                     }
-                    .padding(.leading, 12)
+                    .padding(.leading, 6)
                     
                     Spacer()
                     

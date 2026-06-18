@@ -76,6 +76,14 @@ struct BerryShotApp: App {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Enforce single instance
+        let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "com.tan.berryshot")
+        if runningApps.count > 1 {
+            print("Another instance is already running. Terminating.")
+            NSApplication.shared.terminate(nil)
+            return
+        }
+        
         // App setup
         _ = CaptureCoordinator.shared
         
@@ -101,5 +109,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Ensure the app starts as an accessory (menu bar only, no dock icon)
         NSApp.setActivationPolicy(.accessory)
+        
+        // Open Settings window on first launch so the user knows the app is running
+        let isFirstLaunch = !UserDefaults.standard.bool(forKey: "hasLaunchedBefore")
+        if isFirstLaunch {
+            UserDefaults.standard.set(true, forKey: "hasLaunchedBefore")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                NSApp.activate(ignoringOtherApps: true)
+                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+            }
+        }
     }
 }

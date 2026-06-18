@@ -4,6 +4,8 @@ import SwiftUI
 public class AIResultWindowController: NSWindowController {
     public let viewModel = AIResultViewModel()
     
+    public var onClose: (() -> Void)?
+    
     public convenience init(rect: CGRect, screenBounds: CGRect) {
         let size = CGSize(width: 400, height: 500)
         let margin: CGFloat = 16
@@ -35,6 +37,8 @@ public class AIResultWindowController: NSWindowController {
         self.init(window: window)
         
         let hostingView = AIResultHostingView(rootView: AIResultView(viewModel: viewModel, onClose: { [weak self] in
+            self?.onClose?()
+            self?.hide()
             self?.close()
         }))
         window.contentView = hostingView
