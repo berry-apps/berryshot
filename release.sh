@@ -8,8 +8,12 @@ if [ -z "$1" ]; then
 fi
 
 NEW_VERSION=$1
+# Remove 'v' prefix if user accidentally includes it
+NEW_VERSION=${NEW_VERSION#v}
+
 # Find the old version from AboutSettingsView.swift
-OLD_VERSION=$(grep -oE 'Text\("Version [0-9]+\.[0-9]+\.[0-9]+"\)' Sources/App/Settings/AboutSettingsView.swift | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+OLD_VERSION=$(grep -oE 'Text\("Version [v]?[0-9]+\.[0-9]+\.[0-9]+"\)' Sources/App/Settings/AboutSettingsView.swift | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+OLD_VERSION=${OLD_VERSION#v}
 
 if [ -z "$OLD_VERSION" ]; then
   echo "Error: Could not determine old version from AboutSettingsView.swift"

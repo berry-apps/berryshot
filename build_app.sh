@@ -41,7 +41,7 @@ cat << PLIST > "$CONTENTS_DIR/Info.plist"
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.2</string>
+    <string>1.0.3</string>
     <key>CFBundleVersion</key>
     <string>2</string>
     <key>LSMinimumSystemVersion</key>
@@ -103,5 +103,24 @@ rm -rf "$DMG_STAGING_DIR"
 
 echo "Cleaning up temporary build files..."
 rm -rf "$APP_DIR"
+
+if [ -n "$APP_SPEC_PASSWORD" ]; then
+    echo "Submitting DMG to Apple Notary Service..."
+    xcrun notarytool submit landingpage/assets/BerryShot.dmg \
+        --apple-id "vdong1804@gmail.com" \
+        --password "$APP_SPEC_PASSWORD" \
+        --team-id "WZ2Z528AM6" \
+        --wait
+
+    echo "Stapling ticket to DMG..."
+    xcrun stapler staple landingpage/assets/BerryShot.dmg
+    echo "Notarization complete!"
+else
+    echo "--------------------------------------------------------"
+    echo "⚠️  APP_SPEC_PASSWORD is not set. Skipping Notarization."
+    echo "To auto-notarize, run this command in Terminal once before building:"
+    echo "export APP_SPEC_PASSWORD='your-password'"
+    echo "--------------------------------------------------------"
+fi
 
 echo "App bundle packaged successfully and saved to landingpage/assets/"
