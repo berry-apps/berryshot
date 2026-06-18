@@ -41,7 +41,7 @@ cat << PLIST > "$CONTENTS_DIR/Info.plist"
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>v1.0.2</string>
+    <string>1.0.2</string>
     <key>CFBundleVersion</key>
     <string>2</string>
     <key>LSMinimumSystemVersion</key>
@@ -80,12 +80,15 @@ rm AppIcon.icns
 # Force Finder to refresh the app icon
 touch "$APP_DIR"
 
-echo "Signing the app bundle with an ad-hoc signature to prevent repeated permission prompts..."
-codesign --force --deep --sign - "$APP_DIR"
+echo "Signing the app bundle..."
+# SỬA Ở ĐÂY: Phải là "Developer ID Application", KHÔNG DÙNG "Apple Development"
+SIGNING_IDENTITY="Developer ID Application: Vu Dong (WZ2Z528AM6)"
+
+codesign --force --deep --options runtime --sign "$SIGNING_IDENTITY" "$APP_DIR"
 
 echo "Creating Zip archive..."
 rm -f landingpage/assets/BerryShot.zip
-zip -r landingpage/assets/BerryShot.zip "$APP_DIR" > /dev/null
+/usr/bin/ditto -c -k --keepParent "$APP_DIR" landingpage/assets/BerryShot.zip
 
 echo "Creating DMG package..."
 rm -f landingpage/assets/BerryShot.dmg
