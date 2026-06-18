@@ -90,7 +90,7 @@ public class ToolbarWindowController: NSWindowController, NSWindowDelegate {
     }
     
     public func windowDidMove(_ notification: Notification) {
-        guard let window = self.window, let vm = self.viewModel else { return }
+        guard let window = self.window, let vm = self.viewModel, isDragging else { return }
         let pos = CGPoint(x: window.frame.midX - self.screenBounds.minX,
                           y: self.screenBounds.height - (window.frame.midY - self.screenBounds.minY))
         vm.customToolbarPosition = pos

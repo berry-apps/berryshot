@@ -12,7 +12,7 @@ public struct Shortcut: Codable, Equatable, Sendable {
     }
     
     public static let defaultShortcut = Shortcut(
-        keyCode: 0, // A
+        keyCode: 19, // 2
         modifierFlags: NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue
     )
     

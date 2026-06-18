@@ -59,11 +59,23 @@ public class CaptureCoordinator: ObservableObject {
         processCapture(cgImage: cgImage, rect: rect, action: .upload)
     }
     
-    public func handleAIAnalysis(cgImage: CGImage) {
-        self.cancelCapture() // Hide overlay immediately
+    public enum AIActionType {
+        case explain
+        case translate
+        case refactor
         
+        func prompt(langName: String) -> String {
+            switch self {
+            case .explain: return "Explain what is in this image briefly and concisely. Please reply exclusively in \(langName)."
+            case .translate: return "Translate the text in this image into \(langName). Only return the translated text."
+            case .refactor: return "Refactor or improve the code shown in this image. Add comments explaining your changes. Reply exclusively in \(langName)."
+            }
+        }
+    }
+    
+    public func handleAIAnalysis(cgImage: CGImage, rect: CGRect, screenBounds: CGRect, actionType: AIActionType = .explain) {
         // Show loading window
-        let windowController = AIResultWindowController()
+        let windowController = AIResultWindowController(rect: rect, screenBounds: screenBounds)
         self.aiResultWindowController = windowController
         windowController.show()
         
@@ -72,16 +84,23 @@ public class CaptureCoordinator: ObservableObject {
                 do {
                     let lang = UserDefaults.standard.string(forKey: "ai_output_language") ?? "en"
                     let langName = lang == "vi" ? "Vietnamese" : (lang == "ja" ? "Japanese" : "English")
-                    let prompt = "Explain what is in this image briefly and concisely. Please reply exclusively in \(langName)."
-                    let stream = ai.provider.generateTextStream(prompt: prompt, image: cgImage)
+                    let prompt = actionType.prompt(langName: langName)
+                    
+                    let scale = NSScreen.main?.backingScaleFactor ?? 2.0
+                    let cropRect = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
+                    let finalImage = cgImage.cropping(to: cropRect) ?? cgImage
+                    
+                    let stream = ai.provider.generateTextStream(prompt: prompt, image: finalImage)
                     await MainActor.run {
                         windowController.viewModel.resultText = ""
-                        windowController.viewModel.isLoading = false
                     }
                     for try await chunk in stream {
                         await MainActor.run {
                             windowController.viewModel.resultText += chunk
                         }
+                    }
+                    await MainActor.run {
+                        windowController.viewModel.isLoading = false
                     }
                 } catch {
                     await MainActor.run {
@@ -105,6 +124,9 @@ public class CaptureCoordinator: ObservableObject {
     private func processCapture(cgImage: CGImage, rect: CGRect, action: CaptureAction) {
         self.overlayWindowController?.hide()
         self.overlayWindowController = nil
+        self.aiResultWindowController?.hide()
+        self.aiResultWindowController?.close()
+        self.aiResultWindowController = nil
         
         let scale = NSScreen.main?.backingScaleFactor ?? 2.0
         let cropRect = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
@@ -168,11 +190,17 @@ public class CaptureCoordinator: ObservableObject {
     public func cancelCapture() {
         overlayWindowController?.hide()
         overlayWindowController = nil
+        aiResultWindowController?.hide()
+        aiResultWindowController?.close()
+        aiResultWindowController = nil
     }
     
     public func copyToClipboard(cgImage: CGImage, rect: CGRect) {
         self.overlayWindowController?.hide()
         self.overlayWindowController = nil
+        self.aiResultWindowController?.hide()
+        self.aiResultWindowController?.close()
+        self.aiResultWindowController = nil
         
         let scale = NSScreen.main?.backingScaleFactor ?? 2.0
         let cropRect = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)

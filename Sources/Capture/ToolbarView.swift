@@ -123,6 +123,7 @@ struct HoverableDragBar: View {
     @State private var isCollapseHovered = false
     @State private var isLockHovered = false
     @State private var isHelpHovered = false
+    @State private var showAIOptions = false
     
     var body: some View {
         HStack(spacing: 0) {
@@ -139,7 +140,6 @@ struct HoverableDragBar: View {
                             Image(systemName: "xmark")
                                 .font(.system(size: 6, weight: .bold))
                                 .foregroundColor(.black.opacity(0.6))
-                                .opacity(isCloseHovered ? 1 : 0)
                         )
                 }
                 .buttonStyle(.plain)
@@ -160,7 +160,6 @@ struct HoverableDragBar: View {
                             Image(systemName: "minus")
                                 .font(.system(size: 6, weight: .bold))
                                 .foregroundColor(.black.opacity(0.6))
-                                .opacity(isCollapseHovered ? 1 : 0)
                         )
                 }
                 .buttonStyle(.plain)
@@ -180,7 +179,6 @@ struct HoverableDragBar: View {
                             Image(systemName: viewModel.isInteractMode ? "lock.fill" : "lock.open.fill")
                                 .font(.system(size: 6, weight: .bold))
                                 .foregroundColor(.black.opacity(0.6))
-                                .opacity(isLockHovered ? 1 : 0)
                         )
                 }
                 .buttonStyle(.plain)
@@ -200,7 +198,6 @@ struct HoverableDragBar: View {
                             Image(systemName: "questionmark")
                                 .font(.system(size: 6, weight: .bold))
                                 .foregroundColor(.white)
-                                .opacity(isHelpHovered ? 1 : 0.8)
                         )
                 }
                 .buttonStyle(.plain)
@@ -273,7 +270,29 @@ struct HoverableDragBar: View {
                 }
                 
                 ActionToolButton(icon: "sparkles", color: .purple, size: 10) {
-                    viewModel.handleAIAnalysis()
+                    showAIOptions.toggle()
+                }
+                .popover(isPresented: $showAIOptions, arrowEdge: .bottom) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        MenuItemButton(title: "Explain Image", icon: "sparkles") {
+                            viewModel.handleAIAnalysis(actionType: .explain)
+                            showAIOptions = false
+                        }
+                        
+                        MenuItemButton(title: "Translate Text", icon: "character.book.closed") {
+                            viewModel.handleAIAnalysis(actionType: .translate)
+                            showAIOptions = false
+                        }
+                        
+                        MenuItemButton(title: "Refactor Code", icon: "chevron.left.forwardslash.chevron.right") {
+                            viewModel.handleAIAnalysis(actionType: .refactor)
+                            showAIOptions = false
+                        }
+                    }
+                    .padding(6)
+                    .frame(width: 140)
+                    .padding(8)
+                    .background(Color(NSColor.windowBackgroundColor))
                 }
                 
                 ActionToolButton(icon: "checkmark", color: .green, size: 10) {
@@ -508,6 +527,34 @@ class ColorPanelHelper: NSObject {
             let nsColor = panel.color
             let color = Color(nsColor)
             onColorChange?(color)
+        }
+    }
+}
+
+struct MenuItemButton: View {
+    let title: String
+    let icon: String
+    let action: () -> Void
+    
+    @State private var isHovered = false
+    
+    var body: some View {
+        HStack {
+            Label(title, systemImage: icon)
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(isHovered ? .white : .primary)
+            Spacer()
+        }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .contentShape(Rectangle())
+        .background(isHovered ? Color.accentColor : Color.clear)
+        .cornerRadius(6)
+        .onHover { hovering in
+            isHovered = hovering
+        }
+        .onTapGesture {
+            action()
         }
     }
 }

@@ -1047,9 +1047,10 @@ final class OverlayViewModel: ObservableObject {
         }
     }
     
-    func handleAIAnalysis() {
+    func handleAIAnalysis(actionType: CaptureCoordinator.AIActionType = .explain) {
         guard let renderedImage = renderAnnotatedImage() else { return }
-        CaptureCoordinator.shared.handleAIAnalysis(cgImage: renderedImage)
+        let screenBounds = CGRect(origin: .zero, size: cachedGeometrySize)
+        CaptureCoordinator.shared.handleAIAnalysis(cgImage: renderedImage, rect: selectionRect, screenBounds: screenBounds, actionType: actionType)
     }
     
     func toolbarPosition(for rect: CGRect, screenBounds: CGRect) -> CGPoint {
@@ -1070,15 +1071,18 @@ final class OverlayViewModel: ObservableObject {
             return CGPoint(x: x, y: y)
         }
         
-        var x = rect.maxX - toolbarWidth / 2
+        // Nằm ở giữa góc dưới vùng capture
+        var x = rect.midX
         var y = rect.maxY + toolbarHeight / 2 + margin
         
         if x + toolbarWidth / 2 > screenWidth { x = screenWidth - toolbarWidth / 2 - margin }
         if x - toolbarWidth / 2 < 0 { x = toolbarWidth / 2 + margin }
         
+        // Nếu chạm góc cạnh dưới màn hình thì hiển thị phía dưới bên trong vùng capture
         if y + toolbarHeight / 2 > screenHeight {
-            y = rect.minY - toolbarHeight / 2 - margin
-            if y - toolbarHeight / 2 < 0 { y = rect.maxY - toolbarHeight / 2 - margin }
+            y = rect.maxY - toolbarHeight / 2 - margin
+            // Đảm bảo không bị tràn lên trên
+            if y - toolbarHeight / 2 < 0 { y = toolbarHeight / 2 + margin }
         }
         
         return CGPoint(x: x, y: y)
