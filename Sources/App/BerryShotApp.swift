@@ -2,6 +2,17 @@ import SwiftUI
 import Speech
 import AVFoundation
 
+private var resourceBundle: Bundle? {
+    let candidates = [
+        Bundle.main.bundlePath + "/Contents/Resources/BerryShot_BerryShot.bundle",
+        Bundle.main.bundlePath + "/Contents/Resources/BerryShot_BerryShot_BerryShot.bundle"
+    ]
+    for path in candidates {
+        if let bundle = Bundle(path: path) { return bundle }
+    }
+    return nil
+}
+
 struct MenuView: View {
     @Environment(\.openSettings) private var openSettings
     @ObservedObject var captureCoordinator = CaptureCoordinator.shared
@@ -81,8 +92,8 @@ struct MenuBarIconView: View {
         let paths = [
             // App bundle Resources
             Bundle.main.path(forResource: "MenuBarIcon", ofType: "png"),
-            // Swift Package resource bundle
-            Bundle.module.path(forResource: "MenuBarIcon", ofType: "png"),
+            // Swift Package resource bundle (safe access)
+            resourceBundle?.path(forResource: "MenuBarIcon", ofType: "png"),
             // Relative to executable
             Bundle.main.bundlePath + "/Contents/Resources/MenuBarIcon.png",
             Bundle.main.bundlePath + "/Contents/Resources/BerryShot_BerryShot.bundle/MenuBarIcon.png"
@@ -113,7 +124,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         _ = CaptureCoordinator.shared
         
         // Load AppIcon from module resources robustly
-        if let url = Bundle.module.url(forResource: "AppIcon", withExtension: "png"),
+        if let bundle = resourceBundle,
+           let url = bundle.url(forResource: "AppIcon", withExtension: "png"),
            let iconImage = NSImage(contentsOf: url) {
             NSApplication.shared.applicationIconImage = iconImage
             print("[BerryShot] Successfully loaded AppIcon.png")

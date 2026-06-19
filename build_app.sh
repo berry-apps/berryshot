@@ -46,7 +46,7 @@ cat << PLIST > "$CONTENTS_DIR/Info.plist"
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.1.0</string>
+    <string>1.1.2</string>
     <key>CFBundleVersion</key>
     <string>2</string>
     <key>LSMinimumSystemVersion</key>
@@ -134,12 +134,8 @@ ln -s /Applications "$DMG_STAGING_DIR/Applications"
 hdiutil create -volname "BerryShot" -srcfolder "$DMG_STAGING_DIR" -ov -format UDZO landingpage/assets/BerryShot.dmg > /dev/null
 rm -rf "$DMG_STAGING_DIR"
 
-# Generate SHA256 hash of DMG
-echo "Generating SHA256 hash..."
-DMG_HASH=$(shasum -a 256 landingpage/assets/BerryShot.dmg | awk '{print $1}')
-echo "DMG SHA256: $DMG_HASH"
-# Save hash to file for release.sh to use
-echo "$DMG_HASH" > landingpage/assets/BerryShot.dmg.sha256
+echo "Signing the DMG..."
+codesign --force --sign "$SIGNING_IDENTITY" landingpage/assets/BerryShot.dmg
 
 echo "Cleaning up temporary build files..."
 rm -rf "$APP_DIR"
@@ -172,5 +168,12 @@ else
     echo ""
     echo "⚠️  Without notarization, the app will be BLOCKED by Gatekeeper on other machines!"
 fi
+
+# Generate SHA256 hash of DMG (after notarization/stapling if applicable)
+echo "Generating SHA256 hash..."
+DMG_HASH=$(shasum -a 256 landingpage/assets/BerryShot.dmg | awk '{print $1}')
+echo "DMG SHA256: $DMG_HASH"
+# Save hash to file for release.sh to use
+echo "$DMG_HASH" > landingpage/assets/BerryShot.dmg.sha256
 
 echo "App bundle packaged successfully and saved to landingpage/assets/"

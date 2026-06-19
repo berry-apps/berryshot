@@ -3,7 +3,9 @@ set -e
 
 # Load .env file
 if [ -f .env ]; then
+    set -a
     source .env
+    set +a
     echo "✅ Loaded .env file"
 fi
 

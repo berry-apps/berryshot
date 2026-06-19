@@ -1,5 +1,16 @@
 import SwiftUI
 
+private var resourceBundle: Bundle? {
+    let candidates = [
+        Bundle.main.bundlePath + "/Contents/Resources/BerryShot_BerryShot.bundle",
+        Bundle.main.bundlePath + "/Contents/Resources/BerryShot_BerryShot_BerryShot.bundle"
+    ]
+    for path in candidates {
+        if let bundle = Bundle(path: path) { return bundle }
+    }
+    return nil
+}
+
 struct AboutSettingsView: View {
     @StateObject private var storeManager = StoreManager.shared
     
@@ -7,7 +18,8 @@ struct AboutSettingsView: View {
         ScrollView {
             VStack(spacing: 24) {
                 // App Icon
-                if let url = Bundle.module.url(forResource: "AppIcon", withExtension: "png"),
+                if let bundle = resourceBundle,
+                   let url = bundle.url(forResource: "AppIcon", withExtension: "png"),
                    let nsImage = NSImage(contentsOf: url) {
                     Image(nsImage: nsImage)
                         .resizable()
@@ -23,7 +35,7 @@ struct AboutSettingsView: View {
                     Text("BerryShot")
                         .font(.system(size: 28, weight: .bold))
                     
-                    Text("Version 1.1.0")
+                    Text("Version 1.1.2")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
