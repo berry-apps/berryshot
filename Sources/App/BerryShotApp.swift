@@ -148,4 +148,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         print("[BerryShot] App launched successfully. Look for BerryShot in the menu bar (top right).")
     }
+    
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        return false // Keep running in menu bar even if all windows are closed
+    }
 }

@@ -61,6 +61,16 @@ echo ""
 
 ./build_app.sh
 
+# Update DMG hash in landing page
+DMG_HASH_FILE="landingpage/assets/BerryShot.dmg.sha256"
+if [ -f "$DMG_HASH_FILE" ]; then
+    DMG_HASH=$(cat "$DMG_HASH_FILE")
+    # Update hash in HTML (replace existing hash or add new one)
+    sed -i '' "s/data-hash=\"[a-f0-9]*\"/data-hash=\"$DMG_HASH\"/g" landingpage/index.html
+    sed -i '' "s/SHA256: [a-f0-9]\{64\}/SHA256: $DMG_HASH/g" landingpage/index.html
+    echo "✅ Updated DMG hash in landing page: $DMG_HASH"
+fi
+
 echo "====================================="
 echo "🎉 Release $NEW_VERSION built successfully!"
 echo "Files are available in landingpage/assets/"

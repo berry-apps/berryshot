@@ -205,7 +205,7 @@
         "priceCurrency": "USD"
       },
       "description": "BerryShot is a lightweight screenshot and screen capture app for macOS, featuring drawing annotations, local OCR text extraction, and ChatGPT/Claude AI integration.",
-      "softwareVersion": "1.0.4"
+      "softwareVersion": "1.0.5"
     }
     </script>
 </head>
@@ -347,7 +347,7 @@
                             class="animate-ping absolute inline-flex h-full w-full rounded-full bg-berry-400 opacity-75"></span>
                         <span class="relative inline-flex rounded-full h-2 w-2 bg-berry-500"></span>
                     </span>
-                    Version 1.0.4 — Privacy-First Local OCR & AI
+                    Version 1.0.5 — Privacy-First Local OCR & AI
                 </div>
 
                 <!-- Main Heading -->
@@ -397,6 +397,12 @@
                     </div>
                     <span>•</span>
                     <span>Free & Offline Secure</span>
+                </div>
+
+                <!-- File Hash Verification -->
+                <div class="flex flex-wrap justify-center lg:justify-start items-center gap-2 text-[10px] text-slate-500 font-mono pt-1">
+                    <span class="text-slate-600">SHA256:</span>
+                    <code data-hash="40fb190d912cbf8f317c07aedb287d49e62831a271c5254c55a5992421c1d57d" class="bg-white/5 px-2 py-0.5 rounded border border-white/5 select-all break-all">Loading...</code>
                 </div>
             </div>
 
@@ -3427,6 +3433,23 @@
                 document.getElementById('sim-shortcuts-popover').classList.add('hidden');
             }
         });
+    </script>
+
+    <!-- Load DMG hash for verification -->
+    <script>
+        fetch('./assets/BerryShot.dmg.sha256')
+            .then(response => response.ok ? response.text() : '')
+            .then(hash => {
+                if (hash && hash.length === 64) {
+                    const hashEl = document.querySelector('[data-hash]');
+                    if (hashEl) {
+                        hashEl.textContent = hash.substring(0, 16) + '...' + hash.substring(48);
+                        hashEl.setAttribute('data-hash', hash);
+                        hashEl.title = hash;
+                    }
+                }
+            })
+            .catch(() => {});
     </script>
 </body>
 
