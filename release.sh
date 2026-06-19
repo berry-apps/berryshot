@@ -1,6 +1,19 @@
 #!/bin/bash
 set -e
 
+# Load .env file
+if [ -f .env ]; then
+    source .env
+    echo "✅ Loaded .env file"
+fi
+
+# Verify APP_SPEC_PASSWORD is available (without showing the value)
+if [ -n "$APP_SPEC_PASSWORD" ]; then
+    echo "✅ APP_SPEC_PASSWORD is set (length: ${#APP_SPEC_PASSWORD})"
+else
+    echo "⚠️  APP_SPEC_PASSWORD is not set"
+fi
+
 if [ -z "$1" ]; then
   echo "Usage: ./release.sh <new_version>"
   echo "Example: ./release.sh 1.0.2"
@@ -38,6 +51,8 @@ echo "✅ Updated build_app.sh"
 # Update version in landing page download links
 sed -i '' "s/v=${OLD_VERSION_ESCAPED}/v=${NEW_VERSION}/g" landingpage/index.html
 sed -i '' "s/Release: ${OLD_VERSION_ESCAPED}/Release: ${NEW_VERSION}/g" landingpage/index.html
+sed -i '' "s/Version ${OLD_VERSION_ESCAPED}/Version ${NEW_VERSION}/g" landingpage/index.html
+sed -i '' "s/\"softwareVersion\": \"${OLD_VERSION_ESCAPED}\"/\"softwareVersion\": \"${NEW_VERSION}\"/g" landingpage/index.html
 echo "✅ Updated landingpage/index.html"
 
 echo ""

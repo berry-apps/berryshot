@@ -46,7 +46,7 @@ cat << PLIST > "$CONTENTS_DIR/Info.plist"
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.5</string>
+    <string>1.1.0</string>
     <key>CFBundleVersion</key>
     <string>2</string>
     <key>LSMinimumSystemVersion</key>
@@ -104,11 +104,20 @@ cat << ENTITLEMENTS > BerryShot.entitlements
 ENTITLEMENTS
 
 echo "Signing the app bundle..."
-# SỬA Ở ĐÂY: Phải là "Developer ID Application", KHÔNG DÙNG "Apple Development"
 SIGNING_IDENTITY="Developer ID Application: Vu Dong (WZ2Z528AM6)"
 
-codesign --force --deep --options runtime --entitlements BerryShot.entitlements --sign "$SIGNING_IDENTITY" "$APP_DIR"
+# Sign nested bundles first
+if [ -d "$RESOURCES_DIR/BerryShot_BerryShot.bundle" ]; then
+    codesign --force --options runtime --sign "$SIGNING_IDENTITY" "$RESOURCES_DIR/BerryShot_BerryShot.bundle"
+fi
+
+# Sign main app bundle
+codesign --force --options runtime --entitlements BerryShot.entitlements --sign "$SIGNING_IDENTITY" "$APP_DIR"
 rm BerryShot.entitlements
+
+# Verify signature
+echo "Verifying code signature..."
+codesign --verify --deep --strict --verbose=2 "$APP_DIR"
 
 echo "Creating Zip archive..."
 rm -f landingpage/assets/BerryShot.zip
@@ -138,13 +147,23 @@ if [ -n "$APP_SPEC_PASSWORD" ]; then
 
     echo "Stapling ticket to DMG..."
     xcrun stapler staple landingpage/assets/BerryShot.dmg
-    echo "Notarization complete!"
+    
+    # Verify notarization
+    echo "Verifying notarization..."
+    xcrun stapler validate landingpage/assets/BerryShot.dmg
+    
+    echo "✅ Notarization complete!"
 else
     echo "--------------------------------------------------------"
     echo "⚠️  APP_SPEC_PASSWORD is not set. Skipping Notarization."
     echo "To auto-notarize, run this command in Terminal once before building:"
-    echo "export APP_SPEC_PASSWORD='your-password'"
+    echo "export APP_SPEC_PASSWORD='your-app-specific-password'"
+    echo ""
+    echo "Generate App-Specific Password at: https://appleid.apple.com/account/manage"
+    echo "Section: Sign-In and Security > App-Specific Passwords"
     echo "--------------------------------------------------------"
+    echo ""
+    echo "⚠️  Without notarization, the app will be BLOCKED by Gatekeeper on other machines!"
 fi
 
 echo "App bundle packaged successfully and saved to landingpage/assets/"
