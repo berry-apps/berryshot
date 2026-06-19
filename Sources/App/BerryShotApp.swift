@@ -58,21 +58,44 @@ struct BerryShotApp: App {
         MenuBarExtra {
             MenuView()
         } label: {
-            if let url = Bundle.module.url(forResource: "MenuBarIcon", withExtension: "png"),
-               let rawImage = NSImage(contentsOf: url) {
-                Image(nsImage: {
-                    rawImage.isTemplate = true
-                    rawImage.size = NSSize(width: 18, height: 18)
-                    return rawImage
-                }())
-            } else {
-                Image(systemName: "camera.viewfinder")
-            }
+            MenuBarIconView()
         }
         
         Settings {
             SettingsView()
         }
+    }
+}
+
+struct MenuBarIconView: View {
+    var body: some View {
+        if let icon = loadMenuBarIcon() {
+            Image(nsImage: icon)
+        } else {
+            Image(systemName: "camera.viewfinder")
+        }
+    }
+    
+    private func loadMenuBarIcon() -> NSImage? {
+        // Try multiple paths for the icon
+        let paths = [
+            // App bundle Resources
+            Bundle.main.path(forResource: "MenuBarIcon", ofType: "png"),
+            // Swift Package resource bundle
+            Bundle.module.path(forResource: "MenuBarIcon", ofType: "png"),
+            // Relative to executable
+            Bundle.main.bundlePath + "/Contents/Resources/MenuBarIcon.png",
+            Bundle.main.bundlePath + "/Contents/Resources/BerryShot_BerryShot.bundle/MenuBarIcon.png"
+        ]
+        
+        for path in paths.compactMap({ $0 }) {
+            if let image = NSImage(contentsOfFile: path) {
+                image.isTemplate = true
+                image.size = NSSize(width: 18, height: 18)
+                return image
+            }
+        }
+        return nil
     }
 }
 
@@ -122,5 +145,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
             }
         }
+        
+        print("[BerryShot] App launched successfully. Look for BerryShot in the menu bar (top right).")
     }
 }

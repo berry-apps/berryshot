@@ -23,7 +23,7 @@ struct AboutSettingsView: View {
                     Text("BerryShot")
                         .font(.system(size: 28, weight: .bold))
                     
-                    Text("Version 1.0.4")
+                    Text("Version 1.0.5")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }

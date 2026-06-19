@@ -22,6 +22,11 @@ if [ -d ".build/release/BerryShot_BerryShot.bundle" ]; then
     cp -R ".build/release/BerryShot_BerryShot.bundle" "$RESOURCES_DIR/"
 fi
 
+echo "Copying MenuBarIcon to app bundle root Resources..."
+if [ -f "Sources/Resources/MenuBarIcon.png" ]; then
+    cp "Sources/Resources/MenuBarIcon.png" "$RESOURCES_DIR/"
+fi
+
 echo "Generating Info.plist..."
 cat << PLIST > "$CONTENTS_DIR/Info.plist"
 <?xml version="1.0" encoding="UTF-8"?>
@@ -41,7 +46,7 @@ cat << PLIST > "$CONTENTS_DIR/Info.plist"
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.4</string>
+    <string>1.0.5</string>
     <key>CFBundleVersion</key>
     <string>2</string>
     <key>LSMinimumSystemVersion</key>
@@ -88,11 +93,11 @@ cat << ENTITLEMENTS > BerryShot.entitlements
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- Cho phép thu âm qua Micro (Bắt buộc khi bật Hardened Runtime) -->
     <key>com.apple.security.device.audio-input</key>
     <true/>
-    <!-- Cho phép ghi hình qua Camera -->
     <key>com.apple.security.device.camera</key>
+    <true/>
+    <key>com.apple.security.automation.apple-events</key>
     <true/>
 </dict>
 </plist>
