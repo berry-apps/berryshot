@@ -50,11 +50,11 @@ echo "✅ Updated Sources/App/Settings/AboutSettingsView.swift"
 sed -i '' "s/<string>$OLD_VERSION<\/string>/<string>$NEW_VERSION<\/string>/g" build_app.sh
 echo "✅ Updated build_app.sh"
 
-# Update version in landing page download links
-sed -i '' "s/v=${OLD_VERSION_ESCAPED}/v=${NEW_VERSION}/g" landingpage/index.html
-sed -i '' "s/Release: ${OLD_VERSION_ESCAPED}/Release: ${NEW_VERSION}/g" landingpage/index.html
-sed -i '' "s/Version ${OLD_VERSION_ESCAPED}/Version ${NEW_VERSION}/g" landingpage/index.html
-sed -i '' "s/\"softwareVersion\": \"${OLD_VERSION_ESCAPED}\"/\"softwareVersion\": \"${NEW_VERSION}\"/g" landingpage/index.html
+# Update version in landing page download links (match any old version)
+sed -i '' "s/v=[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/v=${NEW_VERSION}/g" landingpage/index.html
+sed -i '' "s/\(Release: \)[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/\1${NEW_VERSION}/g" landingpage/index.html
+sed -i '' "s/\(Version \)[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/\1${NEW_VERSION}/g" landingpage/index.html
+sed -i '' "s/\(\"softwareVersion\": \"\)[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/\1${NEW_VERSION}/g" landingpage/index.html
 echo "✅ Updated landingpage/index.html"
 
 echo ""
