@@ -1,7 +1,7 @@
 import AVFoundation
 import Foundation
 
-final class DeepgramTranscriptionProvider: RealtimeTranscriptionProvider {
+final class DeepgramTranscriptionProvider: RealtimeTranscriptionProvider, @unchecked Sendable {
     var onPartial: ((String) -> Void)?
     var onFinal: ((String) -> Void)?
     var onStatus: ((String) -> Void)?

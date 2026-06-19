@@ -7,13 +7,9 @@ struct SettingsView: View {
                 .tabItem {
                     Label("General", systemImage: "gearshape")
                 }
-            LocalSettingsView()
+            StorageSettingsView()
                 .tabItem {
-                    Label("Local", systemImage: "macwindow")
-                }
-            CloudSettingsView()
-                .tabItem {
-                    Label("Cloud", systemImage: "icloud")
+                    Label("Storage", systemImage: "externaldrive.fill")
                 }
             PrivacySettingsView()
                 .tabItem {
