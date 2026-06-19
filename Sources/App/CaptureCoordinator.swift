@@ -8,6 +8,7 @@ public class CaptureCoordinator: ObservableObject {
     
     private let captureManager = ScreenCaptureManager()
     private var aiResultWindowControllers: [AIResultWindowController] = []
+    private var liveMeetingWindowController: LiveMeetingWindowController?
     
     private init() {
         setupHotkeys()
@@ -66,9 +67,9 @@ public class CaptureCoordinator: ObservableObject {
         
         func prompt(langName: String) -> String {
             switch self {
-            case .explain: return "Explain what is in this image briefly and concisely. Please reply exclusively in \(langName)."
-            case .translate: return "Translate the text in this image into \(langName). Only return the translated text."
-            case .refactor: return "Refactor or improve the code shown in this image. Add comments explaining your changes. Reply exclusively in \(langName)."
+            case .explain: return "Explain what is in this image briefly and concisely. Use Markdown formatting: use **bold** for key points, `code` for technical terms, bullet lists for multiple items, and code blocks for code snippets. Reply exclusively in \(langName)."
+            case .translate: return "Translate the text in this image into \(langName). Use Markdown formatting with **bold** for emphasis. Only return the translated text."
+            case .refactor: return "Refactor or improve the code shown in this image. Use Markdown formatting: wrap code in ```language code blocks```, use **bold** for key changes, and add bullet-point explanations. Reply exclusively in \(langName)."
             }
         }
     }
@@ -242,5 +243,78 @@ public class CaptureCoordinator: ObservableObject {
             controller.close()
         }
         self.aiResultWindowControllers.removeAll()
+    }
+
+    public func toggleLiveMeetingNotes() {
+        if let wc = liveMeetingWindowController, wc.window?.isVisible == true {
+            wc.close()
+        } else {
+            if liveMeetingWindowController == nil {
+                liveMeetingWindowController = LiveMeetingWindowController {
+                    Task { @MainActor in
+                        CaptureCoordinator.shared.generateMeetingMinutes()
+                    }
+                }
+            }
+            liveMeetingWindowController?.show()
+        }
+    }
+
+    public func generateMeetingMinutes() {
+        let transcript = LiveTranscriptionService.shared.liveTranscript
+        guard !transcript.isEmpty else { return }
+
+        let screenBounds = NSScreen.main?.frame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let rect = CGRect(x: screenBounds.midX - 200, y: screenBounds.midY - 100, width: 400, height: 200)
+        let wc = AIResultWindowController(rect: rect, screenBounds: screenBounds)
+        aiResultWindowControllers.append(wc)
+        wc.onClose = { [weak self, weak wc] in
+            self?.aiResultWindowControllers.removeAll { $0 === wc }
+        }
+        wc.show()
+
+        Task {
+            guard let ai = Phase3Workflow() else {
+                await MainActor.run {
+                    wc.viewModel.errorMessage = "AI Configuration Missing. Please configure it in Settings."
+                    wc.viewModel.isLoading = false
+                }
+                return
+            }
+            do {
+                let stream = ai.provider.generateTextStream(prompt: buildMeetingMinutesPrompt(transcript), image: nil)
+                await MainActor.run { wc.viewModel.resultText = "" }
+                for try await chunk in stream {
+                    await MainActor.run { wc.viewModel.resultText += chunk }
+                }
+                await MainActor.run { wc.viewModel.isLoading = false }
+            } catch {
+                await MainActor.run {
+                    wc.viewModel.errorMessage = "Failed to generate minutes: \(error.localizedDescription)"
+                    wc.viewModel.isLoading = false
+                }
+            }
+        }
+    }
+
+    private func buildMeetingMinutesPrompt(_ transcript: [TranscriptSegment]) -> String {
+        let lines = transcript
+            .sorted { $0.timestamp < $1.timestamp }
+            .map { seg -> String in
+                let speaker = seg.source == .mic ? "You" : "Other"
+                let m = Int(seg.timestamp) / 60
+                let s = Int(seg.timestamp) % 60
+                return String(format: "[%02d:%02d] \(speaker): \(seg.text)", m, s)
+            }
+            .joined(separator: "\n")
+
+        return """
+        You are a professional meeting minutes assistant. Based on the following meeting transcript, \
+        create minutes in Markdown format with: \
+        **Summary**, **Key Discussion Points**, **Decisions Made**, **Action Items**.
+
+        Transcript:
+        \(lines)
+        """
     }
 }

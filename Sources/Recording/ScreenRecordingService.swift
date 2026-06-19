@@ -10,6 +10,8 @@ public class ScreenRecordingService: NSObject, SCStreamOutput, SCStreamDelegate,
     private var outputURL: URL?
     private var currentConfig: SCStreamConfiguration?
     private var micSession: AVCaptureSession?
+    // Written from main thread, read from audio capture queues — single Bool is safe
+    var isMicMuted: Bool = false
     
     public override init() {
         super.init()
@@ -165,6 +167,7 @@ public class ScreenRecordingService: NSObject, SCStreamOutput, SCStreamDelegate,
             writer?.appendVideo(sampleBuffer: sampleBuffer)
         case .audio:
             writer?.appendAudio(sampleBuffer: sampleBuffer)
+            LiveTranscriptionService.shared.append(sampleBuffer, from: .systemAudio)
         case .microphone:
             break
         @unknown default:
@@ -174,6 +177,9 @@ public class ScreenRecordingService: NSObject, SCStreamOutput, SCStreamDelegate,
     
     // AVCaptureAudioDataOutputSampleBufferDelegate implementation for microphone
     public func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        guard !isMicMuted else { return }
         writer?.appendMicAudio(sampleBuffer: sampleBuffer)
+        // Fallback: if AVAudioEngine failed to start, feed mic via AVCapture buffers instead
+        LiveTranscriptionService.shared.append(sampleBuffer, from: .mic)
     }
 }

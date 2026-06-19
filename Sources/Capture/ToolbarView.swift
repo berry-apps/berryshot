@@ -44,6 +44,10 @@ struct ToolbarView: View {
                                 ToolButton(icon: "line.diagonal", isSelected: viewModel.selectedTool == .line) { viewModel.selectTool(.line) }
                                 ToolButton(icon: "textformat", isSelected: viewModel.selectedTool == .text) { viewModel.selectTool(.text) }
                                 ToolButton(icon: "photo", isSelected: false) { viewModel.openImage() }
+                                
+                                Divider().frame(width: 1, height: 16).opacity(0.3)
+                                
+                                ToolButton(icon: "macwindow", isSelected: false) { viewModel.selectFullScreen() }
                             }
                             
                             Divider().frame(width: 1, height: 16).opacity(0.3)
@@ -251,6 +255,24 @@ struct HoverableDragBar: View {
                             viewModel.isPaused = true
                         }
                     }
+
+                    ActionToolButton(
+                        icon: viewModel.isMicMuted ? "mic.slash.fill" : "mic.fill",
+                        color: viewModel.isMicMuted ? .red : .white,
+                        size: 10
+                    ) {
+                        viewModel.toggleMicMute()
+                    }
+                    .help(Text(viewModel.isMicMuted ? "Unmute Microphone" : "Mute Microphone"))
+
+                    ActionToolButton(
+                        icon: "doc.text.fill",
+                        color: viewModel.showLiveNotes ? .green : .white,
+                        size: 10
+                    ) {
+                        viewModel.toggleLiveNotes()
+                    }
+                    .help(Text("Live Meeting Notes"))
                 }
                 
                 if viewModel.isProcessingRecord {

@@ -29,6 +29,7 @@ public struct AIResultView: View {
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
+                    .focusable(false)
                     .onHover { hover in
                         isCloseHovered = hover
                     }
@@ -248,33 +249,206 @@ struct NativeMarkdownView: View {
     let text: String
     
     var body: some View {
-        let blocks = text.components(separatedBy: "```")
-        VStack(alignment: .leading, spacing: 16) {
-            ForEach(0..<blocks.count, id: \.self) { index in
-                let content = blocks[index].trimmingCharacters(in: .whitespacesAndNewlines)
-                if !content.isEmpty || (index % 2 == 1) { // show even if empty for code blocks to show the box early
-                    if index % 2 == 1 {
-                        // Code block
-                        let lines = blocks[index].components(separatedBy: .newlines)
-                        let language = lines.first?.trimmingCharacters(in: .whitespaces) ?? ""
-                        let code = lines.dropFirst().joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
-                        
-                        CodeBlockView(language: language, code: code)
-                    } else {
-                        // Normal text
-                        if let attrString = try? AttributedString(markdown: content, options: AttributedString.MarkdownParsingOptions(interpretedSyntax: .full)) {
-                            Text(attrString)
-                                .textSelection(.enabled)
-                                .lineSpacing(4)
-                        } else {
-                            Text(content)
-                                .font(.body)
-                                .textSelection(.enabled)
-                                .lineSpacing(4)
-                        }
-                    }
+        let blocks = parseMarkdownBlocks(text)
+        VStack(alignment: .leading, spacing: 12) {
+            ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
+                switch block {
+                case .heading(let level, let content):
+                    headingView(level: level, content: content)
+                case .codeBlock(let language, let code):
+                    CodeBlockView(language: language, code: code)
+                case .bulletList(let items):
+                    bulletListView(items: items)
+                case .paragraph(let content):
+                    paragraphView(content: content)
+                case .horizontalRule:
+                    Divider()
+                        .background(Color.white.opacity(0.2))
+                        .padding(.vertical, 4)
                 }
             }
+        }
+    }
+    
+    enum MarkdownBlock {
+        case heading(level: Int, content: String)
+        case codeBlock(language: String, code: String)
+        case bulletList(items: [String])
+        case paragraph(content: String)
+        case horizontalRule
+    }
+    
+    func parseMarkdownBlocks(_ text: String) -> [MarkdownBlock] {
+        var blocks: [MarkdownBlock] = []
+        let lines = text.components(separatedBy: .newlines)
+        var i = 0
+        
+        while i < lines.count {
+            let line = lines[i]
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            
+            // Empty line — skip
+            if trimmed.isEmpty {
+                i += 1
+                continue
+            }
+            
+            // Horizontal rule
+            if trimmed.range(of: #"^[-*_]{3,}$"#, options: .regularExpression) != nil {
+                blocks.append(.horizontalRule)
+                i += 1
+                continue
+            }
+            
+            // Heading
+            if trimmed.hasPrefix("#") {
+                let level = trimmed.prefix(while: { $0 == "#" }).count
+                let content = String(trimmed.drop(while: { $0 == "#" })).trimmingCharacters(in: .whitespaces)
+                if !content.isEmpty {
+                    blocks.append(.heading(level: min(level, 4), content: content))
+                }
+                i += 1
+                continue
+            }
+            
+            // Code block
+            if trimmed.hasPrefix("```") {
+                let lang = String(trimmed.dropFirst(3)).trimmingCharacters(in: .whitespaces)
+                var codeLines: [String] = []
+                i += 1
+                while i < lines.count {
+                    if lines[i].trimmingCharacters(in: .whitespaces).hasPrefix("```") {
+                        i += 1
+                        break
+                    }
+                    codeLines.append(lines[i])
+                    i += 1
+                }
+                blocks.append(.codeBlock(language: lang, code: codeLines.joined(separator: "\n").trimmingCharacters(in: .newlines)))
+                continue
+            }
+            
+            // Bullet list
+            if trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") || trimmed.hasPrefix("• ") {
+                var items: [String] = []
+                while i < lines.count {
+                    let l = lines[i].trimmingCharacters(in: .whitespaces)
+                    if l.hasPrefix("- ") || l.hasPrefix("* ") || l.hasPrefix("• ") {
+                        items.append(String(l.dropFirst(2)))
+                        i += 1
+                    } else if l.hasPrefix("  ") || l.hasPrefix("\t") {
+                        // Continuation of list item
+                        if !items.isEmpty {
+                            items[items.count - 1] += " " + l
+                        }
+                        i += 1
+                    } else {
+                        break
+                    }
+                }
+                blocks.append(.bulletList(items: items))
+                continue
+            }
+            
+            // Numbered list
+            if trimmed.range(of: #"^\d+\.\s"#, options: .regularExpression) != nil {
+                var items: [String] = []
+                while i < lines.count {
+                    let l = lines[i].trimmingCharacters(in: .whitespaces)
+                    if let m = l.range(of: #"^\d+\.\s"#, options: .regularExpression) {
+                        items.append(String(l[m.upperBound...]))
+                        i += 1
+                    } else if l.hasPrefix("  ") || l.hasPrefix("\t") {
+                        if !items.isEmpty {
+                            items[items.count - 1] += " " + l
+                        }
+                        i += 1
+                    } else {
+                        break
+                    }
+                }
+                blocks.append(.bulletList(items: items))
+                continue
+            }
+            
+            // Regular paragraph — collect consecutive non-empty lines
+            var paraLines: [String] = []
+            while i < lines.count {
+                let l = lines[i].trimmingCharacters(in: .whitespaces)
+                if l.isEmpty || l.hasPrefix("#") || l.hasPrefix("```") || l.hasPrefix("- ") || l.hasPrefix("* ") {
+                    break
+                }
+                paraLines.append(l)
+                i += 1
+            }
+            if !paraLines.isEmpty {
+                blocks.append(.paragraph(content: paraLines.joined(separator: " ")))
+            }
+        }
+        
+        return blocks
+    }
+    
+    @ViewBuilder
+    func headingView(level: Int, content: String) -> some View {
+        let attrString = try? AttributedString(markdown: content, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))
+        Group {
+            switch level {
+            case 1:
+                Text(attrString ?? AttributedString(content))
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundColor(.white)
+            case 2:
+                Text(attrString ?? AttributedString(content))
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.95))
+            case 3:
+                Text(attrString ?? AttributedString(content))
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundColor(.white.opacity(0.9))
+            default:
+                Text(attrString ?? AttributedString(content))
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(.white.opacity(0.85))
+            }
+        }
+        .textSelection(.enabled)
+    }
+    
+    @ViewBuilder
+    func bulletListView(items: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ForEach(Array(items.enumerated()), id: \.offset) { _, item in
+                HStack(alignment: .top, spacing: 8) {
+                    Text("•")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.purple.opacity(0.8))
+                        .frame(width: 12)
+                    let attrString = try? AttributedString(markdown: item, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))
+                    Text(attrString ?? AttributedString(item))
+                        .font(.system(size: 13))
+                        .foregroundColor(.white.opacity(0.85))
+                        .lineSpacing(3)
+                        .textSelection(.enabled)
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    func paragraphView(content: String) -> some View {
+        if let attrString = try? AttributedString(markdown: content, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)) {
+            Text(attrString)
+                .font(.system(size: 13))
+                .foregroundColor(.white.opacity(0.85))
+                .lineSpacing(4)
+                .textSelection(.enabled)
+        } else {
+            Text(content)
+                .font(.system(size: 13))
+                .foregroundColor(.white.opacity(0.85))
+                .lineSpacing(4)
+                .textSelection(.enabled)
         }
     }
 }

@@ -1,5 +1,13 @@
 import Foundation
 
+public struct TranscriptSegment: Identifiable {
+    public enum Source { case mic, systemAudio }
+    public let id = UUID()
+    public let source: Source
+    public var text: String
+    public let timestamp: TimeInterval
+}
+
 public struct Screenshot: Identifiable, Codable {
     public let id: UUID
     public let createdAt: Date

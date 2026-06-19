@@ -41,7 +41,7 @@ cat << PLIST > "$CONTENTS_DIR/Info.plist"
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.3</string>
+    <string>1.0.4</string>
     <key>CFBundleVersion</key>
     <string>2</string>
     <key>LSMinimumSystemVersion</key>
@@ -54,6 +54,8 @@ cat << PLIST > "$CONTENTS_DIR/Info.plist"
     <string>BerryShot needs microphone access to record audio along with your screen recordings.</string>
     <key>NSCameraUsageDescription</key>
     <string>BerryShot needs camera access for future video recording features.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>BerryShot uses speech recognition to transcribe meeting audio in real-time for Live Meeting Notes.</string>
 </dict>
 </plist>
 PLIST
@@ -80,11 +82,28 @@ rm AppIcon.icns
 # Force Finder to refresh the app icon
 touch "$APP_DIR"
 
+echo "Generating Entitlements for Hardened Runtime..."
+cat << ENTITLEMENTS > BerryShot.entitlements
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Cho phép thu âm qua Micro (Bắt buộc khi bật Hardened Runtime) -->
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+    <!-- Cho phép ghi hình qua Camera -->
+    <key>com.apple.security.device.camera</key>
+    <true/>
+</dict>
+</plist>
+ENTITLEMENTS
+
 echo "Signing the app bundle..."
 # SỬA Ở ĐÂY: Phải là "Developer ID Application", KHÔNG DÙNG "Apple Development"
 SIGNING_IDENTITY="Developer ID Application: Vu Dong (WZ2Z528AM6)"
 
-codesign --force --deep --options runtime --sign "$SIGNING_IDENTITY" "$APP_DIR"
+codesign --force --deep --options runtime --entitlements BerryShot.entitlements --sign "$SIGNING_IDENTITY" "$APP_DIR"
+rm BerryShot.entitlements
 
 echo "Creating Zip archive..."
 rm -f landingpage/assets/BerryShot.zip

@@ -55,10 +55,24 @@ struct OverlayView: View {
                     
                     ForEach(viewModel.elements) { element in
                         if element.type == .image, let nsImage = element.nsImage {
-                            Image(nsImage: nsImage)
-                                .resizable()
-                                .frame(width: element.shapeRect().width, height: element.shapeRect().height)
-                                .position(x: element.shapeRect().midX, y: element.shapeRect().midY)
+                            ZStack {
+                                Image(nsImage: nsImage)
+                                    .resizable()
+                                    .frame(width: element.shapeRect().width, height: element.shapeRect().height)
+                                
+                                if !element.text.isEmpty && viewModel.activeTextInput?.elementID != element.id {
+                                    let tWidth = element.shapeRect().width * 0.75
+                                    let tHeight = element.shapeRect().height * 0.75
+                                    Text(element.text)
+                                        .font(.system(size: min(tHeight / 4, 24), weight: .bold))
+                                        .foregroundColor(element.color)
+                                        .shadow(color: .black.opacity(0.7), radius: 2, x: 1, y: 1)
+                                        .frame(width: tWidth, height: tHeight)
+                                        .minimumScaleFactor(0.1)
+                                }
+                            }
+                            .frame(width: element.shapeRect().width, height: element.shapeRect().height)
+                            .position(x: element.shapeRect().midX, y: element.shapeRect().midY)
                         } else if element.type == .text {
                             if viewModel.activeTextInput?.elementID != element.id {
                                 Text(element.text)
@@ -184,6 +198,7 @@ struct OverlayView: View {
             .contentShape(Rectangle())
             .onAppear {
                 viewModel.cachedGeometrySize = geometry.size
+                viewModel.selectDefaultRegion()
                 viewModel.setupEventMonitor()
             }
             .onDisappear {

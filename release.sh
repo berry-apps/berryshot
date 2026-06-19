@@ -21,19 +21,23 @@ if [ -z "$OLD_VERSION" ]; then
 fi
 
 echo "====================================="
-echo "🚀 Bumping version: $OLD_VERSION -> $NEW_VERSION"
-echo "====================================="
+# Escape dots for sed
+OLD_VERSION_ESCAPED=$(echo "$OLD_VERSION" | sed 's/\./\\./g')
 
-# Update AboutSettingsView.swift
+echo "🚀 Bumping version: $OLD_VERSION -> $NEW_VERSION"
+
+# Update version in Swift UI Settings View
 sed -i '' "s/Text(\"Version $OLD_VERSION\")/Text(\"Version $NEW_VERSION\")/g" Sources/App/Settings/AboutSettingsView.swift
 echo "✅ Updated Sources/App/Settings/AboutSettingsView.swift"
 
-# Update build_app.sh
+# Update version in build_app.sh Info.plist generation
+# Info.plist has `<string>1.0.2</string>`
 sed -i '' "s/<string>$OLD_VERSION<\/string>/<string>$NEW_VERSION<\/string>/g" build_app.sh
 echo "✅ Updated build_app.sh"
 
-# Update landingpage/index.html
-sed -i '' "s/$OLD_VERSION/$NEW_VERSION/g" landingpage/index.html
+# Update version in landing page download links
+sed -i '' "s/v=${OLD_VERSION_ESCAPED}/v=${NEW_VERSION}/g" landingpage/index.html
+sed -i '' "s/Release: ${OLD_VERSION_ESCAPED}/Release: ${NEW_VERSION}/g" landingpage/index.html
 echo "✅ Updated landingpage/index.html"
 
 echo ""

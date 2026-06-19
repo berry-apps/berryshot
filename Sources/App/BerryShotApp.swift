@@ -1,4 +1,6 @@
 import SwiftUI
+import Speech
+import AVFoundation
 
 struct MenuView: View {
     @Environment(\.openSettings) private var openSettings
@@ -96,17 +98,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             print("[BerryShot] Failed to load AppIcon.png")
         }
         
-        // Request Screen Capture access preemptively on a background thread
-        if #available(macOS 14.4, *) {
-            if !CGPreflightScreenCaptureAccess() {
-                // Activate the app to ensure the permission prompt comes to the front
-                NSApp.activate(ignoringOtherApps: true)
-                DispatchQueue.global(qos: .background).async {
-                    _ = CGRequestScreenCaptureAccess()
+        // Request permissions sequentially to prevent macOS tccd from glitching and showing multiple overlapping windows
+        Task {
+            if #available(macOS 14.4, *) {
+                if !CGPreflightScreenCaptureAccess() {
+                    await MainActor.run {
+                        NSApp.activate(ignoringOtherApps: true)
+                        _ = CGRequestScreenCaptureAccess()
+                    }
                 }
             }
         }
-        
+
         // Ensure the app starts as an accessory (menu bar only, no dock icon)
         NSApp.setActivationPolicy(.accessory)
         

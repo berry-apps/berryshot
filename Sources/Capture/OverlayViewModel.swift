@@ -1,4 +1,7 @@
 import SwiftUI
+import AVFoundation
+import Speech
+import Combine
 import CoreGraphics
 import Cocoa
 
@@ -67,6 +70,8 @@ final class OverlayViewModel: ObservableObject {
     @Published var isRecording = false
     @Published var isPaused = false
     @Published var isProcessingRecord = false
+    @Published var isMicMuted = false
+    @Published var showLiveNotes = false
     
     @Published var elements: [AnnotationElement] = []
     @Published var currentElement: AnnotationElement? = nil
@@ -105,6 +110,9 @@ final class OverlayViewModel: ObservableObject {
         self.onComplete = onComplete
         self.onCopy = onCopy
         self.onUpload = onUpload
+        // Sync with any in-progress recording session
+        self.isRecording = RecordingManager.shared.isRecording
+        self.isMicMuted = RecordingManager.shared.isMicMuted
     }
     
     func setupEventMonitor() {
@@ -278,6 +286,21 @@ final class OverlayViewModel: ObservableObject {
             return
         }
         
+        // Stop recording if active before closing
+        if isRecording {
+            Task { @MainActor in
+                _ = try? await RecordingManager.shared.stopRecording()
+                isRecording = false
+            }
+        }
+        
+        // If the user hasn't finished selecting a region yet, ESC should always cancel the capture.
+        if !isSelectingFinished {
+            CaptureCoordinator.shared.cancelCapture()
+            parentWindow?.close()
+            return
+        }
+        
         if selectedTool != .select || selectedElementID != nil {
             selectedTool = .select
             selectedElementID = nil
@@ -316,8 +339,24 @@ final class OverlayViewModel: ObservableObject {
     }
     
     func handleCancel() {
+        if isRecording {
+            Task { @MainActor in
+                _ = try? await RecordingManager.shared.stopRecording()
+                isRecording = false
+            }
+        }
         CaptureCoordinator.shared.cancelCapture()
         parentWindow?.close()
+    }
+
+    func toggleMicMute() {
+        RecordingManager.shared.toggleMicMute()
+        isMicMuted = RecordingManager.shared.isMicMuted
+    }
+
+    func toggleLiveNotes() {
+        showLiveNotes.toggle()
+        CaptureCoordinator.shared.toggleLiveMeetingNotes()
     }
     
     var isDrawingTool: Bool {
@@ -337,6 +376,23 @@ final class OverlayViewModel: ObservableObject {
         if selectedTool != .select && selectedTool != .line && selectedTool != .arrow {
             selectedElementID = nil
         }
+    }
+    
+    func selectFullScreen() {
+        if cachedGeometrySize != .zero {
+            selectionRect = CGRect(origin: .zero, size: cachedGeometrySize)
+            isSelectingFinished = true
+        }
+    }
+
+    func selectDefaultRegion() {
+        guard cachedGeometrySize != .zero else { return }
+        let w = cachedGeometrySize.width * 0.8
+        let h = cachedGeometrySize.height * 0.8
+        let x = (cachedGeometrySize.width - w) / 2
+        let y = (cachedGeometrySize.height - h) / 2
+        selectionRect = CGRect(x: x, y: y, width: w, height: h)
+        isSelectingFinished = true
     }
     
     func getHandle(at point: CGPoint) -> Handle? {
@@ -677,6 +733,12 @@ final class OverlayViewModel: ObservableObject {
                                     saveState()
                                     dragMode = .movingSelection(originalRect: selectionRect, elementsSnapshot: elements)
                                     print("DEBUG: Entered .movingSelection")
+                                } else {
+                                    // Drag outside selection → start fresh selection
+                                    isSelectingFinished = false
+                                    elements = []
+                                    dragMode = .selecting(start: start)
+                                    selectionRect = CGRect(x: start.x, y: start.y, width: 0, height: 0)
                                 }
                             }
                         } else {
@@ -996,10 +1058,24 @@ final class OverlayViewModel: ObservableObject {
             
             ForEach(elements) { element in
                 if element.type == .image, let nsImage = element.nsImage {
-                    Image(nsImage: nsImage)
-                        .resizable()
-                        .frame(width: element.shapeRect().width, height: element.shapeRect().height)
-                        .position(x: element.shapeRect().midX, y: element.shapeRect().midY)
+                    ZStack {
+                        Image(nsImage: nsImage)
+                            .resizable()
+                            .frame(width: element.shapeRect().width, height: element.shapeRect().height)
+                        
+                        if !element.text.isEmpty {
+                            let tWidth = element.shapeRect().width * 0.75
+                            let tHeight = element.shapeRect().height * 0.75
+                            Text(element.text)
+                                .font(.system(size: min(tHeight / 4, 24), weight: .bold))
+                                .foregroundColor(element.color)
+                                .shadow(color: .black.opacity(0.7), radius: 2, x: 1, y: 1)
+                                .frame(width: tWidth, height: tHeight)
+                                .minimumScaleFactor(0.1)
+                        }
+                    }
+                    .frame(width: element.shapeRect().width, height: element.shapeRect().height)
+                    .position(x: element.shapeRect().midX, y: element.shapeRect().midY)
                 } else if element.type == .text {
                     Text(element.text)
                         .font(.system(size: element.fontSize, weight: .bold))
@@ -1132,19 +1208,19 @@ final class OverlayViewModel: ObservableObject {
                                     let placeholderDoc = """
                                     # AI Documentation Generation
                                     
-                                    Không thể tự động tạo tài liệu hướng dẫn cho video ghi hình này.
+                                    No annotations were recorded during this screen recording.
                                     
-                                    **Nguyên nhân:**
-                                    Không có sự kiện vẽ/chú thích nào (mũi tên, hình chữ nhật, hình tròn, chữ viết...) được thực hiện trong quá trình quay, và tính năng ghi âm văn bản giọng nói chưa khả dụng.
-                                    
-                                    *Mẹo: Để AI tạo tài liệu hướng dẫn từng bước, vui lòng sử dụng các công cụ vẽ/chú thích trên thanh công cụ ghi hình để làm nổi bật các thao tác khi bạn đang quay video.*
+                                    **Tip:** Use the drawing tools (arrows, rectangles, circles, text) during recording to create step-by-step documentation automatically.
                                     """
                                     try placeholderDoc.write(to: docURL, atomically: true, encoding: .utf8)
                                     print("Empty annotations. Generated placeholder documentation at: \(docURL.path)")
                                     return
                                 }
                                 
-                                let doc = try await ai.generateStepByStepDocumentation(annotationsJSON: jsonStr, transcript: "No voice transcript available.")
+                                let lang = UserDefaults.standard.string(forKey: "ai_output_language") ?? "en"
+                                let langName = lang == "vi" ? "Vietnamese" : (lang == "ja" ? "Japanese" : "English")
+                                let transcript = LiveTranscriptionService.shared.fullTranscriptText
+                                let doc = try await ai.generateStepByStepDocumentation(annotationsJSON: jsonStr, transcript: transcript.isEmpty ? "No voice transcript available." : transcript, screenshot: self.cgImage, language: langName)
                                 try doc.write(to: docURL, atomically: true, encoding: .utf8)
                                 print("AI Documentation saved to: \(docURL.path)")
                             } catch {
@@ -1154,7 +1230,7 @@ final class OverlayViewModel: ObservableObject {
                     }
                 } catch {
                     isRecording = false
-                    self.handleCancel() // Close overlay first!
+                    self.handleCancel()
                     
                     await MainActor.run {
                         NSApp.activate(ignoringOtherApps: true)
@@ -1166,23 +1242,31 @@ final class OverlayViewModel: ObservableObject {
                     }
                 }
             } else {
+                // Lower overlay window BELOW system permission dialog
+                parentWindow?.level = .normal
+                NSApp.activate(ignoringOtherApps: true)
+                
                 do {
                     let screen = parentWindow?.screen ?? NSScreen.main
                     let displayID = screen?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID ?? CGMainDisplayID()
                     try await RecordingManager.shared.startRecording(region: selectionRect, displayID: displayID, excludingWindowIDs: [])
                     isRecording = true
+                    
                 } catch {
-                    self.handleCancel() // Close overlay first!
+                    isRecording = false
                     
                     await MainActor.run {
                         NSApp.activate(ignoringOtherApps: true)
                         let alert = NSAlert()
                         alert.messageText = "Recording Failed"
-                        alert.informativeText = "Failed to start recording: \(error.localizedDescription)"
+                        alert.informativeText = error.localizedDescription
                         alert.alertStyle = .critical
                         alert.runModal()
                     }
                 }
+                
+                // Restore window level
+                parentWindow?.level = .screenSaver
             }
         }
     }
