@@ -279,12 +279,16 @@
                     <h3 class="font-display font-bold text-lg text-white">Core Capabilities</h3>
                     <ul class="list-disc pl-5 text-sm text-slate-400 space-y-2">
                         <li><strong class="text-slate-200">Blazing Fast Captures:</strong> Trigger crosshair cropping
-                            instantly using customizable hotkeys.</li>
+                            instantly using customizable hotkeys. Region, full-screen, and window capture via ScreenCaptureKit.</li>
                         <li><strong class="text-slate-200">Local OCR:</strong> Extract text from images without
-                            uploading to the cloud, utilizing Apple's machine learning.</li>
-                        <li><strong class="text-slate-200">AI Assistants:</strong> Query Claude or ChatGPT to explain
-                            code snippets, translate languages, or rewrite content on the fly.</li>
-                        <li><strong class="text-slate-200">Cloud Storage:</strong> Configure Amazon S3 or Imgur
+                            uploading to the cloud, utilizing Apple's machine learning in 0.1 seconds.</li>
+                        <li><strong class="text-slate-200">AI Assistants:</strong> Query Xiaomi Mimo, OpenAI, Claude, Gemini, or OpenRouter
+                            to explain code, translate languages, or rewrite content with streaming responses.</li>
+                        <li><strong class="text-slate-200">Live Meeting Transcription:</strong> Real-time speech-to-text from mic and system audio
+                            via Deepgram Nova or OpenAI Whisper. Generate AI meeting summaries with one click.</li>
+                        <li><strong class="text-slate-200">Screen Recording:</strong> HEVC 60fps recording with system audio + microphone,
+                            pause/resume, dynamic region updates, and mic mute control.</li>
+                        <li><strong class="text-slate-200">Cloud Storage:</strong> Upload to local directory, Google Drive, or custom API
                             endpoints for shareable cloud links.</li>
                     </ul>
                 </div>
@@ -495,17 +499,24 @@
                     responses.
                 </p>
                 <div class="bg-white/[0.02] border border-white/5 p-6 rounded-2xl space-y-4 text-sm text-slate-400">
-                    <h3 class="font-display font-bold text-base text-white">How to Set Up</h3>
+                    <h3 class="font-display font-bold base text-white">How to Set Up</h3>
                     <ol class="list-decimal pl-5 space-y-2.5">
-                        <li>Open <strong class="text-slate-200">Preferences / Settings</strong> and switch to the
+                        <li>Open <strong class="text-slate-200">Preferences / Settings</strong> (⌘ + ,) and switch to the
                             <strong class="text-slate-200">AI Tab</strong>.
                         </li>
-                        <li>Toggle "Enable AI Integration".</li>
-                        <li>Choose your Provider: <strong class="text-slate-200">Anthropic Claude</strong> or <strong
-                                class="text-slate-200">OpenAI ChatGPT</strong>.</li>
+                        <li>In the <strong class="text-slate-200">Provider</strong> dropdown, choose one of 5 providers:
+                            <ul class="list-disc pl-5 mt-1.5 space-y-1">
+                                <li><strong class="text-slate-200">Xiaomi Mimo</strong> — default provider, mimo-v2.5 model</li>
+                                <li><strong class="text-slate-200">OpenAI</strong> — GPT-4o, GPT-4 Turbo, etc.</li>
+                                <li><strong class="text-slate-200">OpenRouter</strong> — access to 100+ models via single API</li>
+                                <li><strong class="text-slate-200">Google Gemini</strong> — Gemini Pro, Gemini Flash</li>
+                                <li><strong class="text-slate-200">Anthropic Claude</strong> — Claude 3.5 Sonnet, Claude 3 Opus</li>
+                            </ul>
+                        </li>
                         <li>Enter your API key safely. The API key is stored securely in your macOS Keychain.</li>
-                        <li>Customize the default System Prompt (e.g. "Explain this code snippet", "Translate this text
-                            to Vietnamese", "Summarize this paragraph").</li>
+                        <li>Customize the <strong class="text-slate-200">Model</strong> name (e.g. <code class="font-mono text-[10px] text-berry-300 bg-white/5 px-1.5 py-0.5 rounded">mimo-v2.5</code>, <code class="font-mono text-[10px] text-berry-300 bg-white/5 px-1.5 py-0.5 rounded">gpt-4o</code>, <code class="font-mono text-[10px] text-berry-300 bg-white/5 px-1.5 py-0.5 rounded">claude-3-5-sonnet-20240620</code>).</li>
+                        <li>Set the <strong class="text-slate-200">Output Language</strong>: English, Vietnamese, or Japanese.</li>
+                        <li>Click <strong class="text-slate-200">Save Key</strong> to store your credentials.</li>
                     </ol>
                 </div>
 
@@ -534,30 +545,51 @@
             <section id="screen-recording" class="space-y-6 scroll-mt-24">
                 <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">7. Screen Recording</h2>
                 <p class="text-slate-300 leading-relaxed">
-                    BerryShot includes built-in screen recording with annotation support. Record your workflow with
-                    drawing overlays preserved in the final video output.
+                    BerryShot includes built-in screen recording powered by ScreenCaptureKit. Record your selected region
+                    with HEVC codec, system audio, and microphone — all with annotation overlays preserved.
                 </p>
                 <div class="space-y-4">
                     <div class="flex gap-4">
                         <div class="w-7 h-7 rounded-lg bg-berry-500/10 flex items-center justify-center shrink-0 text-berry-400 mt-1">✓</div>
                         <div>
                             <h4 class="text-sm font-bold text-white">Start Recording</h4>
-                            <p class="text-xs text-slate-400 mt-0.5">Click the record button on the toolbar or use the keyboard shortcut.
-                                The selected region will be captured as a video file.</p>
+                            <p class="text-xs text-slate-400 mt-0.5">Click the red Record button on the toolbar or press <kbd class="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[10px] font-mono text-slate-300">R</kbd>.
+                                Only the selected region is captured as a video file.</p>
                         </div>
                     </div>
                     <div class="flex gap-4">
                         <div class="w-7 h-7 rounded-lg bg-berry-500/10 flex items-center justify-center shrink-0 text-berry-400 mt-1">✓</div>
                         <div>
                             <h4 class="text-sm font-bold text-white">Pause & Resume</h4>
-                            <p class="text-xs text-slate-400 mt-0.5">Pause recording at any time. The timer stops and resumes seamlessly.</p>
+                            <p class="text-xs text-slate-400 mt-0.5">Press <kbd class="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[10px] font-mono text-slate-300">P</kbd> or click the pause button. The timer stops and resumes seamlessly with correct timestamp offsets.</p>
                         </div>
                     </div>
                     <div class="flex gap-4">
                         <div class="w-7 h-7 rounded-lg bg-berry-500/10 flex items-center justify-center shrink-0 text-berry-400 mt-1">✓</div>
                         <div>
-                            <h4 class="text-sm font-bold text-white">Microphone Control</h4>
-                            <p class="text-xs text-slate-400 mt-0.5">Mute/unmute microphone during recording. Also mutes live transcription input.</p>
+                            <h4 class="text-sm font-bold text-white">HEVC 60fps Output</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Records at 60fps using HEVC (H.265) codec at 50 Mbps for high-quality output. Supports Retina resolution via display backing scale factor.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="w-7 h-7 rounded-lg bg-berry-500/10 flex items-center justify-center shrink-0 text-berry-400 mt-1">✓</div>
+                        <div>
+                            <h4 class="text-sm font-bold text-white">System Audio + Microphone</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Captures both system audio (e.g., video call participants) and microphone input simultaneously. Mute/unmute mic independently during recording.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="w-7 h-7 rounded-lg bg-berry-500/10 flex items-center justify-center shrink-0 text-berry-400 mt-1">✓</div>
+                        <div>
+                            <h4 class="text-sm font-bold text-white">Dynamic Region Update</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Move or resize the selection rectangle during recording — the capture region updates in real-time without stopping the recording.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="w-7 h-7 rounded-lg bg-berry-500/10 flex items-center justify-center shrink-0 text-berry-400 mt-1">✓</div>
+                        <div>
+                            <h4 class="text-sm font-bold text-white">Auto-Open in Finder</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">After stopping, the saved <code class="font-mono text-[10px]">.mov</code> file automatically opens in Finder at the configured storage directory.</p>
                         </div>
                     </div>
                 </div>
@@ -567,41 +599,192 @@
             <section id="live-meeting-notes" class="space-y-6 scroll-mt-24">
                 <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">8. Live Meeting Notes & Transcription</h2>
                 <p class="text-slate-300 leading-relaxed">
-                    Real-time speech-to-text transcription powered by OpenAI Whisper or Deepgram. See live captions
-                    as you speak and generate AI meeting summaries with one click.
+                    Real-time speech-to-text transcription powered by Deepgram Nova or OpenAI Whisper. BerryShot captures
+                    both your microphone and system audio simultaneously, displaying live captions in a floating window
+                    during screen recording.
                 </p>
-                <div class="space-y-4">
-                    <div class="flex gap-4">
-                        <div class="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-400 mt-1">✓</div>
-                        <div>
-                            <h4 class="text-sm font-bold text-white">Setup Provider</h4>
-                            <p class="text-xs text-slate-400 mt-0.5">Go to Settings → AI → Live Transcription. Choose OpenAI Realtime or Deepgram
-                                and enter your API key.</p>
+
+                <div
+                    class="bg-emerald-500/5 border border-emerald-500/10 p-5 rounded-2xl text-slate-300 text-sm flex gap-4 leading-relaxed">
+                    <span class="text-2xl select-none">🎙️</span>
+                    <div>
+                        <strong class="text-white block mb-0.5">Two-Source Transcription</strong>
+                        BerryShot transcribes audio from two sources simultaneously: your <strong class="text-emerald-400">microphone</strong> (labeled "You") and <strong class="text-blue-400">system audio</strong> (labeled "Other"). This captures both sides of a meeting conversation.
+                    </div>
+                </div>
+
+                <!-- Step-by-step setup -->
+                <div class="bg-white/[0.02] border border-white/5 p-6 rounded-2xl space-y-4 text-sm text-slate-400">
+                    <h3 class="font-display font-bold base text-white">Step 1: Choose a Transcription Provider</h3>
+                    <p>Open <strong class="text-slate-200">Settings</strong> (⌘ + ,) → click the <strong class="text-slate-200">AI</strong> tab → scroll down to the <strong class="text-slate-200">Live Transcription</strong> section.</p>
+                    <p>In the <strong class="text-slate-200">Provider</strong> dropdown, choose one of:</p>
+                    <div class="overflow-x-auto pt-2">
+                        <table class="w-full text-xs border-collapse">
+                            <thead>
+                                <tr class="border-b border-white/10">
+                                    <th class="text-left py-2 pr-4 text-slate-300 font-bold">Provider</th>
+                                    <th class="text-left py-2 pr-4 text-slate-300 font-bold">Latency</th>
+                                    <th class="text-left py-2 pr-4 text-slate-300 font-bold">Cost</th>
+                                    <th class="text-left py-2 text-slate-300 font-bold">Note</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="border-b border-white/5">
+                                    <td class="py-2 pr-4 text-emerald-400 font-semibold">Off (SFSpeech)</td>
+                                    <td class="py-2 pr-4">N/A</td>
+                                    <td class="py-2 pr-4">Free</td>
+                                    <td class="py-2">Built-in Apple Speech, English only, not real-time</td>
+                                </tr>
+                                <tr class="border-b border-white/5">
+                                    <td class="py-2 pr-4 text-emerald-400 font-semibold">Deepgram</td>
+                                    <td class="py-2 pr-4">~300ms</td>
+                                    <td class="py-2 pr-4">$0.0043/min</td>
+                                    <td class="py-2">$200 free credit on signup. Best for Vietnamese</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 pr-4 text-emerald-400 font-semibold">OpenAI Realtime</td>
+                                    <td class="py-2 pr-4">~200ms</td>
+                                    <td class="py-2 pr-4">$0.006/min</td>
+                                    <td class="py-2">Uses Whisper model via Realtime API</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-white/[0.02] border border-white/5 p-6 rounded-2xl space-y-4 text-sm text-slate-400">
+                    <h3 class="font-display font-bold text-base text-white">Step 2: Configure API Key & Model</h3>
+
+                    <div class="space-y-4">
+                        <div class="pl-4 border-l-2 border-emerald-500 space-y-2">
+                            <h4 class="font-bold text-white text-sm">For Deepgram</h4>
+                            <ol class="list-decimal pl-4 space-y-1.5">
+                                <li>Create an account at <a href="https://deepgram.com" target="_blank" rel="noopener noreferrer" class="text-emerald-400 hover:underline">deepgram.com</a> (get $200 free credit)</li>
+                                <li>Go to <strong class="text-slate-200">API Keys</strong> in the Deepgram Console and copy your key</li>
+                                <li>Paste into the <strong class="text-slate-200">API Key</strong> field in BerryShot</li>
+                                <li>Model: leave as default <code class="font-mono text-emerald-300 bg-white/5 px-1.5 py-0.5 rounded text-xs">nova-2</code> or change to <code class="font-mono text-emerald-300 bg-white/5 px-1.5 py-0.5 rounded text-xs">nova-3</code></li>
+                                <li>Click <strong class="text-slate-200">Save Key</strong></li>
+                            </ol>
+                        </div>
+
+                        <div class="pl-4 border-l-2 border-blue-500 space-y-2">
+                            <h4 class="font-bold text-white text-sm">For OpenAI Realtime</h4>
+                            <ol class="list-decimal pl-4 space-y-1.5">
+                                <li>Get an API key from <a href="https://platform.openai.com" target="_blank" rel="noopener noreferrer" class="text-blue-400 hover:underline">platform.openai.com</a></li>
+                                <li>Paste into the <strong class="text-slate-200">API Key</strong> field (format: <code class="font-mono text-blue-300 bg-white/5 px-1.5 py-0.5 rounded text-xs">sk-...</code>)</li>
+                                <li>Model: <code class="font-mono text-blue-300 bg-white/5 px-1.5 py-0.5 rounded text-xs">gpt-realtime-whisper</code> (this is the only model that supports transcription)</li>
+                                <li><strong class="text-slate-200">Base URL:</strong> Leave empty to use OpenAI default, or enter a custom endpoint</li>
+                                <li>Click <strong class="text-slate-200">Save Key</strong></li>
+                            </ol>
                         </div>
                     </div>
-                    <div class="flex gap-4">
-                        <div class="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-400 mt-1">✓</div>
+                </div>
+
+                <div class="bg-white/[0.02] border border-white/5 p-6 rounded-2xl space-y-4 text-sm text-slate-400">
+                    <h3 class="font-display font-bold text-base text-white">Step 3: Set Language</h3>
+                    <p>In the <strong class="text-slate-200">Language</strong> dropdown, choose your preferred recognition language:</p>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li><strong class="text-slate-200">Auto detect</strong> — let the provider detect language automatically</li>
+                        <li><strong class="text-slate-200">🇻🇳 Vietnamese</strong> — optimized for Vietnamese speech (recommended for Vietnamese meetings)</li>
+                        <li><strong class="text-slate-200">🇺🇸 English</strong> — optimized for English speech</li>
+                        <li><strong class="text-slate-200">🇯🇵 Japanese</strong> — optimized for Japanese speech</li>
+                    </ul>
+                </div>
+
+                <div class="bg-white/[0.02] border border-white/5 p-6 rounded-2xl space-y-4 text-sm text-slate-400">
+                    <h3 class="font-display font-bold text-base text-white">Step 4: Start Live Transcription</h3>
+                    <ol class="list-decimal pl-5 space-y-2.5">
+                        <li>Press your capture shortcut (default: <kbd class="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs font-mono text-slate-300">⌘⇧2</kbd>) or click <strong class="text-slate-200">Capture Region</strong> in the menu bar</li>
+                        <li>Select the screen region you want to record</li>
+                        <li>Click the <strong class="text-red-400">Record</strong> button (red circle) on the toolbar — this starts both screen recording and live transcription simultaneously</li>
+                        <li>A floating <strong class="text-slate-200">Live Meeting Notes</strong> window will appear at the bottom-right of your screen, showing real-time transcription</li>
+                        <li>Speak into your microphone — your words appear labeled as <strong class="text-emerald-400">"You"</strong></li>
+                        <li>System audio (e.g., other participants in a video call) appears labeled as <strong class="text-blue-400">"Other"</strong></li>
+                    </ol>
+
+                    <div class="bg-yellow-500/5 border border-yellow-500/10 p-4 rounded-xl text-xs flex gap-3 mt-4">
+                        <span class="text-lg select-none">💡</span>
                         <div>
-                            <h4 class="text-sm font-bold text-white">Live Transcription</h4>
-                            <p class="text-xs text-slate-400 mt-0.5">Click the Live Notes button on the toolbar during recording. A floating window
-                                shows real-time transcription of your speech.</p>
+                            <strong class="text-white block mb-0.5">Tip: Microphone Permission</strong>
+                            On first use, macOS will ask for microphone access. BerryShot needs this to transcribe your voice.
+                            Go to <strong class="text-white">System Settings → Privacy & Security → Microphone</strong> and enable BerryShot.
                         </div>
                     </div>
-                    <div class="flex gap-4">
-                        <div class="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-400 mt-1">✓</div>
-                        <div>
-                            <h4 class="text-sm font-bold text-white">Generate Meeting Minutes</h4>
-                            <p class="text-xs text-slate-400 mt-0.5">Click "Generate Meeting Minutes" to create an AI-powered summary with
-                                key points, decisions, and action items in Markdown format.</p>
+                </div>
+
+                <div class="bg-white/[0.02] border border-white/5 p-6 rounded-2xl space-y-4 text-sm text-slate-400">
+                    <h3 class="font-display font-bold text-base text-white">Step 5: Generate Meeting Minutes</h3>
+                    <ol class="list-decimal pl-5 space-y-2.5">
+                        <li>While recording (or after stopping), click the <strong class="text-emerald-400">"Generate Meeting Minutes"</strong> button in the Live Meeting Notes window</li>
+                        <li>BerryShot sends the full transcript to your configured AI provider (from the Authentication section above)</li>
+                        <li>The AI generates a structured Markdown document with:
+                            <ul class="list-disc pl-5 mt-1.5 space-y-1">
+                                <li><strong class="text-slate-200">Summary</strong> — brief overview of the meeting</li>
+                                <li><strong class="text-slate-200">Key Discussion Points</strong> — main topics covered</li>
+                                <li><strong class="text-slate-200">Decisions Made</strong> — agreed-upon outcomes</li>
+                                <li><strong class="text-slate-200">Action Items</strong> — next steps and responsibilities</li>
+                            </ul>
+                        </li>
+                        <li>The result appears in a floating AI window with streaming text — you can copy it with one click</li>
+                    </ol>
+                </div>
+
+                <div class="bg-white/[0.02] border border-white/5 p-6 rounded-2xl space-y-4 text-sm text-slate-400">
+                    <h3 class="font-display font-bold text-base text-white">Live Meeting Notes Window Features</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="flex gap-3">
+                            <div class="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-400 text-xs mt-0.5">✓</div>
+                            <div>
+                                <h4 class="text-xs font-bold text-white">Real-time Streaming</h4>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Partial text appears as you speak (italic), finalized when you finish a sentence</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <div class="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-400 text-xs mt-0.5">✓</div>
+                            <div>
+                                <h4 class="text-xs font-bold text-white">Two-Source Labels</h4>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Mic input = "You" (green), System audio = "Other" (blue)</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <div class="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-400 text-xs mt-0.5">✓</div>
+                            <div>
+                                <h4 class="text-xs font-bold text-white">Auto-Scroll</h4>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Window automatically scrolls to show the latest transcription</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <div class="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-400 text-xs mt-0.5">✓</div>
+                            <div>
+                                <h4 class="text-xs font-bold text-white">Copy Transcript</h4>
+                                <p class="text-[11px] text-slate-500 mt-0.5">One-click copy of the full formatted transcript with timestamps</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <div class="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-400 text-xs mt-0.5">✓</div>
+                            <div>
+                                <h4 class="text-xs font-bold text-white">Always on Top</h4>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Floating window stays above all other windows during your meeting</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <div class="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-400 text-xs mt-0.5">✓</div>
+                            <div>
+                                <h4 class="text-xs font-bold text-white">Mic Mute Aware</h4>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Transcription pauses when you mute the microphone during recording</p>
+                            </div>
                         </div>
                     </div>
-                    <div class="flex gap-4">
-                        <div class="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center shrink-0 text-emerald-400 mt-1">✓</div>
-                        <div>
-                            <h4 class="text-sm font-bold text-white">Language Support</h4>
-                            <p class="text-xs text-slate-400 mt-0.5">Supports Vietnamese, English, Japanese, and many more languages.
-                                Set your preferred language in Settings for best accuracy.</p>
-                        </div>
+                </div>
+
+                <div
+                    class="bg-berry-500/5 border border-berry-500/10 p-5 rounded-2xl text-slate-300 text-sm flex gap-4 leading-relaxed">
+                    <span class="text-2xl select-none">🔄</span>
+                    <div>
+                        <strong class="text-white block mb-0.5">Fallback: Apple SFSpeech</strong>
+                        If no realtime provider is configured, BerryShot falls back to Apple's built-in <strong class="text-slate-200">SFSpeechRecognizer</strong>.
+                        This works offline and is free, but only supports English and is not truly real-time (restarts every 45 seconds).
+                        For the best experience, configure Deepgram or OpenAI Realtime.
                     </div>
                 </div>
             </section>
@@ -611,21 +794,40 @@
                 <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">9. Cloud Upload Configuration
                 </h2>
                 <p class="text-slate-300 leading-relaxed">
-                    Easily share screenshots with colleagues by setting up cloud upload endpoints. You can choose to use
-                    Imgur for fast image hosting, or standard Amazon Web Services (AWS) S3 buckets for private
-                    infrastructure.
+                    Easily share screenshots and recordings by configuring your preferred storage destination.
+                    BerryShot supports three storage providers in v1.1.2.
                 </p>
-                <div
-                    class="bg-white/[0.02] border border-white/5 p-6 rounded-2xl text-xs space-y-2 text-slate-400 font-mono">
-                    <p class="text-sm font-sans font-semibold text-slate-200 mb-2">AWS S3 Configuration parameters:</p>
-                    <p>• S3 Bucket Name: "my-screenshots-bucket"</p>
-                    <p>• IAM Access Key: "AKIA..." (Stored encrypted)</p>
-                    <p>• Region Code: e.g. "us-east-1"</p>
+
+                <div class="space-y-4">
+                    <div class="flex gap-4">
+                        <div class="w-7 h-7 rounded-lg bg-sky-500/10 flex items-center justify-center shrink-0 text-sky-400 mt-1">📁</div>
+                        <div>
+                            <h4 class="text-sm font-bold text-white">Local Directory (Default)</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Saves files to <code class="font-mono text-[10px]">~/Library/Application Support/BerryShot/</code>.
+                                Click "Change Directory..." to select a custom folder.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="w-7 h-7 rounded-lg bg-sky-500/10 flex items-center justify-center shrink-0 text-sky-400 mt-1">☁️</div>
+                        <div>
+                            <h4 class="text-sm font-bold text-white">Google Drive</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Enter your OAuth Access Token and Refresh Token.
+                                Files are uploaded via Google Drive API v3 and a shareable link is automatically copied to your clipboard.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="w-7 h-7 rounded-lg bg-sky-500/10 flex items-center justify-center shrink-0 text-sky-400 mt-1">🔗</div>
+                        <div>
+                            <h4 class="text-sm font-bold text-white">Custom Service API</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Upload to any custom endpoint. Supports Access Token (Bearer) or API Key + Secret authentication.
+                                Configure the Endpoint URL and Callback URL to parse the returned shareable link.</p>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Cloud Settings Screenshot -->
                 <div class="space-y-2 pt-2">
-                    <span class="text-xs text-slate-500 font-mono block">Figure 9.1: Cloud Settings & AWS Configuration
+                    <span class="text-xs text-slate-500 font-mono block">Figure 9.1: Cloud Settings & Storage Configuration
                         Screen</span>
                     <div class="rounded-xl border border-white/10 overflow-hidden bg-slate-950 p-2 shadow-2xl">
                         <!-- Toolbar mimic -->
@@ -648,18 +850,41 @@
             <section id="privacy-security" class="space-y-6 scroll-mt-24">
                 <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">10. Privacy & Permissions</h2>
                 <p class="text-slate-300 leading-relaxed">
-                    Because BerryShot is a utility that captures your screen, macOS enforces strict security access
-                    checks. You must explicitly authorize Screen Recording capabilities before the app can read your
-                    screen contents.
+                    Because BerryShot captures your screen and audio, macOS enforces strict security access
+                    checks. You must explicitly authorize the required permissions before the app can function.
                 </p>
+
+                <div class="space-y-4">
+                    <div class="flex gap-4">
+                        <div class="w-7 h-7 rounded-lg bg-yellow-500/10 flex items-center justify-center shrink-0 text-yellow-400 mt-1">⚠</div>
+                        <div>
+                            <h4 class="text-sm font-bold text-white">Screen Recording Permission</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Required for screen capture and recording. Navigate to
+                                <strong class="text-white">System Settings → Privacy & Security → Screen Recording</strong>,
+                                and toggle BerryShot <strong class="text-white">ON</strong>.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="w-7 h-7 rounded-lg bg-yellow-500/10 flex items-center justify-center shrink-0 text-yellow-400 mt-1">⚠</div>
+                        <div>
+                            <h4 class="text-sm font-bold text-white">Microphone Permission</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Required for live transcription and screen recording with audio.
+                                Navigate to <strong class="text-white">System Settings → Privacy & Security → Microphone</strong>,
+                                and toggle BerryShot <strong class="text-white">ON</strong>.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
                 <div
-                    class="bg-yellow-500/5 border border-yellow-500/10 p-5 rounded-2xl text-slate-300 text-sm flex gap-4 leading-relaxed">
-                    <span class="text-2xl select-none">⚠️</span>
+                    class="bg-berry-500/5 border border-berry-500/10 p-5 rounded-2xl text-slate-300 text-sm flex gap-4 leading-relaxed">
+                    <span class="text-2xl select-none">🛡️</span>
                     <div>
-                        <strong class="text-white block mb-0.5">Authorization Required</strong>
-                        When you launch the app for the first time, a system prompt will ask for "Screen Recording".
-                        Please navigate to <strong class="text-white">System Settings > Privacy & Security > Screen
-                            Recording</strong>, and toggle BerryShot <strong class="text-white">ON</strong>.
+                        <strong class="text-white block mb-0.5">Privacy First Promise</strong>
+                        BerryShot is 100% free, with no ads, no trackers, and no background data collection.
+                        All OCR and screen capture processing happens locally on your device.
+                        Data is only sent externally when you explicitly trigger Upload or AI Analysis.
                     </div>
                 </div>
             </section>
