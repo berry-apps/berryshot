@@ -86,8 +86,12 @@ public class CaptureCoordinator: ObservableObject {
     }
     
     public func handleAIAnalysis(cgImage: CGImage, rect: CGRect, screenBounds: CGRect, actionType: AIActionType = .explain) {
-        // Show loading window
+        let scale = (self.captureScreen ?? NSScreen.main)?.backingScaleFactor ?? 2.0
+        let cropRect = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
+        let finalImage = cgImage.cropping(to: cropRect) ?? cgImage
+        
         let windowController = AIResultWindowController(rect: rect, screenBounds: screenBounds)
+        windowController.viewModel.cgImage = finalImage
         self.aiResultWindowControllers.append(windowController)
         
         windowController.onClose = { [weak self, weak windowController] in
@@ -95,47 +99,6 @@ public class CaptureCoordinator: ObservableObject {
         }
         
         windowController.show()
-        
-        Task {
-            if let ai = Phase3Workflow() {
-                do {
-                    let lang = UserDefaults.standard.string(forKey: "ai_output_language") ?? "en"
-                    let langName = lang == "vi" ? "Vietnamese" : (lang == "ja" ? "Japanese" : "English")
-                    let prompt = actionType.prompt(langName: langName)
-                    
-                    let scale = (self.captureScreen ?? NSScreen.main)?.backingScaleFactor ?? 2.0
-                    let cropRect = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
-                    let finalImage = cgImage.cropping(to: cropRect) ?? cgImage
-                    
-                    let stream = ai.provider.generateTextStream(prompt: prompt, image: finalImage)
-                    await MainActor.run {
-                        windowController.viewModel.resultText = ""
-                    }
-                    for try await chunk in stream {
-                        await MainActor.run {
-                            windowController.viewModel.resultText += chunk
-                        }
-                    }
-                    await MainActor.run {
-                        windowController.viewModel.isLoading = false
-                    }
-                } catch {
-                    await MainActor.run {
-                        if windowController.viewModel.resultText.isEmpty {
-                            windowController.viewModel.errorMessage = "Failed to analyze image: \(error.localizedDescription)"
-                            windowController.viewModel.isLoading = false
-                        } else {
-                            windowController.viewModel.resultText += "\n\n[Error: \(error.localizedDescription)]"
-                        }
-                    }
-                }
-            } else {
-                await MainActor.run {
-                    windowController.viewModel.errorMessage = "AI Configuration Missing. Please configure it in Settings."
-                    windowController.viewModel.isLoading = false
-                }
-            }
-        }
     }
     
     private func processCapture(cgImage: CGImage, rect: CGRect, action: CaptureAction) {
@@ -206,6 +169,166 @@ public class CaptureCoordinator: ObservableObject {
         overlayWindowController?.hide()
         overlayWindowController = nil
         closeAIWindow()
+    }
+
+    // MARK: - Scroll Capture
+
+    public func startScrollCapture() {
+        // Save region selection before closing overlay
+        let region = overlayWindowController?.viewModel?.selectionRect
+        let isRegionCapture = (region != nil && region != .zero)
+
+        // Cancel any active region capture to prevent its overlay window from hiding our alerts or UI
+        cancelCapture()
+
+        // 1. Check accessibility permission
+        guard AccessibilityManager.shared.isAccessibilityGranted else {
+            AccessibilityManager.shared.requestAccessibilityPermission()
+            return
+        }
+
+        if isRegionCapture, let rect = region {
+            // 2. Perform region-based scroll capture
+            Task { @MainActor in
+                await self.performRegionScrollCapture(rect: rect)
+            }
+        } else {
+            // 2. Show window selector for full-window scroll capture
+            WindowSelectorPanelController.shared.show { [weak self] windowInfo in
+                guard let self else { return }
+                Task { @MainActor in
+                    await self.performScrollCapture(windowInfo: windowInfo)
+                }
+            }
+        }
+    }
+    private func performRegionScrollCapture(rect: CGRect) async {
+        // Wait for the overlay window to completely disappear and restore target app focus
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        let progressController = ScrollCaptureProgressController.shared
+
+        progressController.show {
+            ScrollCaptureManager.shared.cancel()
+        }
+
+        do {
+            let stitched = try await ScrollCaptureManager.shared.captureRegion(
+                rect: rect,
+                onProgress: { progress in
+                    Task { @MainActor in
+                        ScrollCaptureProgressController.shared.update(progress)
+                    }
+                }
+            )
+
+            progressController.finish()
+
+            let finalRect = CGRect(x: 0, y: 0, width: stitched.width, height: stitched.height)
+            processScrollCaptureResult(cgImage: stitched, rect: finalRect)
+        } catch {
+            progressController.close()
+            if let scrollError = error as? ScrollCaptureError, case .cancelled = scrollError {
+                // User cancelled, do nothing
+            } else {
+                let alert = NSAlert()
+                alert.messageText = "Scroll Capture Failed"
+                alert.informativeText = error.localizedDescription
+                alert.alertStyle = .critical
+                alert.runModal()
+            }
+        }
+    }
+
+    private func performScrollCapture(windowInfo: WindowInfo) async {
+        // Activate target app so that synthetic scrolls and keystrokes work
+        if let app = NSRunningApplication(processIdentifier: windowInfo.pid) {
+            app.activate(options: .activateIgnoringOtherApps)
+        }
+        
+        // Wait for the window selector overlay to disappear and space transition to complete
+        // Space transitions (e.g. to a full screen app) can take up to 1 second
+        try? await Task.sleep(nanoseconds: 1_200_000_000)
+        let progressController = ScrollCaptureProgressController.shared
+
+        progressController.show {
+            ScrollCaptureManager.shared.cancel()
+        }
+
+        do {
+            let stitched = try await ScrollCaptureManager.shared.captureScrollable(
+                window: windowInfo.scWindow,
+                pid: windowInfo.pid,
+                onProgress: { progress in
+                    Task { @MainActor in
+                        ScrollCaptureProgressController.shared.update(progress)
+                    }
+                }
+            )
+
+            progressController.finish()
+
+            // Route through existing save/upload pipeline
+            // Use full image rect (scroll capture already produced final image)
+            let rect = CGRect(origin: .zero, size: CGSize(width: stitched.width, height: stitched.height))
+            processScrollCaptureResult(cgImage: stitched, rect: rect)
+
+        } catch ScrollCaptureError.cancelled {
+            progressController.close()
+        } catch {
+            progressController.showError(error.localizedDescription)
+        }
+    }
+
+    private func processScrollCaptureResult(cgImage: CGImage, rect: CGRect) {
+        let resultWindow = ScrollCaptureResultWindowController(cgImage: cgImage)
+        resultWindow.show()
+        
+        Task {
+            let ocrService = OCRService()
+            let ocrText = (try? await ocrService.extractText(from: cgImage)) ?? ""
+
+            let imagePath = self.saveImageToDisk(cgImage: cgImage)
+
+            let finalURL: URL
+            if StorageConfiguration.shared.selectedProvider != .local {
+                await MainActor.run {
+                    UploadResultWindowManager.shared.showLoading()
+                }
+                do {
+                    let uploadService = await UploadServiceFactory.currentService()
+                    finalURL = try await uploadService.uploadImage(fileURL: imagePath)
+                    let pasteboard = NSPasteboard.general
+                    pasteboard.clearContents()
+                    pasteboard.setString(finalURL.absoluteString, forType: .string)
+                    await MainActor.run {
+                        UploadResultWindowManager.shared.show(url: finalURL.absoluteString)
+                    }
+                } catch {
+                    finalURL = imagePath
+                    let errorMessage = error.localizedDescription
+                    await MainActor.run {
+                        UploadResultWindowManager.shared.showError(errorMessage)
+                    }
+                }
+            } else {
+                do {
+                    let uploadService = LocalUploadService()
+                    finalURL = try await uploadService.uploadImage(fileURL: imagePath)
+                } catch {
+                    finalURL = imagePath
+                }
+            }
+
+            let screenshot = ScreenshotModel(
+                imagePath: finalURL.path,
+                thumbnailPath: finalURL.path,
+                width: cgImage.width,
+                height: cgImage.height,
+                ocrText: ocrText
+            )
+            HistoryService.shared.save(screenshot)
+            print("Scroll capture processed and saved to \(finalURL)\nOCR Text: \(ocrText)")
+        }
     }
     
     public func copyToClipboard(cgImage: CGImage, rect: CGRect) {
@@ -294,11 +417,18 @@ public class CaptureCoordinator: ObservableObject {
             }
             do {
                 let stream = ai.provider.generateTextStream(prompt: buildMeetingMinutesPrompt(transcript), image: nil)
-                await MainActor.run { wc.viewModel.resultText = "" }
-                for try await chunk in stream {
-                    await MainActor.run { wc.viewModel.resultText += chunk }
+                await MainActor.run { 
+                    wc.viewModel.isLoading = true
+                    wc.viewModel.currentStreamText = "" 
                 }
-                await MainActor.run { wc.viewModel.isLoading = false }
+                for try await chunk in stream {
+                    await MainActor.run { wc.viewModel.currentStreamText += chunk }
+                }
+                await MainActor.run { 
+                    wc.viewModel.chatHistory.append(AIChatMessage(role: .assistant, content: wc.viewModel.currentStreamText))
+                    wc.viewModel.currentStreamText = ""
+                    wc.viewModel.isLoading = false 
+                }
             } catch {
                 await MainActor.run {
                     wc.viewModel.errorMessage = "Failed to generate minutes: \(error.localizedDescription)"

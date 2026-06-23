@@ -27,6 +27,11 @@ if [ -f "Sources/Resources/MenuBarIcon.png" ]; then
     cp "Sources/Resources/MenuBarIcon.png" "$RESOURCES_DIR/"
 fi
 
+echo "Copying AppIcon.icns to app bundle root Resources..."
+if [ -f "Sources/Resources/AppIcon.icns" ]; then
+    cp "Sources/Resources/AppIcon.icns" "$RESOURCES_DIR/"
+fi
+
 echo "Generating Info.plist..."
 cat << PLIST > "$CONTENTS_DIR/Info.plist"
 <?xml version="1.0" encoding="UTF-8"?>
@@ -46,7 +51,7 @@ cat << PLIST > "$CONTENTS_DIR/Info.plist"
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.1.3</string>
+    <string>1.1.4</string>
     <key>CFBundleVersion</key>
     <string>2</string>
     <key>LSMinimumSystemVersion</key>

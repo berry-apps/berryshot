@@ -40,15 +40,42 @@ struct ToolbarView: View {
                                 ToolButton(icon: "pencil.tip", isSelected: viewModel.selectedTool == .pencil) { viewModel.selectTool(.pencil) }
                                 ToolButton(icon: "square", isSelected: viewModel.selectedTool == .rectangle) { viewModel.selectTool(.rectangle) }
                                 ToolButton(icon: "circle", isSelected: viewModel.selectedTool == .circle) { viewModel.selectTool(.circle) }
-                                ToolButton(icon: "arrow.up.right", isSelected: viewModel.selectedTool == .arrow) { viewModel.selectTool(.arrow) }
-                                ToolButton(icon: "line.diagonal", isSelected: viewModel.selectedTool == .line) { viewModel.selectTool(.line) }
+                                DropdownToolButton(
+                                    mainIcon: viewModel.selectedTool == .curvedArrow ? "arrow.turn.up.right" : "arrow.up.right",
+                                    isSelected: viewModel.selectedTool == .arrow || viewModel.selectedTool == .curvedArrow,
+                                    mainAction: { viewModel.selectTool(viewModel.selectedTool == .curvedArrow ? .curvedArrow : .arrow) },
+                                    menuItems: [
+                                        ("Straight Arrow", "arrow.up.right", { viewModel.selectTool(.arrow) }),
+                                        ("Curved Arrow", "arrow.turn.up.right", { viewModel.selectTool(.curvedArrow) })
+                                    ]
+                                )
+                                DropdownToolButton(
+                                    mainIcon: viewModel.selectedTool == .curvedLine ? "waveform.path" : "line.diagonal",
+                                    isSelected: viewModel.selectedTool == .line || viewModel.selectedTool == .curvedLine,
+                                    mainAction: { viewModel.selectTool(viewModel.selectedTool == .curvedLine ? .curvedLine : .line) },
+                                    menuItems: [
+                                        ("Straight Line", "line.diagonal", { viewModel.selectTool(.line) }),
+                                        ("Curved Connector", "waveform.path", { viewModel.selectTool(.curvedLine) })
+                                    ]
+                                )
                                 ToolButton(icon: "textformat", isSelected: viewModel.selectedTool == .text) { viewModel.selectTool(.text) }
                                 ToolButton(icon: "photo", isSelected: false) { viewModel.openImage() }
                                 
                                 Divider().frame(width: 1, height: 16).opacity(0.3)
                                 
                                 ToolButton(icon: "macwindow", isSelected: false) { viewModel.selectFullScreen() }
+                                ToolButton(icon: "scroll", isSelected: false) {
+                                    CaptureCoordinator.shared.startScrollCapture()
+                                }
+                                .help("Scroll Capture — capture full scrollable content")
                             }
+                            
+                            Divider().frame(width: 1, height: 16).opacity(0.3)
+                            
+                            ToolButton(icon: "sparkles", isSelected: viewModel.isUpscaleEnabled) {
+                                viewModel.isUpscaleEnabled.toggle()
+                            }
+                            .help("Pixel-Perfect Upscale 2x (Nearest Neighbor)")
                             
                             Divider().frame(width: 1, height: 16).opacity(0.3)
                             
@@ -120,6 +147,53 @@ struct ToolbarView: View {
     }
 }
 
+struct DropdownToolButton: View {
+    let mainIcon: String
+    let isSelected: Bool
+    let mainAction: () -> Void
+    let menuItems: [(String, String, () -> Void)]
+    @State private var isHovered = false
+    
+    var body: some View {
+        HStack(spacing: 0) {
+            Button(action: mainAction) {
+                Image(systemName: mainIcon)
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(isSelected ? .white : (isHovered ? .white : .white.opacity(0.7)))
+                    .frame(width: 26, height: 24)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            
+            Rectangle()
+                .fill(isSelected ? Color.white.opacity(0.3) : Color.white.opacity(0.1))
+                .frame(width: 1, height: 24)
+                .padding(.horizontal, 2)
+            
+            Menu {
+                ForEach(menuItems, id: \.0) { item in
+                    Button(action: item.2) {
+                        Label(item.0, systemImage: item.1)
+                    }
+                }
+            } label: {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .bold))
+                    .foregroundColor(isSelected ? .white : (isHovered ? .white : .white.opacity(0.7)))
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
+            }
+            .menuStyle(BorderlessButtonMenuStyle())
+            .menuIndicator(.hidden)
+            .fixedSize()
+        }
+        .background(isSelected ? Color.blue : (isHovered ? Color.white.opacity(0.15) : Color.clear))
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .onHover { hover in
+            isHovered = hover
+        }
+    }
+}
 struct HoverableDragBar: View {
     @ObservedObject var viewModel: OverlayViewModel
     @State private var isHovered = false
@@ -292,31 +366,8 @@ struct HoverableDragBar: View {
                 }
                 
                 ActionToolButton(icon: "sparkles", color: .purple, size: 10) {
-                    showAIOptions.toggle()
+                    viewModel.handleAIAnalysis(actionType: .explain) // The actionType won't matter as much once we use the Chat UI
                 }
-                .popover(isPresented: $showAIOptions, arrowEdge: .bottom) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        MenuItemButton(title: "Explain Image", icon: "sparkles") {
-                            viewModel.handleAIAnalysis(actionType: .explain)
-                            showAIOptions = false
-                        }
-                        
-                        MenuItemButton(title: "Translate Text", icon: "character.book.closed") {
-                            viewModel.handleAIAnalysis(actionType: .translate)
-                            showAIOptions = false
-                        }
-                        
-                        MenuItemButton(title: "Refactor Code", icon: "chevron.left.forwardslash.chevron.right") {
-                            viewModel.handleAIAnalysis(actionType: .refactor)
-                            showAIOptions = false
-                        }
-                    }
-                    .padding(6)
-                    .frame(width: 140)
-                    .padding(8)
-                    .background(Color(NSColor.windowBackgroundColor))
-                }
-                
                 ActionToolButton(icon: "checkmark", color: .green, size: 10) {
                     viewModel.handleComplete()
                 }
@@ -373,6 +424,7 @@ struct ShortcutsHelpView: View {
         ("I", "Toggle interaction mode (lock/unlock)"),
         ("R / ⌘R", "Start / Stop screen recording"),
         ("P / ⌘P", "Pause / Resume screen recording"),
+        ("⌘W", "Scroll Capture (full scrollable content)"),
         ("⌘Z", "Undo last drawing action"),
         ("⌘⇧Z", "Redo last undone action"),
         ("⌘C", "Copy screenshot to Clipboard"),

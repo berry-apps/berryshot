@@ -8,5 +8,9 @@ BerryShot is a lightweight screenshot and screen capture app for macOS, featurin
 
 ## Features
 - **Local Vision OCR**: 100% offline, privacy-focused text extraction using Apple's Vision framework.
-- **AI Integration**: Ask AI to explain code, translate text, or summarize content directly from screenshots.
+- **AI Assistant**: Interactive AI chat with multi-prompt queueing, stop generation, language awareness, and deep understanding of the app's features to guide you.
+- **Screen Recording**: HEVC 60fps recording with system audio, microphone support, and pause/resume capabilities.
+- **Scrolling Capture**: Stitch multiple screenshots together for long webpages or documents.
+- **Rich Annotations**: Pixel-perfect drawing, shapes, arrows, lines, text, and highlights.
+- **Screenshot History**: Automatic local history with SwiftData for browsing and managing past captures.
 - **Native SwiftUI App**: Fast, lightweight, and seamlessly integrated into the macOS menubar.

@@ -3,7 +3,7 @@ import SwiftUI
 import Combine
 
 public class OverlayWindowController: NSWindowController, NSWindowDelegate {
-    private var viewModel: OverlayViewModel!
+    internal var viewModel: OverlayViewModel!
     var toolbarController: ToolbarWindowController?
     private var localMonitor: Any?
     private var globalMonitor: Any?
@@ -113,7 +113,7 @@ public class OverlayWindowController: NSWindowController, NSWindowDelegate {
     }
     
     private func shouldIgnoreForTextPanel() -> Bool {
-        if let keyWindow = NSApp.keyWindow, keyWindow is NSPanel, keyWindow !== window {
+        if let keyWindow = NSApp.keyWindow, keyWindow !== window {
             return true
         }
         return false
@@ -165,7 +165,7 @@ class OverlayWindow: NSWindow {
     
     override func sendEvent(_ event: NSEvent) {
         if event.type == .keyDown {
-            if let keyWindow = NSApp.keyWindow, keyWindow is NSPanel, keyWindow !== self {
+            if let keyWindow = NSApp.keyWindow, keyWindow !== self {
                 super.sendEvent(event)
                 return
             }
@@ -175,7 +175,7 @@ class OverlayWindow: NSWindow {
     }
     
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        if let keyWindow = NSApp.keyWindow, keyWindow is NSPanel, keyWindow !== self {
+        if let keyWindow = NSApp.keyWindow, keyWindow !== self {
             return super.performKeyEquivalent(with: event)
         }
         if handleKeyEvent(event) { return true }
@@ -236,6 +236,11 @@ class OverlayWindow: NSWindow {
                 return true
             } else if char == "\r" || char == "\n" {
                 viewModel?.handleComplete()
+                return true
+            } else if char == "w" {
+                Task { @MainActor in
+                    CaptureCoordinator.shared.startScrollCapture()
+                }
                 return true
             }
         } else {
@@ -325,7 +330,7 @@ class TrackingHostingView<Content: SwiftUI.View>: NSHostingView<Content> {
         window?.makeFirstResponder(self)
         dragStart = point
         dragDidStart = true
-        let isShiftPressed = event.modifierFlags.contains(.shift)
+        let isShiftPressed = event.modifierFlags.contains(.shift) || event.modifierFlags.contains(.command)
         viewModel?.dragChanged(start: point, location: point, translation: .zero, isShiftPressed: isShiftPressed)
     }
     
@@ -333,16 +338,16 @@ class TrackingHostingView<Content: SwiftUI.View>: NSHostingView<Content> {
         guard let start = dragStart else { return }
         let point = locationInView(event)
         let translation = CGSize(width: point.x - start.x, height: point.y - start.y)
-        let isShiftPressed = event.modifierFlags.contains(.shift)
+        let isShiftPressed = event.modifierFlags.contains(.shift) || event.modifierFlags.contains(.command)
         viewModel?.dragChanged(start: start, location: point, translation: translation, isShiftPressed: isShiftPressed)
     }
     
     override func mouseUp(with event: NSEvent) {
         let point = locationInView(event)
         if dragDidStart {
-            let isShiftPressed = event.modifierFlags.contains(.shift)
+            let isShiftPressed = event.modifierFlags.contains(.shift) || event.modifierFlags.contains(.command)
             viewModel?.dragChanged(start: dragStart ?? point, location: point, translation: CGSize(width: point.x - (dragStart?.x ?? point.x), height: point.y - (dragStart?.y ?? point.y)), isShiftPressed: isShiftPressed)
-            viewModel?.dragEnded(at: point)
+            viewModel?.dragEnded(at: point, isShiftPressed: isShiftPressed)
         }
         dragStart = nil
         dragDidStart = false

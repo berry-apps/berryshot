@@ -14,6 +14,10 @@ private var resourceBundle: Bundle? {
 struct AboutSettingsView: View {
     @StateObject private var storeManager = StoreManager.shared
     
+    @State private var isCheckingForUpdates = false
+    @State private var updateMessage: String?
+    @State private var updateUrl: String?
+    
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -35,9 +39,34 @@ struct AboutSettingsView: View {
                     Text("BerryShot")
                         .font(.system(size: 28, weight: .bold))
                     
-                    Text("Version 1.1.3")
+                    Text("Version 1.1.4")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
+                    
+                    if let msg = updateMessage {
+                        if let urlString = updateUrl, let url = URL(string: urlString) {
+                            Link(msg, destination: url)
+                                .font(.caption)
+                                .foregroundColor(.green)
+                                .buttonStyle(.plain)
+                        } else {
+                            Text(msg)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    } else {
+                        Button(action: checkForUpdates) {
+                            if isCheckingForUpdates {
+                                ProgressView().controlSize(.mini)
+                            } else {
+                                Text("Check for Updates...")
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundColor(.accentColor)
+                        .font(.caption)
+                        .disabled(isCheckingForUpdates)
+                    }
                 }
                 
                 VStack(spacing: 6) {
@@ -48,9 +77,20 @@ struct AboutSettingsView: View {
                         .padding(.top, 4)
                     
                     HStack(spacing: 4) {
+                        Text("Website:")
+                            .foregroundColor(.secondary)
+                        Link("https://notex.work", destination: URL(string: "https://notex.work")!)
+                            .buttonStyle(.plain)
+                            .foregroundColor(.accentColor)
+                    }
+                    .padding(.top, 4)
+                    
+                    HStack(spacing: 4) {
                         Text("Support:")
                             .foregroundColor(.secondary)
                         Link("support@notex.work", destination: URL(string: "mailto:support@notex.work")!)
+                            .buttonStyle(.plain)
+                            .foregroundColor(.accentColor)
                     }
                     .padding(.top, 4)
                 }
@@ -99,9 +139,50 @@ struct AboutSettingsView: View {
                 }
                 .padding(.bottom, 20)
             }
-            .padding(.top, 40)
-            .padding(.horizontal, 30)
             .frame(maxWidth: .infinity)
+            .padding(.horizontal, 40)
+            .padding(.top, 40)
+        }
+    }
+    
+    private func checkForUpdates() {
+        isCheckingForUpdates = true
+        updateMessage = nil
+        updateUrl = nil
+        
+        Task {
+            do {
+                let url = URL(string: "https://notex.work/assets/version.json")!
+                let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+                    throw URLError(.badServerResponse)
+                }
+                
+                struct UpdateInfo: Decodable {
+                    let version: String
+                    let url: String
+                }
+                
+                let info = try JSONDecoder().decode(UpdateInfo.self, from: data)
+                let currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.1.3"
+                
+                await MainActor.run {
+                    isCheckingForUpdates = false
+                    if info.version != currentVersion {
+                        updateMessage = "Update available (v\(info.version)). Click to download."
+                        updateUrl = info.url
+                    } else {
+                        updateMessage = "You are up to date!"
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isCheckingForUpdates = false
+                    updateMessage = "Failed to check for updates."
+                }
+            }
         }
     }
 }

@@ -107,8 +107,8 @@ struct OverlayView: View {
                             }
                         }
                         
-                        if viewModel.selectedElementID == element.id {
-                                if element.type == .line || element.type == .arrow {
+                        if viewModel.selectedElementIDs.contains(element.id) {
+                                if element.type == .line || element.type == .arrow || element.type == .curvedLine || element.type == .curvedArrow {
                                     element.path
                                         .stroke(Color.blue.opacity(0.6), style: StrokeStyle(lineWidth: element.lineWidth + 6, dash: []))
                                 } else {
@@ -183,7 +183,7 @@ struct OverlayView: View {
                     // Binding points kiểu Excalidraw
                     ForEach(Array(viewModel.bindingPointItems().enumerated()), id: \.offset) { _, item in
                         let isHovered = viewModel.snappedBinding == BindingAnchor(elementId: item.elementId, pointIndex: item.index)
-                        BindingPointView(isActive: isHovered, isSelected: viewModel.selectedElementID == item.elementId, isConnector: item.isConnector)
+                        BindingPointView(isActive: isHovered, isSelected: viewModel.selectedElementIDs.contains(item.elementId), isConnector: item.isConnector)
                             .position(x: item.point.x, y: item.point.y)
                     }
                     

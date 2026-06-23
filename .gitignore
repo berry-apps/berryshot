@@ -15,3 +15,4 @@ AppIcon.iconset/
 AppIcon.icns
 BerryShot.entitlements
 dmg_staging/
+*.log

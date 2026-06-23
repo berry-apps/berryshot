@@ -52,9 +52,32 @@ public struct AIConfiguration: Sendable {
     }
 }
 
-public protocol LLMProvider {
+public struct AIChatMessage: Codable, Equatable, Sendable {
+    public enum Role: String, Codable, Sendable {
+        case system
+        case user
+        case assistant
+    }
+    public let role: Role
+    public let content: String
+    
+    public init(role: Role, content: String) {
+        self.role = role
+        self.content = content
+    }
+}
+
+public protocol LLMProvider: Sendable {
     func generateText(prompt: String, image: CGImage?) async throws -> String
     func generateTextStream(prompt: String, image: CGImage?) -> AsyncThrowingStream<String, Error>
+    func generateChatStream(messages: [AIChatMessage], image: CGImage?) -> AsyncThrowingStream<String, Error>
+}
+
+public extension LLMProvider {
+    func generateChatStream(messages: [AIChatMessage], image: CGImage?) -> AsyncThrowingStream<String, Error> {
+        let prompt = messages.map { "\($0.role.rawValue.capitalized): \($0.content)" }.joined(separator: "\n\n")
+        return generateTextStream(prompt: prompt, image: image)
+    }
 }
 
 public enum AIError: Error {

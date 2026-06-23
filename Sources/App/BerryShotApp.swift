@@ -39,6 +39,19 @@ struct MenuView: View {
         } else {
             captureButton
         }
+
+        Button("Scroll Capture…") {
+            captureCoordinator.startScrollCapture()
+        }
+        .keyboardShortcut("w", modifiers: [.command, .shift])
+        
+        Divider()
+        
+        Button("Check for Updates...") {
+            Task {
+                await UpdateManager.shared.checkForUpdates(showUI: true)
+            }
+        }
         
         Divider()
         
@@ -158,7 +171,34 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
         
+        setupEditMenu()
         print("[BerryShot] App launched successfully. Look for BerryShot in the menu bar (top right).")
+    }
+    
+    @MainActor
+    private func setupEditMenu() {
+        let mainMenu = NSMenu()
+        let editMenuItem = NSMenuItem()
+        mainMenu.addItem(editMenuItem)
+        let editMenu = NSMenu(title: "Edit")
+        
+        let undoItem = NSMenuItem(title: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
+        let redoItem = NSMenuItem(title: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
+        let cutItem = NSMenuItem(title: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        let copyItem = NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        let pasteItem = NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        let selectAllItem = NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        
+        editMenu.addItem(undoItem)
+        editMenu.addItem(redoItem)
+        editMenu.addItem(.separator())
+        editMenu.addItem(cutItem)
+        editMenu.addItem(copyItem)
+        editMenu.addItem(pasteItem)
+        editMenu.addItem(selectAllItem)
+        
+        editMenuItem.submenu = editMenu
+        NSApp.mainMenu = mainMenu
     }
     
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

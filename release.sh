@@ -73,6 +73,16 @@ if [ -f "$DMG_HASH_FILE" ]; then
     echo "✅ Updated DMG hash in landing page: $DMG_HASH"
 fi
 
+# Generate version.json for the app to check updates
+cat <<EOF > landingpage/assets/version.json
+{
+  "version": "$NEW_VERSION",
+  "url": "https://notex.work/assets/BerryShot.dmg",
+  "releaseNotes": "A new version of BerryShot is available!"
+}
+EOF
+echo "✅ Generated landingpage/assets/version.json"
+
 echo "====================================="
 echo "🎉 Release $NEW_VERSION built successfully!"
 echo "Files are available in landingpage/assets/"

@@ -8,7 +8,9 @@ public enum AnnotationToolType {
     case rectangle
     case circle
     case arrow
+    case curvedArrow
     case line
+    case curvedLine
     case text
     case image
 }
@@ -52,7 +54,7 @@ public struct AnnotationElement: Identifiable {
     
     public var hasBindingPoints: Bool {
         switch type {
-        case .rectangle, .circle, .text, .line, .arrow, .image:
+        case .rectangle, .circle, .text, .line, .curvedLine, .arrow, .curvedArrow, .image:
             return true
         case .pencil, .select:
             return false
@@ -101,7 +103,7 @@ public struct AnnotationElement: Identifiable {
     
     public mutating func updateBindingPoint(at index: Int, with newPoint: CGPoint, anchor: BindingAnchor?) {
         switch type {
-        case .line, .arrow:
+        case .line, .curvedLine, .arrow, .curvedArrow:
             if index == 0 {
                 startPoint = newPoint
                 startBinding = anchor
@@ -180,6 +182,7 @@ public struct AnnotationElement: Identifiable {
             path = Path()
             path.move(to: startPoint)
             path.addLine(to: endPoint)
+            
         case .arrow:
             let angle = atan2(endPoint.y - startPoint.y, endPoint.x - startPoint.x)
             let arrowLength: CGFloat = max(20, lineWidth * 3)
@@ -189,22 +192,89 @@ public struct AnnotationElement: Identifiable {
             let p1 = CGPoint(x: endPoint.x + arrowLength * cos(angle1), y: endPoint.y + arrowLength * sin(angle1))
             let p2 = CGPoint(x: endPoint.x + arrowLength * cos(angle2), y: endPoint.y + arrowLength * sin(angle2))
             
-            // Shorten the stem to hide its round cap completely inside the V-shaped head
             let stemOffset = max(1.0, lineWidth * 1.5)
             let stemEnd = CGPoint(x: endPoint.x - stemOffset * cos(angle), y: endPoint.y - stemOffset * sin(angle))
             
             path = Path()
-            // Stem
             path.move(to: startPoint)
             path.addLine(to: stemEnd)
-            
-            // Arrow head drawn as a continuous path to utilize lineJoin = .round
             path.move(to: p1)
             path.addLine(to: endPoint)
             path.addLine(to: p2)
+            
+        case .curvedLine:
+            let (cp1, cp2) = computeConnectorControlPoints(start: startPoint, end: endPoint, startAnchor: startBinding, endAnchor: endBinding)
+            path = Path()
+            path.move(to: startPoint)
+            path.addCurve(to: endPoint, control1: cp1, control2: cp2)
+            
+        case .curvedArrow:
+            let (cp1, cp2) = computeConnectorControlPoints(start: startPoint, end: endPoint, startAnchor: startBinding, endAnchor: endBinding)
+            
+            let angle = atan2(endPoint.y - cp2.y, endPoint.x - cp2.x)
+            let arrowLength: CGFloat = max(20, lineWidth * 3)
+            let angle1 = angle + .pi * 5 / 6
+            let angle2 = angle - .pi * 5 / 6
+            
+            let p1 = CGPoint(x: endPoint.x + arrowLength * cos(angle1), y: endPoint.y + arrowLength * sin(angle1))
+            let p2 = CGPoint(x: endPoint.x + arrowLength * cos(angle2), y: endPoint.y + arrowLength * sin(angle2))
+            
+            let stemOffset = max(1.0, lineWidth * 1.5)
+            let stemEnd = CGPoint(x: endPoint.x - stemOffset * cos(angle), y: endPoint.y - stemOffset * sin(angle))
+            
+            path = Path()
+            path.move(to: startPoint)
+            path.addCurve(to: stemEnd, control1: cp1, control2: cp2)
+            
+            path.move(to: p1)
+            path.addLine(to: endPoint)
+            path.addLine(to: p2)
+            
         case .select:
             break
         }
+    }
+    
+    private func computeConnectorControlPoints(start: CGPoint, end: CGPoint, startAnchor: BindingAnchor?, endAnchor: BindingAnchor?) -> (CGPoint, CGPoint) {
+        let dx = end.x - start.x
+        let dy = end.y - start.y
+        let absDx = abs(dx)
+        let absDy = abs(dy)
+        let distance = hypot(dx, dy)
+        let offset = max(30, distance * 0.4)
+        
+        var cp1 = start
+        var cp2 = end
+        
+        func offsetForAnchor(_ anchor: BindingAnchor?, point: CGPoint) -> CGPoint? {
+            guard let anchor = anchor else { return nil }
+            switch anchor.pointIndex {
+            case 4: return CGPoint(x: point.x, y: point.y - offset) // Top -> go up
+            case 5: return CGPoint(x: point.x, y: point.y + offset) // Bottom -> go down
+            case 6: return CGPoint(x: point.x - offset, y: point.y) // Left -> go left
+            case 7: return CGPoint(x: point.x + offset, y: point.y) // Right -> go right
+            default: return nil
+            }
+        }
+        
+        if let p1 = offsetForAnchor(startAnchor, point: start) { cp1 = p1 }
+        if let p2 = offsetForAnchor(endAnchor, point: end) { cp2 = p2 }
+        
+        if startAnchor == nil && endAnchor == nil {
+            if absDx > absDy {
+                cp1 = CGPoint(x: start.x + dx / 2, y: start.y)
+                cp2 = CGPoint(x: end.x - dx / 2, y: end.y)
+            } else {
+                cp1 = CGPoint(x: start.x, y: start.y + dy / 2)
+                cp2 = CGPoint(x: end.x, y: end.y - dy / 2)
+            }
+        } else if startAnchor == nil {
+            if cp2.x == end.x { cp1 = CGPoint(x: start.x, y: start.y + dy / 2) } else { cp1 = CGPoint(x: start.x + dx / 2, y: start.y) }
+        } else if endAnchor == nil {
+            if cp1.x == start.x { cp2 = CGPoint(x: end.x, y: end.y - dy / 2) } else { cp2 = CGPoint(x: end.x - dx / 2, y: end.y) }
+        }
+        
+        return (cp1, cp2)
     }
     
     public mutating func updatePencil(currentPoint: CGPoint) {
@@ -219,7 +289,7 @@ public struct AnnotationElement: Identifiable {
     
     public var boundingRect: CGRect {
         switch type {
-        case .text, .pencil, .rectangle, .circle, .line, .arrow, .image:
+        case .text, .pencil, .rectangle, .circle, .line, .curvedLine, .arrow, .curvedArrow, .image:
             return path.boundingRect.insetBy(dx: -lineWidth, dy: -lineWidth)
         case .select:
             return .zero
@@ -251,7 +321,7 @@ public struct AnnotationElement: Identifiable {
             return !inner.contains(point)
         case .image:
             return shapeRect().insetBy(dx: -tolerance, dy: -tolerance).contains(point)
-        case .line, .arrow:
+        case .line, .curvedLine, .arrow, .curvedArrow:
             return distanceFromPoint(point, toLineFrom: startPoint, to: endPoint) <= tolerance
         case .pencil:
             if !path.isEmpty {
@@ -275,7 +345,7 @@ public struct AnnotationElement: Identifiable {
         case .pencil:
             let transform = CGAffineTransform(translationX: translation.width, y: translation.height)
             path = path.applying(transform)
-        case .rectangle, .circle, .line, .arrow, .image, .text:
+        case .rectangle, .circle, .line, .curvedLine, .arrow, .curvedArrow, .image, .text:
             rebuildPath()
         case .select:
             break
@@ -314,7 +384,7 @@ public struct AnnotationElement: Identifiable {
                 CGPoint(x: maxX, y: midY),
                 CGPoint(x: midX, y: midY)
             ]
-        case .line, .arrow:
+        case .line, .curvedLine, .arrow, .curvedArrow:
             return [startPoint, endPoint]
         case .text:
             let r = boundingRect

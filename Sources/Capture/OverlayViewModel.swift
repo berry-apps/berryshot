@@ -4,12 +4,13 @@ import Speech
 import Combine
 import CoreGraphics
 import Cocoa
+import CoreImage.CIFilterBuiltins
 
 enum DragMode {
     case selecting(start: CGPoint)
     case resizing(Handle, originalRect: CGRect)
     case annotating
-    case movingElement(UUID, original: AnnotationElement)
+    case movingElements([AnnotationElement])
     case editingPoint(elementId: UUID, pointIndex: Int, original: AnnotationElement)
     case movingSelection(originalRect: CGRect, elementsSnapshot: [AnnotationElement])
     case none
@@ -34,34 +35,38 @@ final class OverlayViewModel: ObservableObject {
     @Published var currentCursor: NSCursor = .arrow
     @Published var selectedColor: Color = .red {
         didSet {
-            if let id = selectedElementID, let idx = elements.firstIndex(where: { $0.id == id }) {
+            let selectedIdxs = elements.indices.filter { selectedElementIDs.contains(elements[$0].id) }
+            if !selectedIdxs.isEmpty {
                 saveState()
-                elements[idx].color = selectedColor
+                for idx in selectedIdxs { elements[idx].color = selectedColor }
             }
         }
     }
     @Published var isFilled: Bool = false {
         didSet {
-            if let id = selectedElementID, let idx = elements.firstIndex(where: { $0.id == id }) {
+            let selectedIdxs = elements.indices.filter { selectedElementIDs.contains(elements[$0].id) }
+            if !selectedIdxs.isEmpty {
                 saveState()
-                elements[idx].isFilled = isFilled
+                for idx in selectedIdxs { elements[idx].isFilled = isFilled }
             }
         }
     }
     @Published var fillOpacity: CGFloat = 0.4 {
         didSet {
-            if let id = selectedElementID, let idx = elements.firstIndex(where: { $0.id == id }) {
+            let selectedIdxs = elements.indices.filter { selectedElementIDs.contains(elements[$0].id) }
+            if !selectedIdxs.isEmpty {
                 saveState()
-                elements[idx].fillOpacity = fillOpacity
+                for idx in selectedIdxs { elements[idx].fillOpacity = fillOpacity }
             }
         }
     }
     
     @Published var selectedFontSize: CGFloat = 24 {
         didSet {
-            if let id = selectedElementID, let idx = elements.firstIndex(where: { $0.id == id }) {
+            let selectedIdxs = elements.indices.filter { selectedElementIDs.contains(elements[$0].id) }
+            if !selectedIdxs.isEmpty {
                 saveState()
-                elements[idx].fontSize = selectedFontSize
+                for idx in selectedIdxs { elements[idx].fontSize = selectedFontSize }
             }
         }
     }
@@ -71,11 +76,13 @@ final class OverlayViewModel: ObservableObject {
     @Published var isPaused = false
     @Published var isProcessingRecord = false
     @Published var isMicMuted = false
+    
+    @Published var isUpscaleEnabled = false
     @Published var showLiveNotes = false
     
     @Published var elements: [AnnotationElement] = []
     @Published var currentElement: AnnotationElement? = nil
-    @Published var selectedElementID: UUID? = nil
+    @Published var selectedElementIDs: Set<UUID> = []
     
     struct HistoryState {
         let elements: [AnnotationElement]
@@ -119,12 +126,18 @@ final class OverlayViewModel: ObservableObject {
         guard localEventMonitor == nil else { return }
         self.localEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self = self else { return event }
+            
+            // Do not intercept if another window (e.g. AI Result) is the key window
+            if let keyWindow = NSApp.keyWindow, !(keyWindow is OverlayWindow) {
+                return event
+            }
+            
             if self.activeTextInput == nil {
                 if event.keyCode == 51 || event.keyCode == 117 {
                     self.deleteSelectedElement()
                     return nil
                 } else if event.keyCode == 36 { // Enter key
-                    if let id = self.selectedElementID, let el = self.elements.first(where: { $0.id == id }), el.type != .select {
+                    if let id = self.selectedElementIDs.first, let el = self.elements.first(where: { $0.id == id }), el.type != .select {
                         let center = CGPoint(x: el.shapeRect().midX, y: el.shapeRect().midY)
                         self.activeTextInput = TextInputState(
                             position: center,
@@ -158,7 +171,7 @@ final class OverlayViewModel: ObservableObject {
         redoStack.append(HistoryState(elements: elements, selectionRect: selectionRect))
         elements = prevState.elements
         selectionRect = prevState.selectionRect
-        selectedElementID = nil
+        selectedElementIDs.removeAll()
         activeTextInput = nil
     }
     
@@ -211,7 +224,7 @@ final class OverlayViewModel: ObservableObject {
                 
                 self.saveState()
                 self.elements.append(element)
-                self.selectedElementID = element.id
+                self.selectedElementIDs = [element.id]
                 self.selectedTool = .select
             }
         }
@@ -230,7 +243,7 @@ final class OverlayViewModel: ObservableObject {
         undoStack.append(HistoryState(elements: elements, selectionRect: selectionRect))
         elements = nextState.elements
         selectionRect = nextState.selectionRect
-        selectedElementID = nil
+        selectedElementIDs.removeAll()
         activeTextInput = nil
     }
     
@@ -242,7 +255,7 @@ final class OverlayViewModel: ObservableObject {
     }
     
     var isConnectorTool: Bool {
-        selectedTool == .line || selectedTool == .arrow
+        selectedTool == .line || selectedTool == .curvedLine || selectedTool == .arrow || selectedTool == .curvedArrow
     }
     
     var showsAllBindingPoints: Bool {
@@ -261,9 +274,9 @@ final class OverlayViewModel: ObservableObject {
             return items
         }
         
-        if let id = selectedElementID, let element = elements.first(where: { $0.id == id }), element.hasBindingPoints {
+        if let id = selectedElementIDs.first, let element = elements.first(where: { $0.id == id }), element.hasBindingPoints {
             let isHovered = (id == hoveredElementID)
-            let isLine = element.type == .line || element.type == .arrow
+            let isLine = element.type == .line || element.type == .curvedLine || element.type == .arrow || element.type == .curvedArrow
             for (idx, pt) in element.bindingPoints.enumerated() {
                 // If hovered and not a line, hide the edge resize handles (4,5,6,7) to make room for connector pluses
                 if isHovered && !isLine && (idx >= 4) { continue }
@@ -301,9 +314,9 @@ final class OverlayViewModel: ObservableObject {
             return
         }
         
-        if selectedTool != .select || selectedElementID != nil {
+        if selectedTool != .select || !selectedElementIDs.isEmpty {
             selectedTool = .select
-            selectedElementID = nil
+            selectedElementIDs.removeAll()
             return
         }
         
@@ -311,31 +324,45 @@ final class OverlayViewModel: ObservableObject {
         parentWindow?.close()
     }
     
+    func processImage(_ image: CGImage) -> CGImage {
+        guard isUpscaleEnabled else { return image }
+        let scale: CGFloat = 2.0
+        let width = Int(CGFloat(image.width) * scale)
+        let height = Int(CGFloat(image.height) * scale)
+        
+        guard let colorSpace = image.colorSpace,
+              let context = CGContext(data: nil,
+                                      width: width,
+                                      height: height,
+                                      bitsPerComponent: image.bitsPerComponent,
+                                      bytesPerRow: 0,
+                                      space: colorSpace,
+                                      bitmapInfo: image.bitmapInfo.rawValue) else {
+            return image
+        }
+        
+        context.interpolationQuality = .none
+        context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+        
+        return context.makeImage() ?? image
+    }
+    
     func handleCopy() {
         commitActiveText()
-        if let rendered = renderAnnotatedImage() {
-            onCopy(rendered, selectionRect)
-        } else {
-            onCopy(cgImage, selectionRect)
-        }
+        let finalImage = processImage(renderAnnotatedImage() ?? cgImage)
+        onCopy(finalImage, selectionRect)
     }
     
     func handleComplete() {
         commitActiveText()
-        if let rendered = renderAnnotatedImage() {
-            onComplete(rendered, selectionRect)
-        } else {
-            onComplete(cgImage, selectionRect)
-        }
+        let finalImage = processImage(renderAnnotatedImage() ?? cgImage)
+        onComplete(finalImage, selectionRect)
     }
     
     func handleUpload() {
         commitActiveText()
-        if let rendered = renderAnnotatedImage() {
-            onUpload(rendered, selectionRect)
-        } else {
-            onUpload(cgImage, selectionRect)
-        }
+        let finalImage = processImage(renderAnnotatedImage() ?? cgImage)
+        onUpload(finalImage, selectionRect)
     }
     
     func handleCancel() {
@@ -373,8 +400,8 @@ final class OverlayViewModel: ObservableObject {
         } else {
             selectedTool = tool
         }
-        if selectedTool != .select && selectedTool != .line && selectedTool != .arrow {
-            selectedElementID = nil
+        if selectedTool != .select && selectedTool != .line && selectedTool != .curvedLine && selectedTool != .arrow && selectedTool != .curvedArrow {
+            selectedElementIDs.removeAll()
         }
     }
     
@@ -416,8 +443,8 @@ final class OverlayViewModel: ObservableObject {
         saveState()
         if let idx = elements.firstIndex(where: { $0.id == id }) {
             elements.remove(at: idx)
-            if selectedElementID == id {
-                selectedElementID = nil
+            if selectedElementIDs.contains(id) {
+                selectedElementIDs.removeAll()
             }
             refreshBoundConnectors()
         }
@@ -440,7 +467,7 @@ final class OverlayViewModel: ObservableObject {
     }
     
     @objc func deleteSelectedElement() {
-        if let id = selectedElementID {
+        if let id = selectedElementIDs.first {
             deleteElement(id: id)
         }
     }
@@ -476,7 +503,7 @@ final class OverlayViewModel: ObservableObject {
     
     func refreshBoundConnectors() {
         for i in elements.indices {
-            guard elements[i].type == .line || elements[i].type == .arrow else { continue }
+            guard elements[i].type == .line || elements[i].type == .curvedLine || elements[i].type == .arrow || elements[i].type == .curvedArrow else { continue }
             var el = elements[i]
             var changed = false
             
@@ -537,7 +564,7 @@ final class OverlayViewModel: ObservableObject {
         }
         
         var isInsideActionIcon = false
-        if let id = selectedElementID, let el = elements.first(where: { $0.id == id }) {
+        if let id = selectedElementIDs.first, let el = elements.first(where: { $0.id == id }) {
             let cx = el.boundingRect.maxX + 20
             let cy = el.boundingRect.minY - 20
             let deleteRect = CGRect(x: cx - 15, y: cy - 15, width: 30, height: 30)
@@ -556,7 +583,7 @@ final class OverlayViewModel: ObservableObject {
         
         var isHoveringHandle = false
         var targetIds = Set<UUID>()
-        if let id = selectedElementID { targetIds.insert(id) }
+        if let id = selectedElementIDs.first { targetIds.insert(id) }
         if let id = hoveredElementID { targetIds.insert(id) }
         
         for id in targetIds {
@@ -566,7 +593,7 @@ final class OverlayViewModel: ObservableObject {
                         isHoveringHandle = true
                     }
                 }
-                if selectedTool == .select, selectedElementID == id {
+                if selectedTool == .select, selectedElementIDs.contains(id) {
                     for pt in el.bindingPoints {
                         if hypot(pt.x - location.x, pt.y - location.y) < 8 {
                             isHoveringHandle = true
@@ -582,7 +609,7 @@ final class OverlayViewModel: ObservableObject {
             targetCursor = .pointingHand
             if snappedPoint != nil { snappedPoint = nil }
             if snappedBinding != nil { snappedBinding = nil }
-        } else if getHandle(at: location) != nil {
+        } else if selectedTool == .select, getHandle(at: location) != nil {
             targetCursor = .crosshair
             if snappedPoint != nil { snappedPoint = nil }
             if snappedBinding != nil { snappedBinding = nil }
@@ -647,7 +674,7 @@ final class OverlayViewModel: ObservableObject {
         
         switch dragMode {
         case .none:
-            if let id = selectedElementID, let el = elements.first(where: { $0.id == id }) {
+            if let id = selectedElementIDs.first, let el = elements.first(where: { $0.id == id }) {
                 let cx = el.boundingRect.maxX + 35
                 let cy = el.boundingRect.minY - 20
                 
@@ -673,14 +700,14 @@ final class OverlayViewModel: ObservableObject {
                 dragMode = .selecting(start: start)
                 selectionRect = CGRect(x: start.x, y: start.y, width: 0, height: 0)
             } else {
-                if let handle = getHandle(at: start) {
+                if selectedTool == .select, let handle = getHandle(at: start) {
                     saveState()
                     dragMode = .resizing(handle, originalRect: selectionRect)
                 } else {
                     var handledBindingPoint = false
                     
                     var targetIds = Set<UUID>()
-                    if let id = selectedElementID { targetIds.insert(id) }
+                    if let id = selectedElementIDs.first { targetIds.insert(id) }
                     if let id = hoveredElementID { targetIds.insert(id) }
                     
                     outer: for targetId in targetIds {
@@ -688,7 +715,9 @@ final class OverlayViewModel: ObservableObject {
                             for (cIdx, pt) in el.connectorHandles.enumerated() {
                                 if hypot(pt.x - start.x, pt.y - start.y) < 8 {
                                     saveState()
-                                    selectedTool = .arrow
+                                    if !isConnectorTool {
+                                        selectedTool = .curvedArrow
+                                    }
                                     dragMode = .annotating
                                     let bIdx: Int
                                     if cIdx == 0 { bIdx = 4 }      // Top -> Top
@@ -698,10 +727,10 @@ final class OverlayViewModel: ObservableObject {
                                     
                                     let snapPt = el.bindingPoint(at: bIdx) ?? pt
                                     let startSnap = BindingSnapResult(point: snapPt, anchor: BindingAnchor(elementId: el.id, pointIndex: bIdx))
-                                    var arrow = AnnotationElement(type: .arrow, startPoint: snapPt, color: selectedColor, isFilled: isFilled)
-                                    applyStartBinding(to: &arrow, at: snapPt, snap: startSnap)
-                                    arrow.rebuildPath()
-                                    currentElement = arrow
+                                    var connector = AnnotationElement(type: selectedTool, startPoint: snapPt, color: selectedColor, isFilled: isFilled)
+                                    applyStartBinding(to: &connector, at: snapPt, snap: startSnap)
+                                    connector.rebuildPath()
+                                    currentElement = connector
                                     handledBindingPoint = true
                                     break outer
                                 }
@@ -709,7 +738,7 @@ final class OverlayViewModel: ObservableObject {
                         }
                     }
                     
-                    if !handledBindingPoint, selectedTool == .select, let selectedId = selectedElementID, let el = elements.first(where: { $0.id == selectedId }) {
+                    if !handledBindingPoint, selectedTool == .select, let selectedId = selectedElementIDs.first, let el = elements.first(where: { $0.id == selectedId }) {
                         for (idx, pt) in el.bindingPoints.enumerated() {
                             if hypot(pt.x - start.x, pt.y - start.y) < 8 {
                                 saveState()
@@ -724,11 +753,12 @@ final class OverlayViewModel: ObservableObject {
                         if selectedTool == .select {
                             if let hitElement = elementAt(point: start) {
                                 saveState()
-                                selectedElementID = hitElement.id
-                                dragMode = .movingElement(hitElement.id, original: hitElement)
+                                if !isShiftPressed { selectedElementIDs.removeAll() }; selectedElementIDs.insert(hitElement.id)
+                                let originals = elements.filter { selectedElementIDs.contains($0.id) }
+dragMode = .movingElements(originals)
                                 print("DEBUG: Entered .movingElement for \(hitElement.id)")
                             } else {
-                                selectedElementID = nil
+                                selectedElementIDs.removeAll()
                                 if selectionRect.contains(start) {
                                     saveState()
                                     dragMode = .movingSelection(originalRect: selectionRect, elementsSnapshot: elements)
@@ -743,7 +773,7 @@ final class OverlayViewModel: ObservableObject {
                             }
                         } else {
                     if isConnectorTool, selectionRect.contains(start) {
-                        selectedElementID = nil
+                        selectedElementIDs.removeAll()
                         dragMode = .annotating
                         let startSnap = findBinding(near: start)
                         var el = AnnotationElement(type: selectedTool, startPoint: startSnap?.point ?? start, color: selectedColor, isFilled: isFilled)
@@ -753,10 +783,11 @@ final class OverlayViewModel: ObservableObject {
                     } else if isDrawingTool, selectionRect.contains(start) {
                         if selectedTool == .text, let hit = elementAt(point: start), hit.type == .text {
                             saveState()
-                            selectedElementID = hit.id
-                            dragMode = .movingElement(hit.id, original: hit)
+                            if !isShiftPressed { selectedElementIDs.removeAll() }; selectedElementIDs.insert(hit.id)
+                            let originals = elements.filter { selectedElementIDs.contains($0.id) }
+                            dragMode = .movingElements(originals)
                         } else {
-                            selectedElementID = nil
+                            selectedElementIDs.removeAll()
                             dragMode = .annotating
                             if selectedTool == .pencil {
                             currentElement = AnnotationElement(type: .pencil, startPoint: start, color: selectedColor, isFilled: isFilled, fillOpacity: fillOpacity)
@@ -835,7 +866,7 @@ final class OverlayViewModel: ObservableObject {
                             x: el.startPoint.x + (dx < 0 ? -side : side),
                             y: el.startPoint.y + (dy < 0 ? -side : side)
                         )
-                    } else if isShiftPressed && (el.type == .line || el.type == .arrow) {
+                    } else if isShiftPressed && (el.type == .line || el.type == .curvedLine || el.type == .arrow || el.type == .curvedArrow) {
                         let dx = targetPoint.x - el.startPoint.x
                         let dy = targetPoint.y - el.startPoint.y
                         let angle = atan2(dy, dx)
@@ -851,14 +882,15 @@ final class OverlayViewModel: ObservableObject {
                     currentElement = el
                 }
             }
-        case .movingElement(let id, let original):
-            if let idx = elements.firstIndex(where: { $0.id == id }) {
-                var moved = original
-                moved.move(by: translation)
-                elements[idx] = moved
-                refreshBoundConnectors()
-                print("DEBUG: Moving element \(id) by \(translation)")
+        case .movingElements(let originals):
+            for original in originals {
+                if let idx = elements.firstIndex(where: { $0.id == original.id }) {
+                    var moved = original
+                    moved.move(by: translation)
+                    elements[idx] = moved
+                }
             }
+            refreshBoundConnectors()
         case .editingPoint(let id, let index, let original):
             if let idx = elements.firstIndex(where: { $0.id == id }) {
                 var el = original
@@ -874,7 +906,7 @@ final class OverlayViewModel: ObservableObject {
         }
     }
     
-    func dragEnded(at location: CGPoint) {
+    func dragEnded(at location: CGPoint, isShiftPressed: Bool = false) {
         if activeTextInput != nil {
             return
         }
@@ -949,7 +981,7 @@ final class OverlayViewModel: ObservableObject {
                 saveState()
                 elements.append(element)
                 currentElement = nil
-                selectedElementID = element.id
+                selectedElementIDs = [element.id]
                 
                 if element.type == .text {
                     // Open text edit immediately when finished drawing a text box
@@ -964,17 +996,17 @@ final class OverlayViewModel: ObservableObject {
             }
             snappedPoint = nil
             snappedBinding = nil
-        case .movingElement(let id, _):
-            selectedElementID = id
+        case .movingElements(let originals):
+            selectedElementIDs = Set(originals.map { $0.id })
             refreshBoundConnectors()
         case .editingPoint(let id, _, _):
-            selectedElementID = id
+            selectedElementIDs = [id]
             snappedPoint = nil
             snappedBinding = nil
             refreshBoundConnectors()
         case .none:
             if let hit = elementAt(point: location) {
-                selectedElementID = hit.id
+                if !isShiftPressed { selectedElementIDs.removeAll() }; selectedElementIDs.insert(hit.id)
                 selectedColor = hit.color
                 isFilled = hit.isFilled
                 fillOpacity = hit.fillOpacity
@@ -982,7 +1014,7 @@ final class OverlayViewModel: ObservableObject {
                     selectedFontSize = hit.fontSize
                 }
             } else if isSelectingFinished, elementAt(point: location) == nil {
-                selectedElementID = nil
+                selectedElementIDs.removeAll()
             }
         }
         
@@ -1002,8 +1034,8 @@ final class OverlayViewModel: ObservableObject {
                 elements[idx].text = input.text
                 if elements[idx].type == .text && input.text.isEmpty {
                     elements.remove(at: idx)
-                    if selectedElementID == id {
-                        selectedElementID = nil
+                    if selectedElementIDs.contains(id) {
+                        selectedElementIDs.removeAll()
                     }
                 }
             }

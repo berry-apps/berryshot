@@ -222,20 +222,26 @@
                     <a href="#ai-integration"
                         class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">6.
                         ChatGPT / Claude AI</a>
-                    <a href="#screen-recording"
+                    <a href="#scroll-capture"
                         class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">7.
+                        Scrolling Capture</a>
+                    <a href="#screen-recording"
+                        class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">8.
                         Screen Recording</a>
                     <a href="#live-meeting-notes"
-                        class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">8.
-                        Live Meeting Notes</a>
-                    <a href="#cloud-settings"
                         class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">9.
+                        Live Meeting Notes</a>
+                    <a href="#screenshot-history"
+                        class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">10.
+                        Screenshot History</a>
+                    <a href="#cloud-settings"
+                        class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">11.
                         Cloud Uploads</a>
                     <a href="#privacy-security"
-                        class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">10.
+                        class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">12.
                         Privacy & Permissions</a>
                     <a href="#support-contact"
-                        class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">11.
+                        class="inline-block lg:block py-2 text-slate-400 hover:text-berry-400 font-medium transition-colors border-b-2 lg:border-b-0 lg:border-l-2 border-transparent hover:border-berry-400 pl-2 lg:pl-3 pr-3 lg:pr-0">13.
                         Support & Contact</a>
                 </nav>
             </div>
@@ -429,9 +435,71 @@
                 </div>
             </section>
 
-            <!-- 5. Local Offline OCR -->
+            <!-- 5. Scrolling Capture -->
+            <section id="scroll-capture" class="space-y-6 scroll-mt-24">
+                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">5. Scrolling Capture</h2>
+                <p class="text-slate-300 leading-relaxed">
+                    Capture entire webpages, long documents, or any scrollable content in a single stitched image.
+                    BerryShot automatically scrolls through the target window, captures each frame, and stitches them
+                    together seamlessly.
+                </p>
+
+                <div
+                    class="bg-indigo-500/5 border border-indigo-500/10 p-5 rounded-2xl text-slate-300 text-sm flex gap-4 leading-relaxed">
+                    <span class="text-2xl select-none">📜</span>
+                    <div>
+                        <strong class="text-white block mb-0.5">Accessibility Permission Required</strong>
+                        Scroll Capture requires macOS Accessibility permission to programmatically scroll the target window.
+                        Go to <strong class="text-white">System Settings → Privacy & Security → Accessibility</strong> and enable BerryShot.
+                    </div>
+                </div>
+
+                <div class="bg-white/[0.02] border border-white/5 p-6 rounded-2xl space-y-4 text-sm text-slate-400">
+                    <h3 class="font-display font-bold text-white">How to Use Scrolling Capture</h3>
+                    <ol class="list-decimal pl-5 space-y-2.5">
+                        <li>Press your capture shortcut (default: <kbd class="px-2 py-0.5 bg-white/5 border border-white/10 rounded text-xs font-mono text-slate-300">⌘⇧2</kbd>) to enter capture mode</li>
+                        <li>Instead of drawing a region, click on the <strong class="text-slate-200">target window</strong> you want to capture</li>
+                        <li>Click the <strong class="text-indigo-400">Scroll Capture</strong> button on the toolbar (or press <kbd class="px-1.5 py-0.5 bg-white/5 border border-white/10 rounded text-[10px] font-mono text-slate-300">S</kbd>)</li>
+                        <li>BerryShot will automatically scroll through the content, capturing frames at each step</li>
+                        <li>A progress indicator shows the current frame count and estimated completion</li>
+                        <li>When complete, all frames are stitched into a single tall image</li>
+                    </ol>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white/[0.01] border border-white/5 p-5 rounded-xl space-y-2">
+                        <h4 class="font-bold text-white text-sm">Configuration Options</h4>
+                        <ul class="list-disc pl-4 text-xs text-slate-400 space-y-1.5 leading-relaxed">
+                            <li><strong class="text-slate-200">Scroll Step:</strong> Lines per scroll event (default: 8)</li>
+                            <li><strong class="text-slate-200">Scroll Delay:</strong> Wait time between frames (default: 0.12s)</li>
+                            <li><strong class="text-slate-200">Max Frames:</strong> Safety cap at 150 frames to prevent infinite capture</li>
+                            <li><strong class="text-slate-200">Timeout:</strong> Total operation timeout of 120 seconds</li>
+                        </ul>
+                    </div>
+
+                    <div class="bg-white/[0.01] border border-white/5 p-5 rounded-xl space-y-2">
+                        <h4 class="font-bold text-white text-sm">Sticky Header/Footer Stripping</h4>
+                        <ul class="list-disc pl-4 text-xs text-slate-400 space-y-1.5 leading-relaxed">
+                            <li><strong class="text-slate-200">Sticky Header Height:</strong> Configure to strip fixed navigation bars from stitched result</li>
+                            <li><strong class="text-slate-200">Sticky Footer Height:</strong> Configure to strip fixed footers from the final image</li>
+                            <li><strong class="text-slate-200">Auto-Detection:</strong> BerryShot attempts to detect overlapping content for cleaner stitching</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="bg-yellow-500/5 border border-yellow-500/10 p-4 rounded-xl text-xs flex gap-3">
+                    <span class="text-lg select-none">💡</span>
+                    <div>
+                        <strong class="text-white block mb-0.5">Tip: Best Results</strong>
+                        For best results, ensure the target window is fully visible on screen and avoid interacting with it during capture.
+                        The scroll capture works best with web browsers, document viewers, and chat applications.
+                    </div>
+                </div>
+            </section>
+
+            <!-- 6. Local Offline OCR -->
             <section id="offline-ocr" class="space-y-6 scroll-mt-24">
-                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">5. Local Offline OCR</h2>
+                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">6. Local Offline OCR</h2>
                 <p class="text-slate-300 leading-relaxed">
                     BerryShot stands out by executing optical character recognition (OCR) completely on your local
                     device. Utilizing Apple's core Vision Framework, the app extracts text content in less than 100
@@ -489,9 +557,9 @@
                 </div>
             </section>
 
-            <!-- 6. ChatGPT / Claude AI Explainer -->
+            <!-- 7. ChatGPT / Claude AI Explainer -->
             <section id="ai-integration" class="space-y-6 scroll-mt-24">
-                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">6. ChatGPT / Claude AI Explainer
+                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">7. ChatGPT / Claude AI Explainer
                 </h2>
                 <p class="text-slate-300 leading-relaxed">
                     Enhance your workflow by pairing extracted OCR text directly with Anthropic Claude or OpenAI ChatGPT
@@ -541,9 +609,9 @@
                 </div>
             </section>
 
-            <!-- 7. Screen Recording -->
+            <!-- 8. Screen Recording -->
             <section id="screen-recording" class="space-y-6 scroll-mt-24">
-                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">7. Screen Recording</h2>
+                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">8. Screen Recording</h2>
                 <p class="text-slate-300 leading-relaxed">
                     BerryShot includes built-in screen recording powered by ScreenCaptureKit. Record your selected region
                     with HEVC codec, system audio, and microphone — all with annotation overlays preserved.
@@ -595,9 +663,9 @@
                 </div>
             </section>
 
-            <!-- 8. Live Meeting Notes & Transcription -->
+            <!-- 9. Live Meeting Notes & Transcription -->
             <section id="live-meeting-notes" class="space-y-6 scroll-mt-24">
-                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">8. Live Meeting Notes & Transcription</h2>
+                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">9. Live Meeting Notes & Transcription</h2>
                 <p class="text-slate-300 leading-relaxed">
                     Real-time speech-to-text transcription powered by Deepgram Nova or OpenAI Whisper. BerryShot captures
                     both your microphone and system audio simultaneously, displaying live captions in a floating window
@@ -789,9 +857,62 @@
                 </div>
             </section>
 
-            <!-- 9. Cloud Uploads -->
+            <!-- 10. Screenshot History -->
+            <section id="screenshot-history" class="space-y-6 scroll-mt-24">
+                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">10. Screenshot History</h2>
+                <p class="text-slate-300 leading-relaxed">
+                    BerryShot automatically saves your capture history using SwiftData. Browse, search, and manage all your
+                    previous screenshots directly from the app without needing to locate files manually in Finder.
+                </p>
+
+                <div class="bg-white/[0.02] border border-white/5 p-6 rounded-2xl space-y-4 text-sm text-slate-400">
+                    <h3 class="font-display font-bold text-white">History Features</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="flex gap-3">
+                            <div class="w-6 h-6 rounded bg-purple-500/10 flex items-center justify-center shrink-0 text-purple-400 text-xs mt-0.5">✓</div>
+                            <div>
+                                <h4 class="text-xs font-bold text-white">Auto-Save</h4>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Every screenshot is automatically saved to history with timestamp metadata</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <div class="w-6 h-6 rounded bg-purple-500/10 flex items-center justify-center shrink-0 text-purple-400 text-xs mt-0.5">✓</div>
+                            <div>
+                                <h4 class="text-xs font-bold text-white">SwiftData Storage</h4>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Uses Apple's modern SwiftData framework for efficient local persistence</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <div class="w-6 h-6 rounded bg-purple-500/10 flex items-center justify-center shrink-0 text-purple-400 text-xs mt-0.5">✓</div>
+                            <div>
+                                <h4 class="text-xs font-bold text-white">Quick Access</h4>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Access history from menu bar to re-copy, re-upload, or delete past captures</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <div class="w-6 h-6 rounded bg-purple-500/10 flex items-center justify-center shrink-0 text-purple-400 text-xs mt-0.5">✓</div>
+                            <div>
+                                <h4 class="text-xs font-bold text-white">Sorted by Date</h4>
+                                <p class="text-[11px] text-slate-500 mt-0.5">History is sorted newest-first with creation timestamps for easy browsing</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="bg-purple-500/5 border border-purple-500/10 p-5 rounded-2xl text-slate-300 text-sm flex gap-4 leading-relaxed">
+                    <span class="text-2xl select-none">📸</span>
+                    <div>
+                        <strong class="text-white block mb-0.5">Local Storage Only</strong>
+                        Screenshot history is stored entirely on your device using SwiftData. No data is sent to external servers.
+                        You can delete individual entries or clear the entire history at any time.
+                    </div>
+                </div>
+            </section>
+
+            <!-- 11. Cloud Uploads -->
             <section id="cloud-settings" class="space-y-6 scroll-mt-24">
-                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">9. Cloud Upload Configuration
+                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">11. Cloud Upload Configuration
                 </h2>
                 <p class="text-slate-300 leading-relaxed">
                     Easily share screenshots and recordings by configuring your preferred storage destination.
@@ -846,9 +967,9 @@
                 </div>
             </section>
 
-            <!-- 10. Privacy & Permissions -->
+            <!-- 12. Privacy & Permissions -->
             <section id="privacy-security" class="space-y-6 scroll-mt-24">
-                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">10. Privacy & Permissions</h2>
+                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">12. Privacy & Permissions</h2>
                 <p class="text-slate-300 leading-relaxed">
                     Because BerryShot captures your screen and audio, macOS enforces strict security access
                     checks. You must explicitly authorize the required permissions before the app can function.
@@ -889,9 +1010,9 @@
                 </div>
             </section>
 
-            <!-- 11. Support & Contact -->
+            <!-- 13. Support & Contact -->
             <section id="support-contact" class="space-y-6 scroll-mt-24 border-t border-white/5 pt-12">
-                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">11. Support & Contact</h2>
+                <h2 class="font-display font-extrabold text-2xl sm:text-3xl text-white">13. Support & Contact</h2>
                 <p class="text-slate-300 leading-relaxed">
                     If you run into issues, have feature proposals, or require business assistance, please email our
                     support address.

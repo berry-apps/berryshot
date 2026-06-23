@@ -14,11 +14,15 @@ For precompiled releases, user guides, and developer articles, visit the officia
 ## ✨ Key Features
 
 - **🍓 Native Capture Overlay**: Fast, interactive region selector initiated via keyboard shortcut (`⌘ + ⇧ + 1`) or Menu Bar item.
+- **📜 Scrolling Capture**: Stitch multiple screenshots together for entire webpages or long documents.
 - **🎨 Live Annotation Tools**: Draw rectangles, lines, arrows, custom highlights, and overlay rich text on the canvas before completing the capture.
 - **🔍 100% Local OCR**: Perform lightning-fast, offline Optical Character Recognition (OCR) to copy text from screen selections instantly.
 - **🤖 Cloud & AI Assistant Integration**:
   - Connect captures to AI models (Gemini, Claude, OpenAI, OpenRouter, and Xiaomi Mimo) to summarize code, translate, or extract data.
   - Choose your output language and customize prompt templates.
+- **🎙️ Live Meeting Transcription**: Real-time speech-to-text via Deepgram Nova or OpenAI Whisper with dual-source (mic + system audio) capture.
+- **🎬 Screen Recording**: HEVC 60fps recording with system audio, microphone, pause/resume, and dynamic region updates.
+- **📸 Screenshot History**: Automatic local history with SwiftData for browsing and managing past captures.
 - **☁️ Multi-Provider Storage**:
   - Save to a default local folder.
   - Automatically upload captures to **Google Drive** or a custom **HTTP POST Endpoint** (with bearer token / API keys security).

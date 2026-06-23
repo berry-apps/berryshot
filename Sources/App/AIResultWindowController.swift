@@ -24,15 +24,25 @@ public class AIResultWindowController: NSWindowController {
         
         let window = AIResultWindow(
             contentRect: windowRect,
-            styleMask: [.borderless, .fullSizeContentView],
+            styleMask: [.titled, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.standardWindowButton(.closeButton)?.isHidden = true
+        window.standardWindowButton(.miniaturizeButton)?.isHidden = true
+        window.standardWindowButton(.zoomButton)?.isHidden = true
+        
         window.isMovableByWindowBackground = true
         window.level = NSWindow.Level(rawValue: NSWindow.Level.screenSaver.rawValue + 2)
         window.backgroundColor = .clear
         window.isOpaque = false
         window.hasShadow = false
+        
+        let screenWidth = screenBounds.width
+        window.minSize = CGSize(width: 300, height: 400)
+        window.maxSize = CGSize(width: screenWidth / 3.0, height: screenBounds.height)
         
         self.init(window: window)
         
@@ -63,6 +73,18 @@ public class AIResultWindowController: NSWindowController {
 class AIResultWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+    
+    override func sendEvent(_ event: NSEvent) {
+        // macOS accessory apps often have issues routing Backspace to SwiftUI TextFields.
+        // We manually forward it to the first responder if it's an NSTextView.
+        if event.type == .keyDown && event.keyCode == 51 { // Backspace
+            if let textView = self.firstResponder as? NSTextView {
+                textView.deleteBackward(nil)
+                return
+            }
+        }
+        super.sendEvent(event)
+    }
 }
 
 class AIResultHostingView<Content: SwiftUI.View>: NSHostingView<Content> {

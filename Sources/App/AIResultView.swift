@@ -38,13 +38,15 @@ public struct AIResultView: View {
                     Spacer()
                     
                     // Copy Button
-                    if !viewModel.resultText.isEmpty && viewModel.errorMessage == nil {
+                    if !viewModel.chatHistory.isEmpty && viewModel.errorMessage == nil {
                         Button(action: {
                             let pb = NSPasteboard.general
                             pb.clearContents()
-                            pb.setString(viewModel.resultText, forType: .string)
+                            let text = viewModel.chatHistory.map { "\($0.role.rawValue.capitalized): \($0.content)" }.joined(separator: "\n\n")
+                            pb.setString(text, forType: .string)
                             withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { showCopiedToast = true }
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                            Task { @MainActor in
+                                try? await Task.sleep(nanoseconds: 2_000_000_000)
                                 withAnimation(.easeOut(duration: 0.2)) { showCopiedToast = false }
                             }
                         }) {
@@ -54,7 +56,7 @@ public struct AIResultView: View {
                         }
                         .buttonStyle(.plain)
                         .padding(.trailing, 12)
-                        .help("Copy content")
+                        .help("Copy chat history")
                     }
                 }
                 
@@ -68,75 +70,150 @@ public struct AIResultView: View {
             Divider().background(Color.white.opacity(0.1))
             
             // Content Area
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if let error = viewModel.errorMessage {
-                        VStack(spacing: 12) {
-                            Spacer().frame(height: 60)
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .font(.system(size: 32))
-                                .foregroundColor(.red)
-                            Text("Oops, something went wrong.")
-                                .font(.headline)
-                            Text(error)
-                                .font(.subheadline)
-                                .foregroundColor(.red)
-                                .multilineTextAlignment(.center)
-                            Spacer()
-                        }
-                        .padding(24)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        
-                    } else {
-                        if viewModel.resultText.isEmpty && viewModel.isLoading {
-                            // Prominent skeleton loading state when empty
-                            VStack(alignment: .leading, spacing: 16) {
-                                HStack(spacing: 8) {
-                                    Image(systemName: "sparkles")
-                                        .foregroundColor(.purple)
-                                    Text("Thinking...")
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundColor(.white.opacity(0.8))
-                                }
-                                .padding(.bottom, 8)
-                                
-                                SkeletonView()
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        if let error = viewModel.errorMessage {
+                            VStack(spacing: 12) {
+                                Spacer().frame(height: 60)
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .font(.system(size: 32))
+                                    .foregroundColor(.red)
+                                    .id("bottom")
+                                Text("Oops, something went wrong.")
+                                    .font(.headline)
+                                Text(error)
+                                    .font(.subheadline)
+                                    .foregroundColor(.red)
+                                    .multilineTextAlignment(.center)
+                                Spacer()
                             }
-                            .padding(.horizontal, 20)
-                            .padding(.top, 20)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(24)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            
                         } else {
-                            VStack(alignment: .leading, spacing: 16) {
-                                NativeMarkdownView(text: viewModel.resultText)
-                                    .padding(.horizontal, 20)
-                                    .padding(.top, 20)
-                                    .padding(.bottom, 20)
-                                
-                                // Thinking indicator streams immediately
-                                if viewModel.isLoading {
-                                    HStack(spacing: 8) {
-                                        ProgressView()
-                                            .controlSize(.small)
-                                        Text("Thinking...")
-                                            .font(.system(size: 13, weight: .medium))
-                                            .foregroundColor(.white.opacity(0.7))
+                            if viewModel.chatHistory.isEmpty && !viewModel.isLoading {
+                                VStack(spacing: 12) {
+                                    Image(systemName: "sparkles.rectangle.stack")
+                                        .font(.system(size: 40))
+                                        .foregroundColor(.purple.opacity(0.8))
+                                    Text("Ask me anything about this capture!")
+                                        .font(.headline)
+                                        .foregroundColor(.white.opacity(0.7))
+                                }
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.top, 60)
+                                .id("bottom")
+                            } else {
+                                ForEach(Array(viewModel.chatHistory.enumerated()), id: \.offset) { i, msg in
+                                    if msg.role == .user {
+                                        HStack {
+                                            Spacer()
+                                            Text(msg.content)
+                                                .padding(12)
+                                                .background(Color.blue.opacity(0.8))
+                                                .foregroundColor(.white)
+                                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                                        }
+                                        .padding(.horizontal, 16)
+                                    } else if msg.role == .system {
+                                        Text(msg.content)
+                                            .font(.caption)
+                                            .foregroundColor(.white.opacity(0.5))
+                                            .frame(maxWidth: .infinity, alignment: .center)
+                                    } else {
+                                        NativeMarkdownView(text: msg.content)
+                                            .padding(.horizontal, 16)
                                     }
-                                    .padding(.horizontal, 20)
-                                    .padding(.bottom, 20)
+                                }
+                                
+                                if viewModel.isLoading {
+                                    if viewModel.currentStreamText.isEmpty {
+                                        AgentThinkingView()
+                                            .padding(.horizontal, 16)
+                                            .id("bottom")
+                                    } else {
+                                        NativeMarkdownView(text: viewModel.currentStreamText)
+                                            .padding(.horizontal, 16)
+                                            .id("bottom")
+                                    }
+                                } else {
+                                    Spacer().frame(height: 1).id("bottom")
                                 }
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
+                    .padding(.vertical, 16)
+                }
+                .onChange(of: viewModel.chatHistory.count) { _, _ in
+                    withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
+                }
+                .onChange(of: viewModel.currentStreamText) { _, _ in
+                    withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
                 }
             }
+            
+            // Input Area
+            Divider().background(Color.white.opacity(0.1))
+            
+            if !viewModel.promptQueue.isEmpty {
+                HStack {
+                    Text("\(viewModel.promptQueue.count) prompt(s) in queue...")
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(.white.opacity(0.6))
+                    Spacer()
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+                .padding(.bottom, -4)
+            }
+            
+            HStack {
+                TextField("Ask AI about this capture...", text: $viewModel.inputText)
+                    .textFieldStyle(PlainTextFieldStyle())
+                    .padding(8)
+                    .background(Color.black.opacity(0.2))
+                    .cornerRadius(8)
+                    .onSubmit {
+                        if !viewModel.inputText.isEmpty {
+                            viewModel.sendMessage(viewModel.inputText)
+                        }
+                    }
+                
+                HStack(spacing: 8) {
+                    if viewModel.isLoading {
+                        Button(action: {
+                            viewModel.stopGenerating()
+                        }) {
+                            Image(systemName: "stop.circle.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(.red.opacity(0.8))
+                        }
+                        .buttonStyle(.plain)
+                        .help("Stop Generating")
+                    }
+                    
+                    Button(action: {
+                        if !viewModel.inputText.isEmpty {
+                            viewModel.sendMessage(viewModel.inputText)
+                        }
+                    }) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 24))
+                            .foregroundColor(viewModel.inputText.isEmpty ? .white.opacity(0.2) : .blue)
+                    }
+                    .buttonStyle(.plain)
+                    .help(viewModel.isLoading ? "Queue Prompt" : "Send Prompt")
+                }
+            }
+            .padding(12)
             .onHover { hovering in
                 withAnimation(.easeInOut(duration: 0.2)) {
                     isHoveringContent = hovering
                 }
             }
         }
-        .frame(width: 400, height: 500)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(.ultraThinMaterial)
         .environment(\.colorScheme, .dark)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -145,12 +222,141 @@ public struct AIResultView: View {
     }
 }
 
+@MainActor
 public class AIResultViewModel: ObservableObject {
-    @Published public var isLoading: Bool = true
-    @Published public var resultText: String = ""
+    @Published public var isLoading: Bool = false
+    @Published public var chatHistory: [AIChatMessage] = []
+    @Published public var currentStreamText: String = ""
     @Published public var errorMessage: String? = nil
+    @Published public var inputText: String = ""
+    @Published public var promptQueue: [String] = []
     
-    public init() {}
+    private var currentTask: Task<Void, Never>? = nil
+    
+    public var cgImage: CGImage?
+    
+    public init() {
+        if UserDefaults.standard.string(forKey: "ai_output_language") == nil {
+            let sysLang = Locale.current.language.languageCode?.identifier ?? "en"
+            let supported = ["en", "vi", "ja"]
+            UserDefaults.standard.set(supported.contains(sysLang) ? sysLang : "en", forKey: "ai_output_language")
+        }
+        
+        let lang = UserDefaults.standard.string(forKey: "ai_output_language") ?? "en"
+        let msg: String
+        switch lang {
+        case "vi": msg = "Chào bạn! Tôi có thể giúp gì cho bạn với hình ảnh này?"
+        case "ja": msg = "こんにちは！この画像について何でも聞いてください。"
+        default: msg = "Hello! I am ready to answer any questions about this capture."
+        }
+        
+        self.chatHistory = [AIChatMessage(role: .assistant, content: msg)]
+    }
+    public func stopGenerating() {
+        currentTask?.cancel()
+        currentTask = nil
+        isLoading = false
+        if !currentStreamText.isEmpty {
+            chatHistory.append(AIChatMessage(role: .assistant, content: currentStreamText))
+            currentStreamText = ""
+        }
+        processNextInQueue()
+    }
+    
+    private func processNextInQueue() {
+        if !promptQueue.isEmpty {
+            let next = promptQueue.removeFirst()
+            startGeneration(for: next)
+        }
+    }
+
+    public func sendMessage(_ text: String) {
+        let msg = AIChatMessage(role: .user, content: text)
+        chatHistory.append(msg)
+        inputText = ""
+        errorMessage = nil
+        
+        if isLoading {
+            promptQueue.append(text)
+            return
+        }
+        
+        startGeneration(for: text)
+    }
+    
+    private func startGeneration(for text: String) {
+        isLoading = true
+        currentStreamText = ""
+        
+        currentTask = Task { [weak self] in
+            guard let self = self else { return }
+            if let ai = Phase3Workflow() {
+                do {
+                    // Truncate history if > 10
+                    var contextHistory = self.chatHistory
+                    if contextHistory.count > 10 {
+                        let summaryPrompt = "Summarize the key context of this conversation briefly in one paragraph: \n" + contextHistory.map { "\($0.role.rawValue.capitalized): \($0.content)" }.joined(separator: "\n")
+                        let summary = try await ai.provider.generateText(prompt: summaryPrompt, image: nil)
+                        
+                        await MainActor.run {
+                            self.chatHistory = [
+                                AIChatMessage(role: .system, content: "Context from previous conversation: " + summary),
+                                AIChatMessage(role: .user, content: text)
+                            ]
+                        }
+                        contextHistory = self.chatHistory
+                    }
+                    let lang = UserDefaults.standard.string(forKey: "ai_output_language") ?? "en"
+                    let langName = lang == "vi" ? "Vietnamese" : (lang == "ja" ? "Japanese" : "English")
+                    let systemPromptStr = """
+                    You are an intelligent AI assistant built directly into BerryShot, created by notex.work.
+                    Your primary job is to support the user in utilizing capture features, analyzing images, extracting text, explaining code, and addressing any image-capture-related inquiries.
+                    
+                    **App Capabilities**: BerryShot currently supports taking screenshots, screen recording (with mic/audio), scrolling capture, image annotations (arrows, shapes, text, drawing), text extraction (OCR), pinning images to screen, and AI image analysis.
+                    
+                    **Handling Feature Requests**: If the user asks how to do something (e.g., "I want to record the screen"), you MUST prioritize explaining how to do it using BerryShot's existing features. If they ask for a feature that BerryShot does NOT have, clearly inform them that it is not supported in the current app, and politely ask to confirm if they are referring to another system or application.
+                    
+                    If the user asks who you are, introduce yourself as the AI assistant created by notex.work, capable of assisting with capture workflows and image analysis.
+                    You must answer in the language the user asks you in, unless specifically requested otherwise. Use \(langName) as your default preferred language if uncertain.
+                    Format your response clearly using Markdown (bold, lists, code blocks).
+                    Always address the user's question directly, accurately, and concisely.
+                    """
+                    let systemPrompt = AIChatMessage(role: .system, content: systemPromptStr)
+                    let apiMessages = [systemPrompt] + contextHistory
+                    let stream = ai.provider.generateChatStream(messages: apiMessages, image: self.cgImage)
+                    for try await chunk in stream {
+                        if Task.isCancelled { break }
+                        await MainActor.run {
+                            self.currentStreamText += chunk
+                        }
+                    }
+                    
+                    await MainActor.run {
+                        if !Task.isCancelled {
+                            self.chatHistory.append(AIChatMessage(role: .assistant, content: self.currentStreamText))
+                            self.currentStreamText = ""
+                            self.isLoading = false
+                            self.processNextInQueue()
+                        }
+                    }
+                } catch {
+                    if !Task.isCancelled {
+                        await MainActor.run {
+                            self.errorMessage = "Failed: \(error.localizedDescription)"
+                            self.isLoading = false
+                            self.processNextInQueue()
+                        }
+                    }
+                }
+            } else {
+                await MainActor.run {
+                    self.errorMessage = "AI Configuration Missing."
+                    self.isLoading = false
+                    self.processNextInQueue()
+                }
+            }
+        }
+    }
 }
 
 struct SkeletonView: View {
@@ -217,7 +423,8 @@ struct CodeBlockView: View {
                         pb.clearContents()
                         pb.setString(code, forType: .string)
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) { showCopiedToast = true }
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        Task { @MainActor in
+                            try? await Task.sleep(nanoseconds: 2_000_000_000)
                             withAnimation(.easeOut(duration: 0.2)) { showCopiedToast = false }
                         }
                     }) {
@@ -449,6 +656,37 @@ struct NativeMarkdownView: View {
                 .foregroundColor(.white.opacity(0.85))
                 .lineSpacing(4)
                 .textSelection(.enabled)
+        }
+    }
+}
+
+struct AgentThinkingView: View {
+    @State private var stepIndex = 0
+    private let steps = [
+        "Analyzing visual context...",
+        "Extracting relevant data...",
+        "Formulating intelligence...",
+        "Refining response..."
+    ]
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            ProgressView()
+                .controlSize(.small)
+            
+            Text(steps[stepIndex])
+                .font(.system(size: 13, weight: .medium, design: .monospaced))
+                .foregroundColor(.purple.opacity(0.8))
+        }
+        .task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 1_200_000_000)
+                if !Task.isCancelled {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        stepIndex = (stepIndex + 1) % steps.count
+                    }
+                }
+            }
         }
     }
 }
