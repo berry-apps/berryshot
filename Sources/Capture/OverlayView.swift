@@ -198,7 +198,8 @@ struct OverlayView: View {
             .contentShape(Rectangle())
             .onAppear {
                 viewModel.cachedGeometrySize = geometry.size
-                viewModel.selectDefaultRegion()
+                // Start with no pre-set region (Lightshot-style): user drags to draw the capture area.
+                // viewModel.selectDefaultRegion()
                 viewModel.setupEventMonitor()
             }
             .onDisappear {
