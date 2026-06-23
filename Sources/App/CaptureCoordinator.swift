@@ -2,6 +2,12 @@ import Foundation
 import CoreGraphics
 import Cocoa
 
+extension NSScreen {
+    var displayID: CGDirectDisplayID? {
+        deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
+    }
+}
+
 @MainActor
 public class CaptureCoordinator: ObservableObject {
     public static let shared = CaptureCoordinator()
@@ -9,6 +15,7 @@ public class CaptureCoordinator: ObservableObject {
     private let captureManager = ScreenCaptureManager()
     private var aiResultWindowControllers: [AIResultWindowController] = []
     private var liveMeetingWindowController: LiveMeetingWindowController?
+    private var captureScreen: NSScreen?
     
     private init() {
         setupHotkeys()
@@ -32,15 +39,19 @@ public class CaptureCoordinator: ObservableObject {
         }
         
         do {
-            // For Phase 1, we capture the main display
-            let displayID = CGMainDisplayID()
+            // Capture the screen the cursor is currently on (supports multi-monitor)
+            let mouseLocation = NSEvent.mouseLocation
+            let activeScreen = NSScreen.screens.first { NSMouseInRect(mouseLocation, $0.frame, false) } ?? NSScreen.main
+            guard let screen = activeScreen, let displayID = screen.displayID else {
+                print("Capture failed: no active screen found")
+                return
+            }
             let cgImage = try await captureManager.captureDisplay(displayID)
-            
+
             DispatchQueue.main.async {
-                if let screen = NSScreen.main {
-                    self.overlayWindowController = OverlayWindowController(cgImage: cgImage, display: screen)
-                    self.overlayWindowController?.show()
-                }
+                self.captureScreen = screen
+                self.overlayWindowController = OverlayWindowController(cgImage: cgImage, display: screen)
+                self.overlayWindowController?.show()
             }
         } catch {
             print("Capture failed: \(error)")
@@ -92,7 +103,7 @@ public class CaptureCoordinator: ObservableObject {
                     let langName = lang == "vi" ? "Vietnamese" : (lang == "ja" ? "Japanese" : "English")
                     let prompt = actionType.prompt(langName: langName)
                     
-                    let scale = NSScreen.main?.backingScaleFactor ?? 2.0
+                    let scale = (self.captureScreen ?? NSScreen.main)?.backingScaleFactor ?? 2.0
                     let cropRect = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
                     let finalImage = cgImage.cropping(to: cropRect) ?? cgImage
                     
@@ -131,10 +142,10 @@ public class CaptureCoordinator: ObservableObject {
         self.overlayWindowController?.hide()
         self.overlayWindowController = nil
         self.closeAIWindow()
-        
-        let scale = NSScreen.main?.backingScaleFactor ?? 2.0
+
+        let scale = (self.captureScreen ?? NSScreen.main)?.backingScaleFactor ?? 2.0
         let cropRect = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
-        
+
         if let cropped = cgImage.cropping(to: cropRect) {
             Task {
                 let ocrService = OCRService()
@@ -201,10 +212,10 @@ public class CaptureCoordinator: ObservableObject {
         self.overlayWindowController?.hide()
         self.overlayWindowController = nil
         self.closeAIWindow()
-        
-        let scale = NSScreen.main?.backingScaleFactor ?? 2.0
+
+        let scale = (self.captureScreen ?? NSScreen.main)?.backingScaleFactor ?? 2.0
         let cropRect = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
-        
+
         if let cropped = cgImage.cropping(to: cropRect) {
             let nsImage = NSImage(cgImage: cropped, size: .zero)
             let pasteboard = NSPasteboard.general
