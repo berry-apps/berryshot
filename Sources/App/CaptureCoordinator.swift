@@ -1,6 +1,7 @@
 import Foundation
 import CoreGraphics
 import Cocoa
+import UniformTypeIdentifiers
 
 extension NSScreen {
     var displayID: CGDirectDisplayID? {
@@ -11,16 +12,16 @@ extension NSScreen {
 @MainActor
 public class CaptureCoordinator: ObservableObject {
     public static let shared = CaptureCoordinator()
-    
+
     private let captureManager = ScreenCaptureManager()
     private var aiResultWindowControllers: [AIResultWindowController] = []
     private var liveMeetingWindowController: LiveMeetingWindowController?
     private var captureScreen: NSScreen?
-    
+
     private init() {
         setupHotkeys()
     }
-    
+
     private func setupHotkeys() {
         HotkeyManager.shared.onCaptureHotkey = { [weak self] in
             Task {
@@ -29,15 +30,15 @@ public class CaptureCoordinator: ObservableObject {
         }
         HotkeyManager.shared.registerHotkeys()
     }
-    
+
     private var overlayWindowController: OverlayWindowController?
-    
+
     public func startCapture() async {
         if self.overlayWindowController != nil {
             print("Capture already in progress, ignoring hotkey.")
             return
         }
-        
+
         do {
             // Capture the screen the cursor is currently on (supports multi-monitor)
             let mouseLocation = NSEvent.mouseLocation
@@ -57,25 +58,25 @@ public class CaptureCoordinator: ObservableObject {
             print("Capture failed: \(error)")
         }
     }
-    
+
     public enum CaptureAction {
         case saveLocal
         case upload
     }
-    
+
     public func finishCapture(cgImage: CGImage, rect: CGRect) {
         processCapture(cgImage: cgImage, rect: rect, action: .saveLocal)
     }
-    
+
     public func uploadCapture(cgImage: CGImage, rect: CGRect) {
         processCapture(cgImage: cgImage, rect: rect, action: .upload)
     }
-    
+
     public enum AIActionType {
         case explain
         case translate
         case refactor
-        
+
         func prompt(langName: String) -> String {
             switch self {
             case .explain: return "Explain what is in this image briefly and concisely. Use Markdown formatting: use **bold** for key points, `code` for technical terms, bullet lists for multiple items, and code blocks for code snippets. Reply exclusively in \(langName)."
@@ -84,23 +85,23 @@ public class CaptureCoordinator: ObservableObject {
             }
         }
     }
-    
+
     public func handleAIAnalysis(cgImage: CGImage, rect: CGRect, screenBounds: CGRect, actionType: AIActionType = .explain) {
         let scale = (self.captureScreen ?? NSScreen.main)?.backingScaleFactor ?? 2.0
         let cropRect = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
         let finalImage = cgImage.cropping(to: cropRect) ?? cgImage
-        
+
         let windowController = AIResultWindowController(rect: rect, screenBounds: screenBounds)
         windowController.viewModel.cgImage = finalImage
         self.aiResultWindowControllers.append(windowController)
-        
+
         windowController.onClose = { [weak self, weak windowController] in
             self?.aiResultWindowControllers.removeAll { $0 === windowController }
         }
-        
+
         windowController.show()
     }
-    
+
     private func processCapture(cgImage: CGImage, rect: CGRect, action: CaptureAction) {
         self.overlayWindowController?.hide()
         self.overlayWindowController = nil
@@ -113,9 +114,9 @@ public class CaptureCoordinator: ObservableObject {
             Task {
                 let ocrService = OCRService()
                 let ocrText = (try? await ocrService.extractText(from: cropped)) ?? ""
-                
+
                 let imagePath = self.saveImageToDisk(cgImage: cropped) // Save temporarily first
-                
+
                 let finalURL: URL
                 if action == .upload || StorageConfiguration.shared.selectedProvider != .local {
                     await MainActor.run {
@@ -125,19 +126,19 @@ public class CaptureCoordinator: ObservableObject {
                         let uploadService = await UploadServiceFactory.currentService()
                         finalURL = try await uploadService.uploadImage(fileURL: imagePath)
                         print("Upload successful: \(finalURL)")
-                        
+
                         // Copy URL to clipboard
                         let pasteboard = NSPasteboard.general
                         pasteboard.clearContents()
                         pasteboard.setString(finalURL.absoluteString, forType: .string)
-                        
+
                         await MainActor.run {
                             UploadResultWindowManager.shared.show(url: finalURL.absoluteString)
                         }
                     } catch {
                         print("Upload failed: \(error)")
                         finalURL = imagePath
-                        
+
                         let errorMessage = error.localizedDescription
                         await MainActor.run {
                             UploadResultWindowManager.shared.showError(errorMessage)
@@ -151,7 +152,7 @@ public class CaptureCoordinator: ObservableObject {
                         finalURL = imagePath
                     }
                 }
-                
+
                 let screenshot = ScreenshotModel(
                     imagePath: finalURL.path,
                     thumbnailPath: finalURL.path,
@@ -164,7 +165,88 @@ public class CaptureCoordinator: ObservableObject {
             }
         }
     }
-    
+
+    /// Save As: let the user pick a destination via NSSavePanel, then write the PNG there.
+    public func saveAsCapture(cgImage: CGImage, rect: CGRect) {
+        let scale = (self.captureScreen ?? NSScreen.main)?.backingScaleFactor ?? 2.0
+        let cropRect = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
+        let cropped = cgImage.cropping(to: cropRect) ?? cgImage
+
+        let bitmapImage = NSBitmapImageRep(cgImage: cropped)
+        bitmapImage.size = NSSize(width: cropped.width, height: cropped.height)
+        guard let pngData = bitmapImage.representation(using: .png, properties: [:]) else {
+            print("Save As failed: could not encode PNG")
+            return
+        }
+
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.png]
+        panel.canCreateDirectories = true
+        panel.nameFieldStringValue = "Screenshot-\(Self.timestampString()).png"
+        let defaultDir = StorageConfiguration.shared.defaultLocalDirectory
+        if !defaultDir.isEmpty {
+            panel.directoryURL = URL(fileURLWithPath: defaultDir)
+        } else if let desktop = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first {
+            panel.directoryURL = desktop
+        }
+
+        // The overlay and toolbar windows sit at .screenSaver level and would obscure
+        // and steal interaction from the panel. Hide the overlay entirely while the
+        // panel is up, and bring it back if the user cancels.
+        self.overlayWindowController?.hide()
+        NSApp.activate(ignoringOtherApps: true)
+
+        // runModal centers the panel on the main screen by default. Reposition it to the
+        // center of the screen that was captured. The async block runs inside the modal
+        // run loop, after the panel is on-screen, so it overrides the auto-centering.
+        if let screen = self.captureScreen {
+            DispatchQueue.main.async {
+                let panelSize = panel.frame.size
+                let vf = screen.visibleFrame
+                let origin = NSPoint(x: vf.midX - panelSize.width / 2,
+                                     y: vf.midY - panelSize.height / 2)
+                panel.setFrameOrigin(origin)
+            }
+        }
+
+        guard panel.runModal() == .OK, let destURL = panel.url else {
+            self.overlayWindowController?.show() // Cancelled: restore the overlay.
+            return
+        }
+
+        do {
+            try pngData.write(to: destURL)
+        } catch {
+            print("Save As failed: \(error)")
+            self.overlayWindowController?.show()
+            return
+        }
+
+        // Confirmed and written: dismiss the overlay and record in history.
+        self.overlayWindowController = nil
+        self.closeAIWindow()
+
+        Task {
+            let ocrService = OCRService()
+            let ocrText = (try? await ocrService.extractText(from: cropped)) ?? ""
+            let screenshot = ScreenshotModel(
+                imagePath: destURL.path,
+                thumbnailPath: destURL.path,
+                width: cropped.width,
+                height: cropped.height,
+                ocrText: ocrText
+            )
+            HistoryService.shared.save(screenshot)
+            print("Saved screenshot to \(destURL.path)")
+        }
+    }
+
+    private static func timestampString() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd-HHmmss"
+        return formatter.string(from: Date())
+    }
+
     public func cancelCapture() {
         overlayWindowController?.hide()
         overlayWindowController = nil
@@ -244,7 +326,7 @@ public class CaptureCoordinator: ObservableObject {
         if let app = NSRunningApplication(processIdentifier: windowInfo.pid) {
             app.activate(options: .activateIgnoringOtherApps)
         }
-        
+
         // Wait for the window selector overlay to disappear and space transition to complete
         // Space transitions (e.g. to a full screen app) can take up to 1 second
         try? await Task.sleep(nanoseconds: 1_200_000_000)
@@ -282,7 +364,7 @@ public class CaptureCoordinator: ObservableObject {
     private func processScrollCaptureResult(cgImage: CGImage, rect: CGRect) {
         let resultWindow = ScrollCaptureResultWindowController(cgImage: cgImage)
         resultWindow.show()
-        
+
         Task {
             let ocrService = OCRService()
             let ocrText = (try? await ocrService.extractText(from: cgImage)) ?? ""
@@ -330,7 +412,7 @@ public class CaptureCoordinator: ObservableObject {
             print("Scroll capture processed and saved to \(finalURL)\nOCR Text: \(ocrText)")
         }
     }
-    
+
     public func copyToClipboard(cgImage: CGImage, rect: CGRect) {
         self.overlayWindowController?.hide()
         self.overlayWindowController = nil
@@ -347,7 +429,7 @@ public class CaptureCoordinator: ObservableObject {
             print("Copied to clipboard")
         }
     }
-    
+
     private func saveImageToDisk(cgImage: CGImage) -> URL {
         let nsImage = NSImage(cgImage: cgImage, size: .zero)
         guard let tiffData = nsImage.tiffRepresentation,
@@ -355,22 +437,22 @@ public class CaptureCoordinator: ObservableObject {
               let pngData = bitmapImage.representation(using: .png, properties: [:]) else {
             fatalError("Failed to convert CGImage to PNG data")
         }
-        
+
         let fileManager = FileManager.default
         let appSupportDir = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
         let appDir = appSupportDir.appendingPathComponent("BerryShot", isDirectory: true)
-        
+
         if !fileManager.fileExists(atPath: appDir.path) {
             try? fileManager.createDirectory(at: appDir, withIntermediateDirectories: true, attributes: nil)
         }
-        
+
         let filename = "Screenshot-\(UUID().uuidString).png"
         let fileURL = appDir.appendingPathComponent(filename)
-        
+
         try? pngData.write(to: fileURL)
         return fileURL
     }
-    
+
     public func closeAIWindow() {
         self.aiResultWindowControllers.forEach { controller in
             controller.hide()
@@ -417,17 +499,17 @@ public class CaptureCoordinator: ObservableObject {
             }
             do {
                 let stream = ai.provider.generateTextStream(prompt: buildMeetingMinutesPrompt(transcript), image: nil)
-                await MainActor.run { 
+                await MainActor.run {
                     wc.viewModel.isLoading = true
-                    wc.viewModel.currentStreamText = "" 
+                    wc.viewModel.currentStreamText = ""
                 }
                 for try await chunk in stream {
                     await MainActor.run { wc.viewModel.currentStreamText += chunk }
                 }
-                await MainActor.run { 
+                await MainActor.run {
                     wc.viewModel.chatHistory.append(AIChatMessage(role: .assistant, content: wc.viewModel.currentStreamText))
                     wc.viewModel.currentStreamText = ""
-                    wc.viewModel.isLoading = false 
+                    wc.viewModel.isLoading = false
                 }
             } catch {
                 await MainActor.run {
