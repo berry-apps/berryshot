@@ -22,6 +22,11 @@ if [ -z "$1" ]; then
   exit 1
 fi
 
+echo "🔄 Checking out main and pulling latest code..."
+git checkout main
+git pull --rebase --autostash origin main
+echo "✅ Code is up to date"
+
 NEW_VERSION=$1
 # Remove 'v' prefix if user accidentally includes it
 NEW_VERSION=${NEW_VERSION#v}
@@ -82,6 +87,15 @@ cat <<EOF > landingpage/assets/version.json
 }
 EOF
 echo "✅ Generated landingpage/assets/version.json"
+
+echo ""
+echo "📦 Committing and pushing to git..."
+git add .
+git commit -m "chore: release v$NEW_VERSION"
+git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
+git push origin HEAD
+git push origin "v$NEW_VERSION"
+echo "✅ Git push and tag completed"
 
 echo "====================================="
 echo "🎉 Release $NEW_VERSION built successfully!"

@@ -43,7 +43,7 @@ public class AccessibilityBridge {
         let result = AXUIElementCopyAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, &windowRef)
         guard result == .success else { return nil }
         // swiftlint:disable:next force_cast
-        return windowRef as! AXUIElement
+        return (windowRef as! AXUIElement)
     }
 
     private func findScrollArea(in element: AXUIElement, maxDepth: Int) -> AXUIElement? {
@@ -121,8 +121,7 @@ public class AccessibilityBridge {
         // AX scroll bar values come back as CFNumber
         if CFGetTypeID(val) == CFNumberGetTypeID() {
             var result: CGFloat = 0
-            // swiftlint:disable:next force_cast
-            CFNumberGetValue(val as! CFNumber, .cgFloatType, &result)
+            CFNumberGetValue((val as! CFNumber), .cgFloatType, &result)
             return result
         }
         return nil

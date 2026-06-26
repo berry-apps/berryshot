@@ -105,7 +105,7 @@ public class ScrollCaptureManager: ObservableObject {
         // Step 2: Capture loop
         var frames: [CGImage] = []
         let startTime = Date()
-        var previousScrollInfo = bridge.getScrollInfo()
+        _ = bridge.getScrollInfo()
         var consecutiveNoMoveCount = 0
 
         updateProgress(0, frames: 0, message: "Starting capture…", onProgress: onProgress)
@@ -148,8 +148,6 @@ public class ScrollCaptureManager: ObservableObject {
             if currentInfo.currentVertical >= 0.999 || (!currentInfo.canScrollDown && currentInfo.currentVertical > 0) {
                 break
             }
-
-            previousScrollInfo = currentInfo
 
             // Scroll down by posting CGEvent at the center of the window
             postScrollEvent(deltaY: -Int32(scrollStep * 2), at: CGPoint(x: window.frame.midX, y: window.frame.midY))

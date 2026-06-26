@@ -324,7 +324,7 @@ public class CaptureCoordinator: ObservableObject {
     private func performScrollCapture(windowInfo: WindowInfo) async {
         // Activate target app so that synthetic scrolls and keystrokes work
         if let app = NSRunningApplication(processIdentifier: windowInfo.pid) {
-            app.activate(options: .activateIgnoringOtherApps)
+            app.activate(options: [])
         }
 
         // Wait for the window selector overlay to disappear and space transition to complete
