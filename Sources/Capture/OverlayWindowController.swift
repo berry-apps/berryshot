@@ -35,6 +35,11 @@ public class OverlayWindowController: NSWindowController, NSWindowDelegate {
                 Task { @MainActor in
                     CaptureCoordinator.shared.uploadCapture(cgImage: renderedImage, rect: selectedRect)
                 }
+            },
+            onSaveAs: { renderedImage, selectedRect in
+                Task { @MainActor in
+                    CaptureCoordinator.shared.saveAsCapture(cgImage: renderedImage, rect: selectedRect)
+                }
             }
         )
         
@@ -207,7 +212,7 @@ class OverlayWindow: NSWindow {
                 }
                 return true
             } else if char == "s" {
-                viewModel?.handleComplete()
+                viewModel?.handleSaveAs()
                 return true
             } else if char == "u" {
                 viewModel?.handleUpload()

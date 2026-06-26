@@ -26,6 +26,7 @@ final class OverlayViewModel: ObservableObject {
     let onComplete: (CGImage, CGRect) -> Void
     let onCopy: (CGImage, CGRect) -> Void
     let onUpload: (CGImage, CGRect) -> Void
+    let onSaveAs: (CGImage, CGRect) -> Void
     
     @Published var selectionRect: CGRect = .zero
     @Published var isSelectingFinished = false
@@ -112,11 +113,12 @@ final class OverlayViewModel: ObservableObject {
     
     let colors: [Color] = [.red, .orange, .yellow, .green, .blue, .purple, .black, .white]
     
-    init(cgImage: CGImage, onComplete: @escaping (CGImage, CGRect) -> Void, onCopy: @escaping (CGImage, CGRect) -> Void, onUpload: @escaping (CGImage, CGRect) -> Void) {
+    init(cgImage: CGImage, onComplete: @escaping (CGImage, CGRect) -> Void, onCopy: @escaping (CGImage, CGRect) -> Void, onUpload: @escaping (CGImage, CGRect) -> Void, onSaveAs: @escaping (CGImage, CGRect) -> Void) {
         self.cgImage = cgImage
         self.onComplete = onComplete
         self.onCopy = onCopy
         self.onUpload = onUpload
+        self.onSaveAs = onSaveAs
         // Sync with any in-progress recording session
         self.isRecording = RecordingManager.shared.isRecording
         self.isMicMuted = RecordingManager.shared.isMicMuted
@@ -357,6 +359,15 @@ final class OverlayViewModel: ObservableObject {
         commitActiveText()
         let finalImage = processImage(renderAnnotatedImage() ?? cgImage)
         onComplete(finalImage, selectionRect)
+    }
+
+    func handleSaveAs() {
+        commitActiveText()
+        // With no annotations, crop the original crisp capture instead of
+        // re-rasterizing through ImageRenderer, which would soften the image.
+        let base = elements.isEmpty ? cgImage : (renderAnnotatedImage() ?? cgImage)
+        let finalImage = processImage(base)
+        onSaveAs(finalImage, selectionRect)
     }
     
     func handleUpload() {
