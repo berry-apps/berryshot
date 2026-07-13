@@ -41,6 +41,24 @@ jobs:
           echo "Generating dynamic sitemap.xml and robots.txt for SEO..."
           uv run landingpage/berryshot/generate_sitemap.py https://notex.work
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Build Dâu Tây Frontend
+        working-directory: landingpage/dautay
+        run: |
+          echo "Installing dependencies..."
+          pnpm install
+          echo "Building project..."
+          pnpm run build
+
       - name: Deploy locally to Webroot
         env:
           BERRYSHOT_DIR: /var/www/berryshot
