@@ -56,11 +56,11 @@ sed -i '' "s/<string>$OLD_VERSION<\/string>/<string>$NEW_VERSION<\/string>/g" bu
 echo "✅ Updated build_app.sh"
 
 # Update version in landing page download links (match any old version)
-sed -i '' "s/v=[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/v=${NEW_VERSION}/g" landingpage/index.html
-sed -i '' "s/\(Release: \)[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/\1${NEW_VERSION}/g" landingpage/index.html
-sed -i '' "s/\(Version \)[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/\1${NEW_VERSION}/g" landingpage/index.html
-sed -i '' "s/\(\"softwareVersion\": \"\)[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/\1${NEW_VERSION}/g" landingpage/index.html
-echo "✅ Updated landingpage/index.html"
+sed -i '' "s/v=[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/v=${NEW_VERSION}/g" landingpage/berryshot/index.html
+sed -i '' "s/\(Release: \)[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/\1${NEW_VERSION}/g" landingpage/berryshot/index.html
+sed -i '' "s/\(Version \)[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/\1${NEW_VERSION}/g" landingpage/berryshot/index.html
+sed -i '' "s/\(\"softwareVersion\": \"\)[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/\1${NEW_VERSION}/g" landingpage/berryshot/index.html
+echo "✅ Updated landingpage/berryshot/index.html"
 
 echo ""
 echo "Running build_app.sh to generate DMG and ZIP..."
@@ -73,8 +73,8 @@ DMG_HASH_FILE="landingpage/assets/BerryShot.dmg.sha256"
 if [ -f "$DMG_HASH_FILE" ]; then
     DMG_HASH=$(cat "$DMG_HASH_FILE")
     # Update hash in HTML (replace existing hash or add new one)
-    sed -i '' "s/data-hash=\"[a-f0-9]*\"/data-hash=\"$DMG_HASH\"/g" landingpage/index.html
-    sed -i '' "s/SHA256: [a-f0-9]\{64\}/SHA256: $DMG_HASH/g" landingpage/index.html
+    sed -i '' "s/data-hash=\"[a-f0-9]*\"/data-hash=\"$DMG_HASH\"/g" landingpage/berryshot/index.html
+    sed -i '' "s/SHA256: [a-f0-9]\{64\}/SHA256: $DMG_HASH/g" landingpage/berryshot/index.html
     echo "✅ Updated DMG hash in landing page: $DMG_HASH"
 fi
 
@@ -82,7 +82,7 @@ fi
 cat <<EOF > landingpage/assets/version.json
 {
   "version": "$NEW_VERSION",
-  "url": "https://notex.work/assets/BerryShot.dmg",
+  "url": "https://app.notex.work/BerryShot.dmg",
   "releaseNotes": "A new version of BerryShot is available!"
 }
 EOF
@@ -97,7 +97,15 @@ git push origin HEAD
 git push origin "v$NEW_VERSION"
 echo "✅ Git push and tag completed"
 
+echo ""
+echo "☁️ Uploading release to Cloudflare R2..."
+if command -v uv >/dev/null 2>&1; then
+    uv run --with boto3 scripts/upload-release.py
+else
+    echo "⚠️ 'uv' not found. Skipping R2 upload."
+fi
+
 echo "====================================="
 echo "🎉 Release $NEW_VERSION built successfully!"
-echo "Files are available in landingpage/assets/"
+echo "Files have been uploaded to Cloudflare R2: https://app.notex.work/"
 echo "====================================="
