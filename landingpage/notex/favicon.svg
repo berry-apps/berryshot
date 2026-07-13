@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background with rounded corners for Apple-like look -->
+  <rect width="512" height="512" rx="112" fill="#020202" />
+  <!-- Futuristic N -->
+  <path d="M 140 130 L 195 130 L 315 310 L 315 130 L 370 130 L 370 380 L 315 380 L 195 200 L 195 380 L 140 380 Z" fill="#ffffff" />
+  <!-- Neon Cyan Dot -->
+  <circle cx="415" cy="365" r="30" fill="#00f0ff" />
+</svg>

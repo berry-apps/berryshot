@@ -50,6 +50,8 @@ html { scroll-behavior: smooth; }
     flex-direction: column;
     align-items: center;
     padding-top: 100px;
+    opacity: 0; /* Prevent FOUC, GSAP will fade this in */
+    visibility: hidden;
 }
 
 /* Glass Navbar */
@@ -351,8 +353,13 @@ html { scroll-behavior: smooth; }
     .hero { margin-bottom: 2rem; }
     .cards-container { flex-direction: column; align-items: center; }
     .holo-card { width: 90vw; max-width: 400px; }
-    .nav-links { gap: 1rem; }
-    .nav-link { font-size: 0.8rem; }
+    .glass-nav {
+        flex-direction: column;
+        padding: 1rem;
+        gap: 0.5rem;
+    }
+    .nav-links { gap: 1rem; flex-wrap: wrap; justify-content: center; }
+    .nav-link { font-size: 0.85rem; }
     .info-title { font-size: 2rem; }
     .info-container { padding: 3rem 1.5rem; }
 }

@@ -105,6 +105,9 @@ document.addEventListener("DOMContentLoaded", () => {
        2. GSAP Intro Animations (No Scroll)
     ======================================================== */
     
+    // Fade in the main container to prevent FOUC (flash of unstyled content)
+    gsap.to(".main-container", { autoAlpha: 1, duration: 0.2 });
+
     gsap.from(".title-layer-back", { z: -300, y: -100, opacity: 0, duration: 1.5, ease: "power3.out" });
     gsap.from(".title-layer-front", { z: 200, y: 150, filter: "blur(10px)", opacity: 0, duration: 1.5, ease: "power3.out" });
     gsap.from(".hero-subtitle", { y: -50, opacity: 0, duration: 1.5, ease: "power3.out", delay: 0.2 });
