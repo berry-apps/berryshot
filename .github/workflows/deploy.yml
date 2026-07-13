@@ -32,6 +32,9 @@ jobs:
           test -d landingpage/assets
           echo "✅ HTML files and assets directory verified."
           
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+
       - name: Generate SEO Assets
         run: |
           echo "Generating dynamic sitemap.xml and robots.txt for SEO..."
