@@ -27,9 +27,10 @@ jobs:
       - name: Verify Landing Page Code
         run: |
           echo "Validating landing page HTML components..."
-          test -f landingpage/index.html
-          test -f landingpage/docs.html
-          test -d landingpage/assets
+          test -f landingpage/berryshot/index.html
+          test -f landingpage/berryshot/docs.html
+          test -d landingpage/berryshot/assets
+          test -f landingpage/notex/index.html
           echo "✅ HTML files and assets directory verified."
           
       - name: Setup uv
@@ -38,31 +39,45 @@ jobs:
       - name: Generate SEO Assets
         run: |
           echo "Generating dynamic sitemap.xml and robots.txt for SEO..."
-          uv run landingpage/generate_sitemap.py https://notex.work
+          uv run landingpage/berryshot/generate_sitemap.py https://notex.work
 
       - name: Deploy locally to Webroot
         env:
-          DEPLOY_DIR: /var/www/berryshot
+          BERRYSHOT_DIR: /var/www/berryshot
+          NOTEX_DIR: /var/www/notex
+          DAUTAY_DIR: /var/www/dautay
         run: |
-          echo "Deploying landing page directly to local directory: $DEPLOY_DIR..."
+          echo "Deploying landing pages directly to local directories..."
           
           echo "--- Build Environment Diagnostics ---"
           echo "Running on host: $(hostname)"
           echo "Running as user: $(whoami)"
           echo "Current directory: $(pwd)"
           
-          echo "Checking /var/www write permissions..."
-          if [ -w "/var/www" ] || [ -w "$DEPLOY_DIR" ]; then
-              echo "Write permission check: SUCCESS"
-          else
-              echo "Write permission check: FAILED (Permission Denied)"
-          fi
+          mkdir -p $BERRYSHOT_DIR
+          mkdir -p $NOTEX_DIR
+          mkdir -p $DAUTAY_DIR
           
-          mkdir -p $DEPLOY_DIR
-          
+          echo "Deploying Berryshot..."
           rsync -av --delete \
             --exclude='.DS_Store' \
             --exclude='.git*' \
-            landingpage/ $DEPLOY_DIR/
+            landingpage/berryshot/ $BERRYSHOT_DIR/
+            
+          echo "Deploying Notex Ecosystem..."
+          rsync -av --delete \
+            --exclude='.DS_Store' \
+            --exclude='.git*' \
+            landingpage/notex/ $NOTEX_DIR/
+
+          echo "Deploying Dâu Tây..."
+          if [ -d "landingpage/dautay/dist" ]; then
+            rsync -av --delete \
+              --exclude='.DS_Store' \
+              --exclude='.git*' \
+              landingpage/dautay/dist/ $DAUTAY_DIR/
+          else
+            echo "⚠️ Thư mục landingpage/dautay/dist không tồn tại. Bỏ qua deploy Dâu Tây."
+          fi
           
-          echo "✅ Local deployment completed successfully to $DEPLOY_DIR."
+          echo "✅ Local deployments completed successfully."

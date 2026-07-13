@@ -6,6 +6,8 @@ DerivedData/
 *.xcodeproj/xcuserdata/
 .DS_Store
 .env
+*.env.*
+!.env.example
 *.pem
 *.zip
 notex.work/

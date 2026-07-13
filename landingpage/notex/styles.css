@@ -1,0 +1,358 @@
+:root {
+    --bg-dark: #020202;
+    --neon-cyan: #00f0ff;
+    --neon-purple: #9d00ff;
+    --glass: rgba(255, 255, 255, 0.03);
+    --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    background-color: var(--bg-dark);
+    color: #fff;
+    font-family: 'Space Grotesk', sans-serif;
+    overflow-x: hidden;
+    scroll-behavior: smooth;
+    /* Hide scrollbar for immersive feel */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+body::-webkit-scrollbar { display: none; }
+html { scroll-behavior: smooth; }
+
+/* WebGL Background Canvas */
+#webgl-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    z-index: 0;
+    pointer-events: none; /* Let clicks pass through */
+}
+
+/* Film Grain Overlay */
+.noise {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    pointer-events: none;
+    z-index: 100;
+    opacity: 0.05;
+    background: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noise"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noise)"/%3E%3C/svg%3E');
+}
+
+/* Main Container */
+.main-container {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 100px;
+}
+
+/* Glass Navbar */
+.glass-nav {
+    position: fixed;
+    top: 0; left: 0; width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 2rem 4rem;
+    z-index: 90;
+    mix-blend-mode: difference;
+}
+
+.logo {
+    font-family: 'Syncopate', sans-serif;
+    font-weight: 700;
+    font-size: 1.5rem;
+    letter-spacing: 2px;
+}
+.nav-links {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+}
+
+.nav-link {
+    text-decoration: none;
+    color: #fff;
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+    font-weight: 500;
+    opacity: 0.7;
+    transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+    opacity: 1;
+    color: var(--neon-cyan);
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+
+.magnetic-btn {
+    border: 1px solid var(--glass-border);
+    padding: 0.5rem 1.5rem;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+.magnetic-btn:hover {
+    background: rgba(255,255,255,0.1);
+}
+
+/* Hero Section */
+.hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 3rem;
+    position: relative;
+}
+
+.hero-text-container {
+    position: relative;
+    perspective: 1000px;
+    height: 120px;
+}
+
+.split-text {
+    font-family: 'Syncopate', sans-serif;
+    font-size: 5vw;
+    line-height: 1;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.title-layer-back {
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(255,255,255,0.2);
+    position: absolute;
+    top: 0; left: 50%;
+    transform: translateX(-50%) translateZ(-50px);
+    filter: blur(2px);
+    width: 100%;
+}
+
+.title-layer-front {
+    color: #fff;
+    position: relative;
+    text-shadow: 0 0 30px rgba(0, 240, 255, 0.4);
+}
+
+.hero-subtitle {
+    margin-top: 1rem;
+    font-size: 1.1rem;
+    font-weight: 300;
+    letter-spacing: 4px;
+    opacity: 0.8;
+}
+
+.scroll-indicator {
+    position: absolute;
+    bottom: 3rem;
+    right: 4rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    transform: rotate(90deg);
+    transform-origin: right bottom;
+}
+.scroll-indicator .line {
+    width: 100px;
+    height: 1px;
+    background: var(--neon-cyan);
+}
+
+/* Ecosystem Showcase */
+.ecosystem {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    position: relative;
+}
+
+.cards-container {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.5rem;
+    padding: 0 1rem;
+    perspective: 1200px;
+    max-width: 1200px;
+    width: 100%;
+    z-index: 20;
+    position: relative;
+}
+
+/* Holographic 3D Cards */
+.holo-card {
+    flex: 1;
+    min-width: 250px;
+    max-width: 350px;
+    height: 350px;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    position: relative;
+    text-decoration: none;
+    color: #fff;
+    transform-style: preserve-3d;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 2rem;
+    overflow: hidden;
+    backdrop-filter: blur(20px);
+    box-shadow: 0 30px 50px rgba(0,0,0,0.5);
+}
+
+.holo-glare {
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: linear-gradient(
+        115deg, 
+        transparent 20%, 
+        rgba(0, 240, 255, 0.3) 45%, 
+        rgba(157, 0, 255, 0.3) 55%, 
+        transparent 80%
+    );
+    transform: rotate(30deg) translateY(-100%);
+    transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+    z-index: 5;
+    mix-blend-mode: color-dodge;
+}
+
+.holo-card:hover .holo-glare {
+    transform: rotate(30deg) translateY(100%);
+}
+
+.card-inner {
+    transform: translateZ(60px); /* Lift text off glass */
+    z-index: 10;
+}
+
+.card-number {
+    font-family: 'Syncopate', sans-serif;
+    font-size: 4rem;
+    font-weight: 700;
+    color: rgba(255,255,255,0.1);
+    position: absolute;
+    top: -20px; right: 20px;
+}
+
+.card-title {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+    font-weight: 700;
+    font-size: 2rem;
+    background: linear-gradient(to right, #fff, var(--neon-cyan));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.card-desc {
+    font-size: 0.95rem;
+    color: #aaa;
+    margin-bottom: 1.5rem;
+}
+
+.card-tags {
+    margin-top: auto;
+}
+
+.card-tags span {
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 0.3rem 0.8rem;
+    border-radius: 50px;
+    font-size: 0.7rem;
+    margin-right: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Info Sections (About & Contact) */
+.info-section {
+    width: 100%;
+    max-width: 800px;
+    padding: 8rem 2rem;
+    text-align: center;
+    position: relative;
+    z-index: 20;
+}
+
+.info-container {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 4rem 3rem;
+    backdrop-filter: blur(20px);
+}
+
+.info-title {
+    font-family: 'Syncopate', sans-serif;
+    font-size: 3rem;
+    margin-bottom: 2rem;
+    letter-spacing: 2px;
+}
+
+.info-title .highlight {
+    color: var(--neon-cyan);
+    text-shadow: 0 0 20px rgba(0, 240, 255, 0.4);
+}
+
+.info-text {
+    font-size: 1.1rem;
+    color: #bbb;
+    line-height: 1.8;
+    margin-bottom: 2rem;
+}
+
+.contact-btn {
+    display: inline-block;
+    color: #fff;
+    text-decoration: none;
+    font-size: 1.2rem;
+    font-weight: 700;
+    padding: 1rem 3rem;
+    background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(157, 0, 255, 0.2));
+    border: 1px solid rgba(0, 240, 255, 0.5);
+    border-radius: 50px;
+    transition: all 0.3s ease;
+}
+
+.contact-btn:hover {
+    box-shadow: 0 0 30px rgba(0, 240, 255, 0.3);
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, rgba(0, 240, 255, 0.4), rgba(157, 0, 255, 0.4));
+}
+
+.site-footer {
+    width: 100%;
+    text-align: center;
+    padding: 3rem 0;
+    color: #666;
+    font-size: 0.9rem;
+    z-index: 20;
+}
+
+@media (max-width: 768px) {
+    .main-container { padding-top: 100px; }
+    .split-text { font-size: 10vw; }
+    .hero { margin-bottom: 2rem; }
+    .cards-container { flex-direction: column; align-items: center; }
+    .holo-card { width: 90vw; max-width: 400px; }
+    .nav-links { gap: 1rem; }
+    .nav-link { font-size: 0.8rem; }
+    .info-title { font-size: 2rem; }
+    .info-container { padding: 3rem 1.5rem; }
+}
