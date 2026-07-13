@@ -102,6 +102,10 @@ public class OverlayWindowController: NSWindowController, NSWindowDelegate {
         
         globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, let window = self.window, window.isVisible else { return }
+            // A global monitor only fires while ANOTHER app has keyboard focus.
+            // Cmd+C/V/… must stay with that app (never hijack its clipboard);
+            // only ESC is treated as "cancel the capture" from anywhere.
+            guard event.keyCode == 53 else { return }
             if self.shouldIgnoreForTextPanel() { return }
             DispatchQueue.main.async {
                 _ = self.processKeyEvent(event)
@@ -126,6 +130,19 @@ public class OverlayWindowController: NSWindowController, NSWindowDelegate {
     
     @discardableResult
     private func processKeyEvent(_ event: NSEvent) -> Bool {
+        // Interact mode: the keyboard belongs to the system/other windows.
+        if viewModel.isInteractMode {
+            return false
+        }
+        // While typing in the annotation text field only ESC is ours;
+        // Cmd+C/V/… must reach the field editor, not the capture shortcuts.
+        if viewModel.activeTextInput != nil {
+            if event.keyCode == 53 {
+                viewModel.handleEscape()
+                return true
+            }
+            return false
+        }
         if event.keyCode == 53 {
             print("[BerryShot] ESC detected")
             viewModel.handleEscape()
@@ -193,12 +210,42 @@ class OverlayWindow: NSWindow {
             viewModel?.handleEscape()
             return true
         }
-        
-        // If typing in a text field, do not intercept tool selection shortcuts
-        if viewModel?.activeTextInput != nil {
+
+        // Interact mode: keyboard follows the system; only "i" re-locks the overlay.
+        if viewModel?.isInteractMode == true {
+            if !event.modifierFlags.contains(.command),
+               event.charactersIgnoringModifiers?.lowercased() == "i" {
+                viewModel?.isInteractMode = false
+                return true
+            }
             return false
         }
-        
+
+        // If typing in a text field, do not intercept tool selection shortcuts.
+        // Route clipboard shortcuts to the field editor ourselves: as a menu-bar
+        // (accessory) app there is no reliable Edit menu to dispatch them.
+        if viewModel?.activeTextInput != nil {
+            if event.modifierFlags.contains(.command) {
+                switch event.charactersIgnoringModifiers?.lowercased() {
+                case "v":
+                    return NSApp.sendAction(#selector(NSText.paste(_:)), to: nil, from: nil)
+                case "c":
+                    return NSApp.sendAction(#selector(NSText.copy(_:)), to: nil, from: nil)
+                case "x":
+                    return NSApp.sendAction(#selector(NSText.cut(_:)), to: nil, from: nil)
+                case "a":
+                    return NSApp.sendAction(#selector(NSText.selectAll(_:)), to: nil, from: nil)
+                case "z":
+                    let selector = event.modifierFlags.contains(.shift) ? Selector(("redo:")) : Selector(("undo:"))
+                    _ = NSApp.sendAction(selector, to: nil, from: nil)
+                    return true
+                default:
+                    break
+                }
+            }
+            return false
+        }
+
         if event.modifierFlags.contains(.command) {
             let char = event.charactersIgnoringModifiers?.lowercased()
             if char == "c" {

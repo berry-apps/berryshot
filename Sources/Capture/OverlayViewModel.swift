@@ -133,7 +133,12 @@ final class OverlayViewModel: ObservableObject {
             if let keyWindow = NSApp.keyWindow, !(keyWindow is OverlayWindow) {
                 return event
             }
-            
+
+            // Interact mode: the keyboard belongs to the system/other windows
+            if self.isInteractMode {
+                return event
+            }
+
             if self.activeTextInput == nil {
                 if event.keyCode == 51 || event.keyCode == 117 {
                     self.deleteSelectedElement()
@@ -300,7 +305,13 @@ final class OverlayViewModel: ObservableObject {
             activeTextInput = nil
             return
         }
-        
+
+        // Leave interact mode first instead of tearing down the whole capture
+        if isInteractMode {
+            isInteractMode = false
+            return
+        }
+
         // Stop recording if active before closing
         if isRecording {
             Task { @MainActor in
@@ -1120,11 +1131,15 @@ dragMode = .movingElements(originals)
                     .frame(width: element.shapeRect().width, height: element.shapeRect().height)
                     .position(x: element.shapeRect().midX, y: element.shapeRect().midY)
                 } else if element.type == .text {
+                    // Mirror OverlayView: constrain text to its box so long
+                    // text wraps/scales instead of stretching across the image
                     Text(element.text)
-                        .font(.system(size: element.fontSize, weight: .bold))
+                        .font(.system(size: element.shapeRect().height / 1.2, weight: .bold))
                         .foregroundColor(element.color)
                         .shadow(color: .black.opacity(0.5), radius: 1, x: 1, y: 1)
-                        .position(x: element.startPoint.x, y: element.startPoint.y)
+                        .frame(width: element.shapeRect().width, height: element.shapeRect().height)
+                        .minimumScaleFactor(0.1)
+                        .position(x: element.shapeRect().midX, y: element.shapeRect().midY)
                 } else {
                     if element.isFilled && (element.type == .rectangle || element.type == .circle) {
                         ZStack {

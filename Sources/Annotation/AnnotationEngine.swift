@@ -366,7 +366,7 @@ public struct AnnotationElement: Identifiable {
     
     public var magneticPoints: [CGPoint] {
         switch type {
-        case .rectangle, .circle, .image:
+        case .rectangle, .circle, .image, .text:
             let minX = min(startPoint.x, endPoint.x)
             let maxX = max(startPoint.x, endPoint.x)
             let minY = min(startPoint.y, endPoint.y)
@@ -386,15 +386,6 @@ public struct AnnotationElement: Identifiable {
             ]
         case .line, .curvedLine, .arrow, .curvedArrow:
             return [startPoint, endPoint]
-        case .text:
-            let r = boundingRect
-            return [
-                CGPoint(x: r.midX, y: r.minY),
-                CGPoint(x: r.maxX, y: r.midY),
-                CGPoint(x: r.midX, y: r.maxY),
-                CGPoint(x: r.minX, y: r.midY),
-                CGPoint(x: r.midX, y: r.midY)
-            ]
         case .select, .pencil:
             return []
         }

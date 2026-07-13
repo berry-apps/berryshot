@@ -166,7 +166,7 @@ struct OverlayView: View {
                         .accessibilityAddTraits(.isKeyboardKey)
                         .multilineTextAlignment(.center)
                         .focused($isTextFieldFocused)
-                        .font(.system(size: textInput.bounds.height / 4, weight: .bold))
+                        .font(.system(size: textInput.fontSize, weight: .bold))
                         .foregroundColor(viewModel.selectedColor)
                         .textFieldStyle(.plain)
                         .minimumScaleFactor(0.1)

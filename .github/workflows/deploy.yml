@@ -1,0 +1,65 @@
+name: Deploy to Self-hosted Runner
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+
+      - name: Build macOS Binaries (Optional)
+        run: |
+          if command -v swift >/dev/null 2>&1; then
+            echo "✅ Swift compiler found. Compiling macOS app and packaging DMG/Zip..."
+            chmod +x build_app.sh
+            ./build_app.sh
+          else
+            echo "⚠️ Swift compiler not found on this agent. Skipping binary compilation."
+            echo "Deploying with pre-existing binaries inside landingpage/assets/ directory."
+          fi
+
+      - name: Verify Landing Page Code
+        run: |
+          echo "Validating landing page HTML components..."
+          test -f landingpage/index.html
+          test -f landingpage/docs.html
+          test -d landingpage/assets
+          echo "✅ HTML files and assets directory verified."
+          
+      - name: Generate SEO Assets
+        run: |
+          echo "Generating dynamic sitemap.xml and robots.txt for SEO..."
+          uv run landingpage/generate_sitemap.py https://notex.work
+
+      - name: Deploy locally to Webroot
+        env:
+          DEPLOY_DIR: /var/www/berryshot
+        run: |
+          echo "Deploying landing page directly to local directory: $DEPLOY_DIR..."
+          
+          echo "--- Build Environment Diagnostics ---"
+          echo "Running on host: $(hostname)"
+          echo "Running as user: $(whoami)"
+          echo "Current directory: $(pwd)"
+          
+          echo "Checking /var/www write permissions..."
+          if [ -w "/var/www" ] || [ -w "$DEPLOY_DIR" ]; then
+              echo "Write permission check: SUCCESS"
+          else
+              echo "Write permission check: FAILED (Permission Denied)"
+          fi
+          
+          mkdir -p $DEPLOY_DIR
+          
+          rsync -av --delete \
+            --exclude='.DS_Store' \
+            --exclude='.git*' \
+            landingpage/ $DEPLOY_DIR/
+          
+          echo "✅ Local deployment completed successfully to $DEPLOY_DIR."
