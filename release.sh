@@ -82,7 +82,7 @@ fi
 cat <<EOF > landingpage/assets/version.json
 {
   "version": "$NEW_VERSION",
-  "url": "https://app.notex.work/BerryShot.dmg",
+  "url": "https://berryshot-download.notex.work/BerryShot.dmg",
   "releaseNotes": "A new version of BerryShot is available!"
 }
 EOF
@@ -107,5 +107,5 @@ fi
 
 echo "====================================="
 echo "🎉 Release $NEW_VERSION built successfully!"
-echo "Files have been uploaded to Cloudflare R2: https://app.notex.work/"
+echo "Files have been uploaded to Cloudflare R2: https://berryshot-download.notex.work/"
 echo "====================================="

@@ -39,7 +39,7 @@ struct AboutSettingsView: View {
                     Text("BerryShot")
                         .font(.system(size: 28, weight: .bold))
                     
-                    Text("Version 1.1.7")
+                    Text("Version 1.1.8")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
@@ -152,7 +152,7 @@ struct AboutSettingsView: View {
         
         Task {
             do {
-                let url = URL(string: "https://notex.work/assets/version.json")!
+                let url = URL(string: "https://berryshot-download.notex.work/version.json")!
                 let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
                 let (data, response) = try await URLSession.shared.data(for: request)
                 
