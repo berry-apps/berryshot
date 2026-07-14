@@ -47,8 +47,8 @@ public class ScrollCaptureManager: ObservableObject {
     // Configuration
     public var scrollStep: Int = 8          // Lines per scroll event
     public var scrollDelay: TimeInterval = 0.12 // Seconds to wait after each scroll
-    public var maxFrames: Int = 150         // Safety cap to avoid infinite capture
-    public var timeout: TimeInterval = 120   // Total operation timeout
+    public var maxFrames: Int = 40          // Safety cap to avoid infinite capture / heavy stitching
+    public var timeout: TimeInterval = 45    // Total operation timeout
     public var stickyHeaderHeight: Int = 0  // Sticky header to strip (pts)
     public var stickyFooterHeight: Int = 0  // Sticky footer to strip (pts)
 
@@ -149,8 +149,9 @@ public class ScrollCaptureManager: ObservableObject {
                 break
             }
 
-            // Scroll down by posting CGEvent at the center of the window
-            postScrollEvent(deltaY: -Int32(scrollStep * 2), at: CGPoint(x: window.frame.midX, y: window.frame.midY))
+            // Scroll down by ~85% of the window height (pixel units) for large, clean deltas.
+            let scrollPixels = max(200, Int(Double(window.frame.height) * 0.85))
+            postScrollEvent(deltaY: -Int32(scrollPixels), at: CGPoint(x: window.frame.midX, y: window.frame.midY))
             try await Task.sleep(nanoseconds: UInt64(scrollDelay * 1_000_000_000))
         }
 
@@ -205,6 +206,16 @@ public class ScrollCaptureManager: ObservableObject {
         let startTime = Date()
         var consecutiveIdenticalFrames = 0
 
+        // Reset the target to the TOP first, so we always capture the whole page from the start
+        // (a previous scroll capture leaves the page scrolled down; without this we'd capture nothing).
+        updateProgress(0, frames: 0, message: "Scrolling to top…", onProgress: onProgress)
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        for _ in 0..<8 {
+            postScrollEvent(deltaY: Int32(rect.height), at: center) // positive = scroll up
+            try await Task.sleep(nanoseconds: 60_000_000)
+        }
+        try await Task.sleep(nanoseconds: 250_000_000)
+
         updateProgress(0, frames: 0, message: "Starting region capture…", onProgress: onProgress)
 
         while !isCancelled {
@@ -232,8 +243,10 @@ public class ScrollCaptureManager: ObservableObject {
             let estimatedProgress = min(0.95, Double(frames.count) / 10.0)
             updateProgress(estimatedProgress, frames: frames.count, message: "Capturing frame \(frames.count)…", onProgress: onProgress)
 
-            // Scroll down by posting CGEvent at the center of the rect
-            postScrollEvent(deltaY: -Int32(scrollStep * 2), at: CGPoint(x: rect.midX, y: rect.midY))
+            // Scroll down by ~85% of the region height (pixel units) so each frame advances a
+            // large, clean amount — small overlaps are far easier to stitch than 95% duplicates.
+            let scrollPixels = max(200, Int(Double(rect.height) * 0.85))
+            postScrollEvent(deltaY: -Int32(scrollPixels), at: CGPoint(x: rect.midX, y: rect.midY))
             try await Task.sleep(nanoseconds: UInt64(scrollDelay * 1_000_000_000))
         }
 
@@ -245,7 +258,9 @@ public class ScrollCaptureManager: ObservableObject {
         var options = ImageStitcher.StitchOptions()
         options.overlapSearchHeight = Int(rect.height)
         options.minOverlap = 4
-        options.fallbackStrip = Int(Double(rect.height) * 0.85)
+        // Fallback strip (in FRAME pixels) used when shift detection fails on near-identical rows,
+        // so the bottom of the page is still appended rather than dropped.
+        options.fallbackStrip = Int(Double(frames[0].height) * 0.6)
 
         guard let stitched = ImageStitcher.stitch(frames: frames, options: options) else {
             throw ScrollCaptureError.captureFailed("Stitching failed")
@@ -301,7 +316,7 @@ public class ScrollCaptureManager: ObservableObject {
 
     private func postScrollEvent(deltaY: Int32, at point: CGPoint) {
         guard let event = CGEvent(scrollWheelEvent2Source: nil,
-                                  units: .line,
+                                  units: .pixel,
                                   wheelCount: 1,
                                   wheel1: deltaY,
                                   wheel2: 0,
@@ -310,44 +325,34 @@ public class ScrollCaptureManager: ObservableObject {
         event.post(tap: .cghidEventTap)
     }
 
+    /// Returns true when the view did NOT meaningfully scroll between `a` and `b` (i.e. we've
+    /// reached the bottom). Uses a MAJORITY match so small dynamic elements (animated widgets,
+    /// live console logs) don't prevent the loop from ever stopping. Samples the left-center
+    /// content region to avoid right-side panels and bottom-right widgets.
     private func isIdentical(_ a: CGImage, _ b: CGImage) -> Bool {
         guard a.width == b.width && a.height == b.height else { return false }
-        
-        // Compare multiple rows distributed across the image to avoid false positives in whitespace
-        let width = min(a.width, 1000)
-        let sampleX = (a.width - width) / 2
-        
-        let yOffsets = [
-            a.height / 5,
-            (a.height * 2) / 5,
-            (a.height * 3) / 5,
-            (a.height * 4) / 5
-        ]
-        
+
+        let w = a.width, h = a.height
+        let x0 = w / 10
+        let sw = w * 6 / 10                 // left-center 60% width
+        let yOffsets = [h/6, h/3, h/2, (2*h)/3, (5*h)/6]
+
+        var total = 0, mismatches = 0
         for y in yOffsets {
-            guard let aRow = ImageStitcher.extractPixelRow(from: a, y: y, height: 1, x: sampleX, width: width, samplesPerRow: width/4), // Sample every 4th pixel
-                  let bRow = ImageStitcher.extractPixelRow(from: b, y: y, height: 1, x: sampleX, width: width, samplesPerRow: width/4) else {
+            guard let aRow = ImageStitcher.extractPixelRow(from: a, y: y, height: 1, x: x0, width: sw, samplesPerRow: sw/4),
+                  let bRow = ImageStitcher.extractPixelRow(from: b, y: y, height: 1, x: x0, width: sw, samplesPerRow: sw/4) else {
                 return false
             }
-            
-            var rowMatches = true
-            for i in stride(from: 0, to: aRow.count, by: 4) { // Check R, G, B
-                if abs(Int(aRow[i]) - Int(bRow[i])) > 15 || 
-                   abs(Int(aRow[i+1]) - Int(bRow[i+1])) > 15 || 
-                   abs(Int(aRow[i+2]) - Int(bRow[i+2])) > 15 {
-                    rowMatches = false
-                    break
-                }
-            }
-            
-            // If any sampled row is different, the images are not identical
-            if !rowMatches {
-                return false
+            var i = 0
+            while i < aRow.count {
+                let d = abs(Int(aRow[i]) - Int(bRow[i])) + abs(Int(aRow[i+1]) - Int(bRow[i+1])) + abs(Int(aRow[i+2]) - Int(bRow[i+2]))
+                if d > 45 { mismatches += 1 }
+                total += 1; i += 4
             }
         }
-        
-        // All sampled rows match
-        return true
+        guard total > 0 else { return false }
+        // Same view (page didn't scroll) if fewer than 8% of samples changed.
+        return Double(mismatches) / Double(total) < 0.08
     }
 
     // MARK: - Progress helper

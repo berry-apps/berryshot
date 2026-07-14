@@ -28,6 +28,11 @@ public class CaptureCoordinator: ObservableObject {
                 await self?.startCapture()
             }
         }
+        HotkeyManager.shared.onScrollCaptureHotkey = { [weak self] in
+            Task { @MainActor in
+                self?.startScrollCapture()
+            }
+        }
         HotkeyManager.shared.registerHotkeys()
     }
 
@@ -115,7 +120,10 @@ public class CaptureCoordinator: ObservableObject {
                 let ocrService = OCRService()
                 let ocrText = (try? await ocrService.extractText(from: cropped)) ?? ""
 
-                let imagePath = self.saveImageToDisk(cgImage: cropped) // Save temporarily first
+                guard let imagePath = self.saveImageToDisk(cgImage: cropped) else {
+                    print("Capture aborted: failed to write image to disk")
+                    return
+                }
 
                 let finalURL: URL
                 if action == .upload || StorageConfiguration.shared.selectedProvider != .local {
@@ -255,10 +263,22 @@ public class CaptureCoordinator: ObservableObject {
 
     // MARK: - Scroll Capture
 
+    /// Convert an overlay-local rect (top-left origin, relative to `screen`) into global
+    /// top-left display coordinates that ScreenCaptureKit / CGEvent operate in.
+    private static func globalRect(fromLocal local: CGRect, on screen: NSScreen?) -> CGRect {
+        guard let screen, let displayID = screen.displayID else { return local }
+        let bounds = CGDisplayBounds(displayID)
+        return CGRect(x: bounds.origin.x + local.minX,
+                      y: bounds.origin.y + local.minY,
+                      width: local.width,
+                      height: local.height)
+    }
+
     public func startScrollCapture() {
-        // Save region selection before closing overlay
-        let region = overlayWindowController?.viewModel?.selectionRect
-        let isRegionCapture = (region != nil && region != .zero)
+        // Save region selection (overlay-local, top-left origin) and its screen before closing overlay
+        let localRegion = overlayWindowController?.viewModel?.selectionRect
+        let overlayScreen = overlayWindowController?.window?.screen ?? captureScreen
+        let isRegionCapture = (localRegion != nil && localRegion != .zero)
 
         // Cancel any active region capture to prevent its overlay window from hiding our alerts or UI
         cancelCapture()
@@ -269,10 +289,12 @@ public class CaptureCoordinator: ObservableObject {
             return
         }
 
-        if isRegionCapture, let rect = region {
-            // 2. Perform region-based scroll capture
+        if isRegionCapture, let local = localRegion {
+            // 2. Convert overlay-local rect to GLOBAL display coordinates so ScreenCaptureKit picks
+            //    the monitor the user actually selected on (fixes secondary-monitor scroll capture).
+            let globalRect = Self.globalRect(fromLocal: local, on: overlayScreen)
             Task { @MainActor in
-                await self.performRegionScrollCapture(rect: rect)
+                await self.performRegionScrollCapture(rect: globalRect)
             }
         } else {
             // 2. Show window selector for full-window scroll capture
@@ -369,7 +391,10 @@ public class CaptureCoordinator: ObservableObject {
             let ocrService = OCRService()
             let ocrText = (try? await ocrService.extractText(from: cgImage)) ?? ""
 
-            let imagePath = self.saveImageToDisk(cgImage: cgImage)
+            guard let imagePath = self.saveImageToDisk(cgImage: cgImage) else {
+                print("Scroll capture aborted: failed to write image to disk")
+                return
+            }
 
             let finalURL: URL
             if StorageConfiguration.shared.selectedProvider != .local {
@@ -430,12 +455,14 @@ public class CaptureCoordinator: ObservableObject {
         }
     }
 
-    private func saveImageToDisk(cgImage: CGImage) -> URL {
-        let nsImage = NSImage(cgImage: cgImage, size: .zero)
-        guard let tiffData = nsImage.tiffRepresentation,
-              let bitmapImage = NSBitmapImageRep(data: tiffData),
-              let pngData = bitmapImage.representation(using: .png, properties: [:]) else {
-            fatalError("Failed to convert CGImage to PNG data")
+    private func saveImageToDisk(cgImage: CGImage) -> URL? {
+        // Encode straight from the CGImage. Avoids building a full TIFF copy first,
+        // which can fail or exhaust memory for very tall stitched scroll captures —
+        // a failure there used to crash the whole app via fatalError.
+        let bitmapImage = NSBitmapImageRep(cgImage: cgImage)
+        guard let pngData = bitmapImage.representation(using: .png, properties: [:]) else {
+            print("Failed to convert CGImage to PNG data (image \(cgImage.width)x\(cgImage.height))")
+            return nil
         }
 
         let fileManager = FileManager.default

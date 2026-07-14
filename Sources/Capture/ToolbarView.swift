@@ -411,7 +411,16 @@ struct ActionToolButton: View {
 }
 
 struct ShortcutsHelpView: View {
-    let shortcuts: [(key: String, desc: LocalizedStringKey)] = [
+    private var scrollShortcutDisplay: String {
+        if let data = UserDefaults.standard.data(forKey: "scrollCaptureShortcut"),
+           let decoded = try? JSONDecoder().decode(Shortcut.self, from: data) {
+            return decoded.displayString
+        }
+        return Shortcut.defaultScrollShortcut.displayString
+    }
+
+    var shortcuts: [(key: String, desc: LocalizedStringKey)] {
+        [
         ("V", "Select / Move elements"),
         ("B", "Pencil tool (Freehand drawing)"),
         ("M", "Rectangle shape"),
@@ -424,7 +433,7 @@ struct ShortcutsHelpView: View {
         ("I", "Toggle interaction mode (lock/unlock)"),
         ("R / ⌘R", "Start / Stop screen recording"),
         ("P / ⌘P", "Pause / Resume screen recording"),
-        ("⌘W", "Scroll Capture (full scrollable content)"),
+        (scrollShortcutDisplay, "Scroll Capture (full scrollable content)"),
         ("⌘Z", "Undo last drawing action"),
         ("⌘⇧Z", "Redo last undone action"),
         ("⌘C", "Copy screenshot to Clipboard"),
@@ -434,8 +443,9 @@ struct ShortcutsHelpView: View {
         ("⌘I", "Trigger AI vision analysis"),
         ("ESC", "Cancel and close capture"),
         ("H", "Toggle this shortcut list")
-    ]
-    
+        ]
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
