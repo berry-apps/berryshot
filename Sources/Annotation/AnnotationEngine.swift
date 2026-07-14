@@ -295,6 +295,20 @@ public struct AnnotationElement: Identifiable {
             return .zero
         }
     }
+
+    /// Box the element occupies for bounds checks against the capture selection.
+    /// Unlike `boundingRect` this carries no stroke padding, so an element drawn
+    /// flush against the selection edge is still considered to fit there.
+    public var geometryBounds: CGRect {
+        switch type {
+        case .pencil:
+            return path.boundingRect
+        case .select:
+            return .zero
+        case .text, .rectangle, .circle, .line, .curvedLine, .arrow, .curvedArrow, .image:
+            return shapeRect()
+        }
+    }
     
     public func shapeRect() -> CGRect {
         CGRect(
