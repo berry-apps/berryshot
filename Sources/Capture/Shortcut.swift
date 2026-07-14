@@ -15,6 +15,11 @@ public struct Shortcut: Codable, Equatable, Sendable {
         keyCode: 19, // 2
         modifierFlags: NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue
     )
+
+    public static let defaultScrollShortcut = Shortcut(
+        keyCode: 28, // 8
+        modifierFlags: NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue
+    )
     
     public var displayString: String {
         var str = ""

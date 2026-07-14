@@ -18,32 +18,45 @@ struct MenuView: View {
     @ObservedObject var captureCoordinator = CaptureCoordinator.shared
     
     @AppStorage("captureShortcut") private var shortcutData: Data = Data()
-    
+    @AppStorage("scrollCaptureShortcut") private var scrollShortcutData: Data = Data()
+
     private var currentShortcut: Shortcut {
         if let decoded = try? JSONDecoder().decode(Shortcut.self, from: shortcutData) {
             return decoded
         }
         return Shortcut.defaultShortcut
     }
-    
+
+    private var currentScrollShortcut: Shortcut {
+        if let decoded = try? JSONDecoder().decode(Shortcut.self, from: scrollShortcutData) {
+            return decoded
+        }
+        return Shortcut.defaultScrollShortcut
+    }
+
     var body: some View {
         let shortcut = currentShortcut
+        let scrollShortcut = currentScrollShortcut
         let captureButton = Button("Capture Region") {
             Task {
                 await captureCoordinator.startCapture()
             }
         }
-        
+
         if let key = shortcut.swiftuiKeyEquivalent {
             captureButton.keyboardShortcut(key, modifiers: shortcut.swiftuiModifiers)
         } else {
             captureButton
         }
 
-        Button("Scroll Capture…") {
+        let scrollButton = Button("Scroll Capture…") {
             captureCoordinator.startScrollCapture()
         }
-        .keyboardShortcut("w", modifiers: [.command, .shift])
+        if let scrollKey = scrollShortcut.swiftuiKeyEquivalent {
+            scrollButton.keyboardShortcut(scrollKey, modifiers: scrollShortcut.swiftuiModifiers)
+        } else {
+            scrollButton
+        }
         
         Divider()
         

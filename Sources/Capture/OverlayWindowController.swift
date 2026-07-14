@@ -289,11 +289,6 @@ class OverlayWindow: NSWindow {
             } else if char == "\r" || char == "\n" {
                 viewModel?.handleComplete()
                 return true
-            } else if char == "w" {
-                Task { @MainActor in
-                    CaptureCoordinator.shared.startScrollCapture()
-                }
-                return true
             }
         } else {
             let char = event.charactersIgnoringModifiers?.lowercased()

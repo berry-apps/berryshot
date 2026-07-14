@@ -259,12 +259,24 @@ struct WindowCardView: View {
 public class WindowSelectorPanelController {
     private var panel: NSPanel?
     private var viewModel: WindowSelectorViewModel?
+    private var closeObserver: NSObjectProtocol?
 
     public static let shared = WindowSelectorPanelController()
     private init() {}
 
     public func show(onSelect: @escaping (WindowInfo) -> Void) {
-        guard panel == nil else { return }
+        // If a panel already exists and is still on screen, just bring it forward.
+        // If it exists but is no longer visible (e.g. it was closed via the native
+        // close button, which does NOT route through close()), reset our state so a
+        // fresh panel can be created instead of being blocked forever.
+        if let existing = panel {
+            if existing.isVisible {
+                existing.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+                return
+            }
+            resetState()
+        }
 
         let vm = WindowSelectorViewModel()
         viewModel = vm
@@ -295,6 +307,19 @@ public class WindowSelectorPanelController {
         )
 
         panel.contentView = NSHostingView(rootView: view)
+
+        // Whenever the panel closes for ANY reason (Cancel button, window selection,
+        // or the native red close button), reset our state so the next show() works.
+        closeObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: panel,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.resetState()
+            }
+        }
+
         panel.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -302,6 +327,14 @@ public class WindowSelectorPanelController {
     public func close() {
         panel?.orderOut(nil)
         panel?.close()
+        resetState()
+    }
+
+    private func resetState() {
+        if let observer = closeObserver {
+            NotificationCenter.default.removeObserver(observer)
+            closeObserver = nil
+        }
         panel = nil
         viewModel = nil
     }

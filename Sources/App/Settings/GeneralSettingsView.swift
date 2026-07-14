@@ -11,7 +11,15 @@ struct GeneralSettingsView: View {
         }
         return Shortcut.defaultShortcut
     }()
-    
+
+    @State private var scrollShortcut: Shortcut = {
+        if let data = UserDefaults.standard.data(forKey: "scrollCaptureShortcut"),
+           let decoded = try? JSONDecoder().decode(Shortcut.self, from: data) {
+            return decoded
+        }
+        return Shortcut.defaultScrollShortcut
+    }()
+
     @State private var launchAtLogin = false
     
     var body: some View {
@@ -25,7 +33,12 @@ struct GeneralSettingsView: View {
             Section(header: Text("Capture").font(.headline)) {
                 HStack {
                     Text("Capture Shortcut:")
-                    ShortcutRecorderView(shortcut: $shortcut)
+                    ShortcutRecorderView(shortcut: $shortcut, defaultsKey: "captureShortcut")
+                        .frame(width: 150, height: 24)
+                }
+                HStack {
+                    Text("Scroll Capture Shortcut:")
+                    ShortcutRecorderView(shortcut: $scrollShortcut, defaultsKey: "scrollCaptureShortcut")
                         .frame(width: 150, height: 24)
                 }
             }

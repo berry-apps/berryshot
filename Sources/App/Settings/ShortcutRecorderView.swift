@@ -3,13 +3,15 @@ import Cocoa
 
 struct ShortcutRecorderView: NSViewRepresentable {
     @Binding var shortcut: Shortcut
+    var defaultsKey: String = "captureShortcut"
 
     func makeNSView(context: Context) -> ShortcutRecorderNSView {
         let view = ShortcutRecorderNSView()
+        let key = defaultsKey
         view.onShortcutChanged = { newShortcut in
             shortcut = newShortcut
             if let encoded = try? JSONEncoder().encode(newShortcut) {
-                UserDefaults.standard.set(encoded, forKey: "captureShortcut")
+                UserDefaults.standard.set(encoded, forKey: key)
                 HotkeyManager.shared.reloadHotkeys()
             }
         }

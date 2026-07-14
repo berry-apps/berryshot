@@ -133,6 +133,8 @@ public class ScrollCaptureProgressController {
         panel.level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()) + 3)
         panel.isFloatingPanel = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
+        // Exclude this window from screen capture so it never leaks into the scroll-capture frames.
+        panel.sharingType = .none
         panel.isReleasedWhenClosed = false
         panel.center()
         self.panel = panel
