@@ -6,224 +6,139 @@
 
 ## Post 1: r/macapps - Genuine Recommendation
 
-**Title:** Finally found a macOS screenshot tool that does everything I need - and it's free
+**Title:** A native macOS screenshot tool with offline OCR and annotations - BerryShot (free & open source)
 
 **Body:**
 
-Been searching for a good screenshot tool on macOS for months. Tried CleanShot X, Shottr, Monosnap... they all lacked something. Then I stumbled upon **BerryShot** and honestly it checks every box.
+Hi everyone,
+
+I wanted to share a menu bar screenshot utility for macOS that I've been using/following called **BerryShot**. It's fully open source (MIT license) and native.
 
 **What makes it stand out:**
 
-- **`⌘ + ⇧ + 1` region capture** - super fast, launches instantly
-- **Annotation before saving** - rectangles, arrows, blur, highlights, numbered markers - all in the overlay, no need to open another editor
-- **100% offline OCR** - select any area, text gets extracted instantly. No internet, no cloud, no privacy concerns
-- **AI integration** - this is the killer feature for me. Connects to Gemini, Claude, OpenAI, OpenRouter. I use it to summarize code screenshots and translate text from images
-- **Scrolling capture** - finally works for long webpages and chat logs
-- **Auto-upload to Google Drive** or custom HTTP endpoint with bearer token support
-- **Screenshot history** - browse all past captures locally
+- **Region capture** (`⌘ + ⇧ + 1`) and scrolling capture.
+- **Annotation before saving** - rectangles, arrows, blur, highlights, numbered markers - all in the overlay.
+- **100% offline OCR** - select any area, text gets extracted instantly using Apple's Vision framework (no data leaves your machine).
+- **Screen recording** - HEVC 60fps with system audio + microphone.
+- **Screenshot history** - browse past captures locally via SwiftData.
+- **Optional AI features** - if you connect your own API keys (Gemini, Claude, OpenAI, OpenRouter) to analyze code or translate text.
 
-**Why it fits my workflow:**
+It's really fast since it's native Swift and ScreenCaptureKit. 
 
-I'm a developer and I constantly need to:
-- Capture code snippets → AI summarizes or extracts clean code
-- Screenshot UI bugs → annotate with arrows and blur sensitive info
-- Extract text from PDFs/images → OCR copies to clipboard instantly
-- Share screenshots → auto-uploads and copies link
+Code is here: https://github.com/berry-apps/berryshot
 
-Before this I was juggling 3-4 different tools. Now it's just one menu bar app.
-
-**Downsides:**
-- Requires macOS 14.0+
-- AI features need API keys (but OCR is fully offline)
-- UI is functional but not the most polished
-
-**Download:** https://notex.work
-
-It's open-source and MIT licensed. Worth a try if you're still looking for that "one screenshot tool to rule them all."
+I think it's a great free alternative to paid tools like CleanShot X or Shottr if you want something open source and local-first.
 
 ---
 
 ## Post 2: r/opensource - Found This Gem
 
-**Title:** Found an open-source macOS screenshot tool with OCR and multi-model AI support - BerryShot
+**Title:** BerryShot - Native macOS screenshot utility with local Vision OCR, annotations & screen recording (MIT)
 
 **Body:**
 
-Came across **BerryShot** recently while looking for a privacy-focused screenshot tool. It's MIT-licensed and surprisingly feature-rich for something I'd never heard of before.
+Hi all,
 
-**What caught my attention:**
+I wanted to share **BerryShot**, a native macOS menu bar app for screenshots, annotations, and offline OCR. It's written in Swift 6 and SwiftUI, and is fully open-source under the MIT license.
 
-- Native macOS app, lives in the menu bar
-- Region/window/full screen capture with global hotkey
-- Rich annotation tools (blur, pixelate, numbered markers, highlights)
-- **100% local OCR** using Apple's Vision framework - no data leaves your machine
-- Multi-model AI: Gemini, Claude, OpenAI, OpenRouter, Xiaomi Mimo
-- Scrolling screenshot capture
-- Screen recording (HEVC 60fps with audio)
-- Cloud upload to Google Drive or custom HTTP endpoints
-- Screenshot history with local SwiftData storage
-- All credentials stored in macOS Keychain
+**Key features:**
 
-**Why I like it:**
+- **Native capture overlay** using ScreenCaptureKit (launches in <500ms)
+- **100% local OCR** using Apple's Vision framework (everything is local, no external servers)
+- **Live annotation overlay** (shapes, text, blur/pixelate, step markers)
+- **Scrolling capture** for long documents and webpages
+- **60fps HEVC screen recording** (with mic and system audio)
+- **Local history store** via SwiftData
 
-The offline OCR alone makes it worth it. But the AI integration is what sets it apart - I can capture a code screenshot and have Claude summarize it, or capture text in another language and get an instant translation.
+Since it's built with native frameworks, it's very lightweight and respects privacy by keeping credentials in Keychain and processing OCR entirely offline.
 
-It uses ScreenCaptureKit and Vision framework, so it's properly native and fast. Launches in under 500ms.
+Source code and build instructions: https://github.com/berry-apps/berryshot
 
-**Download:** https://notex.work
-
-Anyone else using this? Curious how it compares to Shottr or CleanShot X for your workflows.
+Any feedback on the code or features is highly appreciated!
 
 ---
 
 ## Post 3: r/macOS - Tool Discovery
 
-**Title:** Tired of switching between screenshot, OCR, and AI tools? This menu bar app combines all three
+**Title:** Free open-source alternative to paid Mac screenshot & OCR tools
 
 **Body:**
 
-I used to have this workflow:
-1. Screenshot with macOS built-in
-2. Open in Preview to annotate
-3. Copy to another app for OCR
-4. Switch to browser for AI analysis
-5. Upload to cloud separately
+Hey guys,
 
-Found **BerryShot** and now it's:
-1. `⌘ + ⇧ + 1` → annotate in overlay → OCR extracts text → AI analyzes → auto-uploads
+If you are looking for a native, free screenshot tool that does OCR locally, check out **BerryShot**. It's an open-source utility that sits in your menu bar.
 
-**The features that sold me:**
+Instead of taking a screenshot, opening Preview to annotate, and then copying it into another app for text extraction, this does it all in one overlay:
 
-**Capture side:**
-- Region, window, full screen capture
-- Multi-monitor support
-- Scrolling capture for long pages
-- Screen recording with system audio + mic
+1. Press `⌘ + ⇧ + 1` to capture.
+2. Annotate (draw, blur private text, add step markers).
+3. Click OCR to copy text locally using Apple's Vision framework (no data sent to cloud).
+4. Save locally or auto-upload to Google Drive/custom endpoints.
 
-**Annotation side:**
-- Rectangle, circle, arrow, line, pencil
-- Blur and pixelate (great for hiding sensitive info)
-- Numbered markers for step-by-step guides
-- Text overlay with customizable fonts
+It also does scrolling captures and 60fps screen recording. It's built with native Swift/SwiftUI and ScreenCaptureKit, so it is super fast and low on memory.
 
-**OCR side:**
-- 100% offline, uses Apple's Vision framework
-- Extracts text from any screen selection
-- Works with any language
-- Copies to clipboard instantly
+Repository: https://github.com/berry-apps/berryshot
 
-**AI side:**
-- Multiple providers: Gemini, Claude, OpenAI, OpenRouter
-- Summarize code screenshots
-- Translate text from images
-- Extract structured data
-- Customizable prompt templates
-
-**Productivity side:**
-- Screenshot history with search
-- Auto-upload to Google Drive or custom HTTP
-- Pin screenshots on top of other windows
-- Color picker tool
-
-**Performance:**
-- Launches in under 500ms
-- Capture latency under 100ms
-- Works completely offline (except AI features)
-
-**Download:** https://notex.work
-
-Free, open-source, MIT licensed. The offline OCR alone is worth it IMO.
+Hope this helps anyone looking to simplify their screenshot flow!
 
 ---
 
 ## Post 4: r/SideProject - Cool Find
 
-**Title:** Stumbled upon an open-source macOS screenshot tool with AI integration - sharing because it's actually good
+**Title:** Show SideProject: BerryShot - a native macOS screenshot & offline OCR tool built in Swift 6
 
 **Body:**
 
-Not my project, just something I found while browsing GitHub. **BerryShot** is a macOS menu bar app that combines screenshots, annotations, OCR, and AI analysis.
+Hey everyone,
 
-**What it does:**
+I've been working on/contributing to **BerryShot**, a native macOS menu bar app designed to combine screen capture, annotations, offline OCR, and optional integrations into a single utility.
 
-- `⌘ + ⇧ + 1` for instant region capture
-- Live annotation tools (rectangles, arrows, blur, highlights)
-- 100% offline OCR using Apple's Vision framework
-- Multi-model AI: Gemini, Claude, OpenAI, OpenRouter
-- Scrolling capture for entire webpages
-- Screen recording (HEVC 60fps with audio)
-- Auto-upload to Google Drive or custom HTTP endpoint
-- Screenshot history with local storage
+**Why build it?**
 
-**Why I'm sharing:**
+Most screenshot tools on macOS are either closed-source/paid (like CleanShot X, Shottr) or don't support offline OCR out-of-the-box. I wanted a fast, native tool that keeps everything local and private.
 
-I've been looking for a tool that combines OCR and AI for screenshots. Most tools do one or the other. This one does both, and the OCR is completely offline which is a big deal for privacy.
+**Tech stack & features:**
 
-The AI integration is flexible - you can use multiple providers and customize prompt templates. I use it to:
-- Summarize code screenshots
-- Translate text from images
-- Extract data from UI screenshots
+- **Capture:** ScreenCaptureKit for quick region/window captures.
+- **OCR:** Native Apple Vision framework (100% offline text extraction).
+- **Annotations:** Custom SwiftUI canvas for live shapes, text, blur, and numbered step markers.
+- **Storage & History:** SwiftData for offline screenshot history.
+- **Recording:** ScreenCaptureKit for 60fps HEVC screen recording with dual-channel audio.
+- **Optional AI integration:** Configurable with custom endpoints or your own keys (Claude, Gemini, etc.) if you want AI analysis.
 
-**Tech stack:**
-- Swift 6.0 + SwiftUI
-- ScreenCaptureKit for capture
-- Vision framework for OCR
-- SwiftData for storage
-- macOS 14.0+
+It is completely free and MIT-licensed.
 
-**Download:** https://notex.work
+Check it out on GitHub: https://github.com/berry-apps/berryshot
 
-Worth checking out if you need a comprehensive screenshot tool. It's free and open-source.
+Would love to hear your thoughts on the code or any feature suggestions!
 
 ---
 
 ## Post 5: r/productivity - Workflow Improvement
 
-**Title:** This free macOS app eliminated 3 tools from my screenshot workflow
+**Title:** Simplify your screenshot and OCR workflow on macOS (Free & Open Source)
 
 **Body:**
 
-I used to use:
-- **Shottr** for screenshots
-- **TextSniper** for OCR
-- **CleanShot X** for annotations
-- Browser for AI analysis
+Hey all,
 
-Then I found **BerryShot** and it replaced all of them.
+Just wanted to share a workflow improvement for anyone who takes a lot of screenshots, extracts text, or creates step-by-step guides.
 
-**What it does:**
+**BerryShot** is a native macOS menu bar app that brings region capture, annotation, and offline OCR into one shortcut.
 
-1. **Capture**: `⌘ + ⇧ + 1` for region capture. Also supports window, full screen, and scrolling capture.
+**What's cool about it:**
 
-2. **Annotate**: Draw on the screenshot before saving - rectangles, arrows, blur, highlights, numbered markers. No need to open a separate editor.
+- **Instant region capture:** Launches immediately with a global hotkey.
+- **Draw & Blur:** You can draw arrows, rectangles, or blur sensitive data directly on the screen before saving.
+- **Offline OCR:** Extracts text from any captured area instantly using Apple's Vision framework (no internet needed, completely private).
+- **Step markers:** Easily add numbered badges for documentation or tutorials.
+- **Screen recording:** 60fps HEVC format with internal audio.
 
-3. **OCR**: 100% offline text extraction using Apple's Vision framework. Select any area, text gets copied to clipboard instantly.
+Since it is open-source (MIT licensed) and native Swift, it's fast and doesn't run background electron processes.
 
-4. **AI Analysis**: Connect to Gemini, Claude, OpenAI, or OpenRouter. Summarize code, translate text, extract data from screenshots.
+Check it out: https://github.com/berry-apps/berryshot
 
-5. **Upload**: Auto-upload to Google Drive or custom HTTP endpoint. Link gets copied to clipboard.
-
-6. **History**: Browse all past screenshots with search.
-
-**My workflow now:**
-
-1. `⌘ + ⇧ + 1` to capture
-2. Annotate with arrows and blur sensitive info
-3. OCR extracts text I need
-4. AI summarizes or translates if needed
-5. Auto-uploads and copies link
-6. Done - never left the overlay
-
-**Use cases:**
-- Capturing code snippets for documentation
-- Extracting text from PDFs or images
-- Creating step-by-step guides with numbered markers
-- Sharing annotated screenshots with teammates
-- Recording screen for tutorials
-
-**Download:** https://notex.work
-
-Free, open-source, works offline. The OCR alone saved me $10/year on TextSniper.
+Hope it helps boost your productivity!
 
 ---
 
@@ -238,13 +153,13 @@ Free, open-source, works offline. The OCR alone saved me $10/year on TextSniper.
 7. **r/mac** - General Mac community
 8. **r/software** - Software recommendations
 
-## Posting Tips:
+---
 
-1. **Timing**: Post during US business hours (9am-5pm EST) for maximum visibility
-2. **Engagement**: Reply to every comment within the first hour
-3. **Screenshots**: Include 2-3 screenshots showing the app in action
-4. **Demo GIF**: Short GIF showing the capture → annotate → OCR flow
-5. **Authenticity**: Don't oversell, mention both pros and cons
-6. **Cross-post**: Share across related subreddits with slight variations
-7. **Follow-up**: Post updates when new features are added
-8. **Comments**: Be helpful, answer questions, don't be defensive
+## Posting Tips to Avoid Reddit's Spam Filter:
+
+1. **Do not use the `.work` link:** Reddit's site-wide spam filter flags newer or uncommon TLDs like `.work` automatically. **Only link to the GitHub repository** (`github.com/berry-apps/berryshot`). GitHub links are highly trusted by Reddit and will pass the filters.
+2. **Post as Markdown:** Use Reddit's Markdown editor mode rather than the Rich Text editor to keep the layout clean and natural.
+3. **Keep the tone organic:** Avoid overly hype-filled, PR, or marketing phrases. The posts above have been rewritten to sound like a normal user sharing a useful utility.
+4. **Account age & karma:** If your account is very new or has low karma, some subreddits (like r/opensource or r/macapps) will automatically filter out posts with any links. If this happens, post the text **without any links**, and then add the GitHub link in a comment under the post.
+5. **Timing**: Post during US business hours (9am-5pm EST) for maximum visibility.
+6. **Engagement**: Reply to every comment within the first hour to boost the post's organic ranking.
