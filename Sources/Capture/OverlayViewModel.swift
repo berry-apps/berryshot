@@ -866,49 +866,50 @@ dragMode = .movingElements(originals)
         case .annotating:
             if var el = currentElement {
                 if el.type == .pencil {
-                    el.updatePencil(currentPoint: location)
+                    el.updatePencil(currentPoint: selectionRect.clamping(location))
                     currentElement = el
                 } else if isConnectorTool {
                     let endSnap = findBinding(near: location, excludingElementId: el.startBinding?.elementId)
                     snappedPoint = endSnap?.point
                     snappedBinding = endSnap?.anchor
-                    applyEndBinding(to: &el, at: location, snap: endSnap)
+                    applyEndBinding(to: &el, at: selectionRect.clamping(location), snap: endSnap)
                     currentElement = el
                 } else {
                     let endSnap = findBinding(near: location)
                     snappedPoint = endSnap?.point
                     snappedBinding = endSnap?.anchor
-                    
-                    var targetPoint = endSnap?.point ?? location
+
+                    var targetPoint = selectionRect.clamping(endSnap?.point ?? location)
                     if isShiftPressed && (el.type == .rectangle || el.type == .circle) {
-                        let dx = targetPoint.x - el.startPoint.x
-                        let dy = targetPoint.y - el.startPoint.y
-                        let side = max(abs(dx), abs(dy))
-                        targetPoint = CGPoint(
-                            x: el.startPoint.x + (dx < 0 ? -side : side),
-                            y: el.startPoint.y + (dy < 0 ? -side : side)
-                        )
+                        targetPoint = selectionRect.clampingSquareCorner(from: el.startPoint, toward: targetPoint)
                     } else if isShiftPressed && (el.type == .line || el.type == .curvedLine || el.type == .arrow || el.type == .curvedArrow) {
                         let dx = targetPoint.x - el.startPoint.x
                         let dy = targetPoint.y - el.startPoint.y
                         let angle = atan2(dy, dx)
                         let snappedAngle = round(angle / (.pi / 4)) * (.pi / 4)
                         let distance = hypot(dx, dy)
-                        targetPoint = CGPoint(
+                        targetPoint = selectionRect.clamping(CGPoint(
                             x: el.startPoint.x + distance * cos(snappedAngle),
                             y: el.startPoint.y + distance * sin(snappedAngle)
-                        )
+                        ))
                     }
-                    
+
                     el.update(currentPoint: targetPoint)
                     currentElement = el
                 }
             }
         case .movingElements(let originals):
+            // Clamp once against the union of the dragged elements so they keep
+            // their relative positions instead of piling up on the edge.
+            let movedBox = originals.reduce(CGRect.null) { $0.union($1.geometryBounds) }
+            let boundedTranslation = movedBox.isNull
+                ? translation
+                : selectionRect.clampingTranslation(translation, of: movedBox)
+
             for original in originals {
                 if let idx = elements.firstIndex(where: { $0.id == original.id }) {
                     var moved = original
-                    moved.move(by: translation)
+                    moved.move(by: boundedTranslation)
                     elements[idx] = moved
                 }
             }
@@ -919,10 +920,14 @@ dragMode = .movingElements(originals)
                 let endSnap = findBinding(near: location, excludingElementId: id)
                 snappedPoint = endSnap?.point
                 snappedBinding = endSnap?.anchor
-                
-                let newPoint = endSnap?.point ?? location
+
+                let newPoint = selectionRect.clamping(endSnap?.point ?? location)
                 el.updateBindingPoint(at: index, with: newPoint, anchor: endSnap?.anchor)
-                elements[idx] = el
+                // An aspect-locked image can still grow past the opposite edge from a
+                // clamped handle, so stop the resize rather than let it spill out.
+                if selectionRect.isEmpty || selectionRect.contains(el.geometryBounds) {
+                    elements[idx] = el
+                }
                 refreshBoundConnectors()
             }
         }
