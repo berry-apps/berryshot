@@ -329,15 +329,17 @@ public class CaptureCoordinator: ObservableObject {
         }
 
         do {
-            let stitched = try await ScrollCaptureManager.shared.captureScrollable(
-                window: windowInfo.scWindow,
-                pid: windowInfo.pid,
-                onProgress: { progress in
-                    Task { @MainActor in
-                        ScrollCaptureProgressController.shared.update(progress)
+            let stitched = try await WindowCaptureService.shared.withResolvedWindow(windowInfo.descriptor) { window in
+                try await ScrollCaptureManager.shared.captureScrollable(
+                    window: window,
+                    pid: windowInfo.pid,
+                    onProgress: { progress in
+                        Task { @MainActor in
+                            ScrollCaptureProgressController.shared.update(progress)
+                        }
                     }
-                }
-            )
+                )
+            }
 
             progressController.finish()
 
