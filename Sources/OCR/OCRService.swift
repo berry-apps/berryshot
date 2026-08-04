@@ -6,7 +6,7 @@ public protocol OCRServiceProtocol {
     func extractText(from cgImage: CGImage) async throws -> String
 }
 
-public class OCRService: OCRServiceProtocol {
+public final class OCRService: OCRServiceProtocol, @unchecked Sendable {
     public init() {}
     
     public func extractText(from cgImage: CGImage) async throws -> String {
@@ -37,3 +37,5 @@ public class OCRService: OCRServiceProtocol {
         }
     }
 }
+
+extension OCRService: CaptureOCRExtracting {}

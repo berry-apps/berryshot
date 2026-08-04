@@ -14,11 +14,20 @@ public class CaptureCoordinator: ObservableObject {
     public static let shared = CaptureCoordinator()
 
     private let captureManager = ScreenCaptureManager()
+    private let artifactProcessingRouter: CaptureArtifactProcessingRouter
     private var aiResultWindowControllers: [AIResultWindowController] = []
     private var liveMeetingWindowController: LiveMeetingWindowController?
     private var captureScreen: NSScreen?
 
     private init() {
+        let processor = CaptureArtifactProcessor(
+            ocr: OCRService(),
+            redactor: NoOpCaptureRedactor(),
+            imageStore: DefaultCaptureImageStore(),
+            uploadProvider: CurrentCaptureUploadProvider(),
+            historySink: SwiftDataCaptureHistorySink()
+        )
+        self.artifactProcessingRouter = CaptureArtifactProcessingRouter(finalImageProcessor: processor)
         setupHotkeys()
     }
 
@@ -64,10 +73,7 @@ public class CaptureCoordinator: ObservableObject {
         }
     }
 
-    public enum CaptureAction {
-        case saveLocal
-        case upload
-    }
+    public typealias CaptureAction = CaptureArtifactAction
 
     public func finishCapture(cgImage: CGImage, rect: CGRect) {
         processCapture(cgImage: cgImage, rect: rect, action: .saveLocal)
@@ -113,63 +119,28 @@ public class CaptureCoordinator: ObservableObject {
         self.closeAIWindow()
 
         let scale = (self.captureScreen ?? NSScreen.main)?.backingScaleFactor ?? 2.0
-        let cropRect = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
+        let context = CaptureContext.region(displayID: self.captureScreen?.displayID, rect: rect)
+        let shouldPresentUpload = action == .upload || StorageConfiguration.shared.selectedProvider != .local
 
-        if let cropped = cgImage.cropping(to: cropRect) {
-            Task {
-                let ocrService = OCRService()
-                let ocrText = (try? await ocrService.extractText(from: cropped)) ?? ""
+        Task { @MainActor in
+            if shouldPresentUpload {
+                UploadResultWindowManager.shared.showLoading()
+            }
 
-                guard let imagePath = self.saveImageToDisk(cgImage: cropped) else {
-                    print("Capture aborted: failed to write image to disk")
-                    return
-                }
-
-                let finalURL: URL
-                if action == .upload || StorageConfiguration.shared.selectedProvider != .local {
-                    await MainActor.run {
-                        UploadResultWindowManager.shared.showLoading()
-                    }
-                    do {
-                        let uploadService = await UploadServiceFactory.currentService()
-                        finalURL = try await uploadService.uploadImage(fileURL: imagePath)
-                        print("Upload successful: \(finalURL)")
-
-                        // Copy URL to clipboard
-                        let pasteboard = NSPasteboard.general
-                        pasteboard.clearContents()
-                        pasteboard.setString(finalURL.absoluteString, forType: .string)
-
-                        await MainActor.run {
-                            UploadResultWindowManager.shared.show(url: finalURL.absoluteString)
-                        }
-                    } catch {
-                        print("Upload failed: \(error)")
-                        finalURL = imagePath
-
-                        let errorMessage = error.localizedDescription
-                        await MainActor.run {
-                            UploadResultWindowManager.shared.showError(errorMessage)
-                        }
-                    }
-                } else {
-                    do {
-                        let uploadService = LocalUploadService()
-                        finalURL = try await uploadService.uploadImage(fileURL: imagePath)
-                    } catch {
-                        finalURL = imagePath
-                    }
-                }
-
-                let screenshot = ScreenshotModel(
-                    imagePath: finalURL.path,
-                    thumbnailPath: finalURL.path,
-                    width: cropped.width,
-                    height: cropped.height,
-                    ocrText: ocrText
+            do {
+                let artifact = try await self.artifactProcessingRouter.processRegionDisplayCapture(
+                    cgImage,
+                    region: rect,
+                    scale: scale,
+                    context: context,
+                    action: action
                 )
-                HistoryService.shared.save(screenshot)
-                print("Capture processed and saved/uploaded to \(finalURL)\nOCR Text: \(ocrText)")
+                self.presentUploadResultIfNeeded(artifact, shouldPresent: shouldPresentUpload)
+                print("Capture processed and saved/uploaded to \(artifact.finalURL)\nOCR Text: \(artifact.ocrText)")
+            } catch is CancellationError {
+                // A cancelled capture must not create a history entry.
+            } catch {
+                print("Capture aborted: \(error.localizedDescription)")
             }
         }
     }
@@ -327,8 +298,7 @@ public class CaptureCoordinator: ObservableObject {
 
             progressController.finish()
 
-            let finalRect = CGRect(x: 0, y: 0, width: stitched.width, height: stitched.height)
-            processScrollCaptureResult(cgImage: stitched, rect: finalRect)
+            processScrollCaptureResult(cgImage: stitched)
         } catch {
             progressController.close()
             if let scrollError = error as? ScrollCaptureError, case .cancelled = scrollError {
@@ -371,10 +341,9 @@ public class CaptureCoordinator: ObservableObject {
 
             progressController.finish()
 
-            // Route through existing save/upload pipeline
-            // Use full image rect (scroll capture already produced final image)
-            let rect = CGRect(origin: .zero, size: CGSize(width: stitched.width, height: stitched.height))
-            processScrollCaptureResult(cgImage: stitched, rect: rect)
+            // Scroll capture already produced a final image; it must not pass
+            // through display-region crop coordinates.
+            processScrollCaptureResult(cgImage: stitched)
 
         } catch ScrollCaptureError.cancelled {
             progressController.close()
@@ -383,58 +352,29 @@ public class CaptureCoordinator: ObservableObject {
         }
     }
 
-    private func processScrollCaptureResult(cgImage: CGImage, rect: CGRect) {
+    private func processScrollCaptureResult(cgImage: CGImage) {
         let resultWindow = ScrollCaptureResultWindowController(cgImage: cgImage)
         resultWindow.show()
 
-        Task {
-            let ocrService = OCRService()
-            let ocrText = (try? await ocrService.extractText(from: cgImage)) ?? ""
-
-            guard let imagePath = self.saveImageToDisk(cgImage: cgImage) else {
-                print("Scroll capture aborted: failed to write image to disk")
-                return
+        let shouldPresentUpload = StorageConfiguration.shared.selectedProvider != .local
+        Task { @MainActor in
+            if shouldPresentUpload {
+                UploadResultWindowManager.shared.showLoading()
             }
 
-            let finalURL: URL
-            if StorageConfiguration.shared.selectedProvider != .local {
-                await MainActor.run {
-                    UploadResultWindowManager.shared.showLoading()
-                }
-                do {
-                    let uploadService = await UploadServiceFactory.currentService()
-                    finalURL = try await uploadService.uploadImage(fileURL: imagePath)
-                    let pasteboard = NSPasteboard.general
-                    pasteboard.clearContents()
-                    pasteboard.setString(finalURL.absoluteString, forType: .string)
-                    await MainActor.run {
-                        UploadResultWindowManager.shared.show(url: finalURL.absoluteString)
-                    }
-                } catch {
-                    finalURL = imagePath
-                    let errorMessage = error.localizedDescription
-                    await MainActor.run {
-                        UploadResultWindowManager.shared.showError(errorMessage)
-                    }
-                }
-            } else {
-                do {
-                    let uploadService = LocalUploadService()
-                    finalURL = try await uploadService.uploadImage(fileURL: imagePath)
-                } catch {
-                    finalURL = imagePath
-                }
+            do {
+                let artifact = try await self.artifactProcessingRouter.processFinalImage(
+                    cgImage,
+                    context: .scrollResult(),
+                    action: .saveLocal
+                )
+                self.presentUploadResultIfNeeded(artifact, shouldPresent: shouldPresentUpload)
+                print("Scroll capture processed and saved to \(artifact.finalURL)\nOCR Text: \(artifact.ocrText)")
+            } catch is CancellationError {
+                // A cancelled capture must not create a history entry.
+            } catch {
+                print("Scroll capture aborted: \(error.localizedDescription)")
             }
-
-            let screenshot = ScreenshotModel(
-                imagePath: finalURL.path,
-                thumbnailPath: finalURL.path,
-                width: cgImage.width,
-                height: cgImage.height,
-                ocrText: ocrText
-            )
-            HistoryService.shared.save(screenshot)
-            print("Scroll capture processed and saved to \(finalURL)\nOCR Text: \(ocrText)")
         }
     }
 
@@ -455,29 +395,18 @@ public class CaptureCoordinator: ObservableObject {
         }
     }
 
-    private func saveImageToDisk(cgImage: CGImage) -> URL? {
-        // Encode straight from the CGImage. Avoids building a full TIFF copy first,
-        // which can fail or exhaust memory for very tall stitched scroll captures —
-        // a failure there used to crash the whole app via fatalError.
-        let bitmapImage = NSBitmapImageRep(cgImage: cgImage)
-        guard let pngData = bitmapImage.representation(using: .png, properties: [:]) else {
-            print("Failed to convert CGImage to PNG data (image \(cgImage.width)x\(cgImage.height))")
-            return nil
+    private func presentUploadResultIfNeeded(_ artifact: CaptureArtifact, shouldPresent: Bool) {
+        guard shouldPresent else { return }
+
+        switch artifact.deliveryStatus {
+        case .delivered:
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            pasteboard.setString(artifact.finalURL.absoluteString, forType: .string)
+            UploadResultWindowManager.shared.show(url: artifact.finalURL.absoluteString)
+        case let .fellBackToStoredFile(errorDescription):
+            UploadResultWindowManager.shared.showError(errorDescription)
         }
-
-        let fileManager = FileManager.default
-        let appSupportDir = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let appDir = appSupportDir.appendingPathComponent("BerryShot", isDirectory: true)
-
-        if !fileManager.fileExists(atPath: appDir.path) {
-            try? fileManager.createDirectory(at: appDir, withIntermediateDirectories: true, attributes: nil)
-        }
-
-        let filename = "Screenshot-\(UUID().uuidString).png"
-        let fileURL = appDir.appendingPathComponent(filename)
-
-        try? pngData.write(to: fileURL)
-        return fileURL
     }
 
     public func closeAIWindow() {
