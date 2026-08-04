@@ -38,6 +38,16 @@ public enum ScrollCaptureError: LocalizedError {
     }
 }
 
+/// Keeps cancellation as a user-intent outcome instead of presenting it as a capture failure.
+enum ScrollCaptureErrorMapper {
+    static func windowFrameCaptureError(from error: Error) -> ScrollCaptureError {
+        if error is CancellationError {
+            return .cancelled
+        }
+        return .captureFailed(error.localizedDescription)
+    }
+}
+
 // MARK: - ScrollCaptureManager
 
 @MainActor
@@ -273,17 +283,10 @@ public class ScrollCaptureManager: ObservableObject {
     // MARK: - Frame Capture
 
     private func captureWindowFrame(window: SCWindow) async throws -> CGImage {
-        let filter = SCContentFilter(desktopIndependentWindow: window)
-        let config = SCStreamConfiguration()
-        let scale = NSScreen.main?.backingScaleFactor ?? 2.0
-        config.width = Int(window.frame.width * scale)
-        config.height = Int(window.frame.height * scale)
-        config.showsCursor = false
-
         do {
-            return try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
+            return try await WindowCaptureService.shared.captureImage(window: window)
         } catch {
-            throw ScrollCaptureError.captureFailed(error.localizedDescription)
+            throw ScrollCaptureErrorMapper.windowFrameCaptureError(from: error)
         }
     }
 
@@ -295,15 +298,15 @@ public class ScrollCaptureManager: ObservableObject {
         
         let filter = SCContentFilter(display: display, excludingWindows: myWindows)
         let config = SCStreamConfiguration()
-        let scale = NSScreen.main?.backingScaleFactor ?? 2.0
+        let scale = CGFloat(filter.pointPixelScale)
         
         let displayRect = CGRect(x: rect.minX - display.frame.minX,
                                  y: rect.minY - display.frame.minY,
                                  width: rect.width,
                                  height: rect.height)
         
-        config.width = Int(displayRect.width * scale)
-        config.height = Int(displayRect.height * scale)
+        config.width = max(1, Int(ceil(displayRect.width * scale)))
+        config.height = max(1, Int(ceil(displayRect.height * scale)))
         config.sourceRect = displayRect
         config.showsCursor = false
 

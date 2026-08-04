@@ -1,22 +1,29 @@
 import SwiftUI
-@preconcurrency import ScreenCaptureKit
 import AppKit
 
 // MARK: - Window Info Model
 
 public struct WindowInfo: Identifiable, Hashable {
-    public let id: CGWindowID
-    public let appName: String
-    public let windowTitle: String
-    public let pid: pid_t
-    public let scWindow: SCWindow
-    public var thumbnail: NSImage?
+    /// The selector retains only this value descriptor. A live capture object
+    /// is resolved by `WindowCaptureService` immediately before scroll capture.
+    public let descriptor: WindowDescriptor
 
-    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
-    public static func == (lhs: WindowInfo, rhs: WindowInfo) -> Bool { lhs.id == rhs.id }
+    public var id: UInt32 { descriptor.id }
+    public var appName: String { descriptor.applicationName }
+    public var windowTitle: String { descriptor.title }
+    public var pid: pid_t { descriptor.processID }
 }
 
 // MARK: - WindowSelectorViewModel
+
+/// The selector needs discovery only; independent-window capture remains owned
+/// by `WindowCaptureService` and is never performed for every listed window.
+@MainActor
+public protocol WindowDiscovering {
+    func discoverWindows() async throws -> [WindowDescriptor]
+}
+
+extension WindowCaptureService: WindowDiscovering {}
 
 @MainActor
 public class WindowSelectorViewModel: ObservableObject {
@@ -25,63 +32,23 @@ public class WindowSelectorViewModel: ObservableObject {
     @Published public var selectedWindow: WindowInfo? = nil
     @Published public var errorMessage: String? = nil
 
-    public init() {}
+    private let windowDiscovery: any WindowDiscovering
+
+    public init(windowDiscovery: any WindowDiscovering = WindowCaptureService.shared) {
+        self.windowDiscovery = windowDiscovery
+    }
 
     public func loadWindows() async {
         isLoading = true
         errorMessage = nil
 
         do {
-            let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-            var infos: [WindowInfo] = []
-
-            for window in content.windows {
-                guard let app = window.owningApplication,
-                      window.frame.width > 100,
-                      window.frame.height > 100 else { continue }
-
-                let title = window.title ?? "(No Title)"
-                let appName = app.applicationName
-                var info = WindowInfo(
-                    id: window.windowID,
-                    appName: appName,
-                    windowTitle: title,
-                    pid: app.processID,
-                    scWindow: window
-                )
-
-                // Attempt to capture thumbnail
-                if let thumb = try? await captureThumbnail(window: window) {
-                    info.thumbnail = thumb
-                }
-
-                infos.append(info)
-            }
-
-            // Sort: active app first, then by app name
-            let activeAppPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
-            infos.sort {
-                if $0.pid == activeAppPID { return true }
-                if $1.pid == activeAppPID { return false }
-                return $0.appName < $1.appName
-            }
-
-            self.windows = infos
+            self.windows = try await windowDiscovery.discoverWindows().map(WindowInfo.init(descriptor:))
         } catch {
             self.errorMessage = "Failed to load windows: \(error.localizedDescription)"
         }
 
         isLoading = false
-    }
-
-    private func captureThumbnail(window: SCWindow) async throws -> NSImage? {
-        let filter = SCContentFilter(desktopIndependentWindow: window)
-        let config = SCStreamConfiguration()
-        config.width = 180
-        config.height = 120
-        config.showsCursor = false
-        let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
-        return NSImage(cgImage: image, size: NSSize(width: 180, height: 120))
     }
 }
 
@@ -197,16 +164,12 @@ struct WindowCardView: View {
                     .fill(Color(NSColor.quaternaryLabelColor))
                     .aspectRatio(16/9, contentMode: .fit)
 
-                if let thumb = info.thumbnail {
-                    Image(nsImage: thumb)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                } else {
-                    Image(systemName: "macwindow")
-                        .font(.system(size: 28))
-                        .foregroundColor(.secondary)
-                }
+                // Thumbnails are intentionally deferred. Capturing every
+                // discovered window would eagerly allocate images and cross the
+                // live ScreenCaptureKit boundary before the user selects one.
+                Image(systemName: "macwindow")
+                    .font(.system(size: 28))
+                    .foregroundColor(.secondary)
             }
             .aspectRatio(16/9, contentMode: .fit)
             .overlay(
