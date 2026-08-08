@@ -1,4 +1,7 @@
 import XCTest
+#if canImport(Darwin)
+import Darwin
+#endif
 
 /// `NSLock`-guarded byte accumulator for `Pipe.fileHandleForReading.readabilityHandler`,
 /// which fires on a background thread. `@unchecked Sendable` is safe here
@@ -39,6 +42,14 @@ final class HelperStdoutProtocolTests: XCTestCase {
 
     override func setUp() {
         super.setUp()
+        // This test writes to the subprocess's stdin pipe from the test
+        // process itself. If the helper has already exited (e.g. it hit an
+        // early error) by the time a later `sendLine` runs, that write hits
+        // a reader-less pipe and raises `SIGPIPE` — whose default
+        // disposition kills the entire `swift test` process, not just this
+        // test. Ignore it process-wide so the write fails with `EPIPE`
+        // (an ordinary, catchable condition) instead.
+        signal(SIGPIPE, SIG_IGN)
         tempHome = FileManager.default.temporaryDirectory.appendingPathComponent("bsmcp-home-\(UUID().uuidString.prefix(8))", isDirectory: true)
         try? FileManager.default.createDirectory(at: tempHome, withIntermediateDirectories: true)
     }
