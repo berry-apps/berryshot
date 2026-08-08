@@ -14,18 +14,26 @@ public enum RedactionStyle: String, Codable, Sendable, CaseIterable {
     case solid
 }
 
-/// WP4 ships only user-drawn manual regions. WP5 is expected to extend this
-/// set with automatically detected categories (secure fields, emails, cards,
-/// tokens, ...); adding those cases now would be an undocumented automatic
-/// detection claim this work package does not implement.
+/// WP4 shipped only user-drawn manual regions. WP5 adds the automatically
+/// detected categories from `04-sensitive-redaction-spec.md` section 3:
+/// AX secure fields, and Vision-classified emails, phone numbers, validated
+/// card numbers, API/token prefixes, and user-configured literal terms.
 public enum SensitiveCategory: String, Codable, Sendable {
     case manual
+    case secureField
+    case email
+    case phoneNumber
+    case creditCard
+    case apiToken
+    case customTerm
 }
 
-/// WP4 ships only the manual detection source. WP5 adds accessibility and
-/// Vision OCR sources.
+/// WP4 shipped only the manual detection source. WP5 adds the accessibility
+/// and Vision OCR sources.
 public enum RedactionSource: String, Codable, Sendable {
     case manual
+    case accessibility
+    case visionOCR
 }
 
 /// One rectangle to flatten before persistence. Deliberately carries no
@@ -92,22 +100,30 @@ public enum RedactionRegionMerger {
         return merged
     }
 
-    /// WP4 only ever merges manual regions, so the merged result is always
-    /// re-tagged `.manual`/`.manual`/`1.0`. A future work package that mixes
-    /// automatically detected categories into the same merge pass will need
-    /// to decide how to combine category/confidence/source instead of
-    /// reusing this shortcut.
+    /// Unions overlapping rectangles that share a style into as few
+    /// rectangles as possible. WP4 only ever merged manual regions, so it
+    /// could re-tag every merged result `.manual`/`.manual`/`1.0`
+    /// unconditionally. WP5 mixes automatically detected categories
+    /// (AX/Vision) into the same pool, so a merged rectangle now keeps the
+    /// category/source/confidence of whichever *contributing* region had the
+    /// highest confidence — never averaged or silently dropped, since spec
+    /// section 3 requires every region to still record exactly one
+    /// category/confidence/source. This can under-represent a merged area
+    /// (a lower-confidence contributor's category is not separately
+    /// recorded), which is the same "approximate, not a complete audit
+    /// trail" tradeoff the spec already accepts for substring bounding
+    /// boxes.
     private static func mergeOverlapping(_ regions: [RedactionRegion], style: RedactionStyle) -> [RedactionRegion] {
-        var rects = regions.map(\.normalizedRect.cgRect)
+        var groups: [[RedactionRegion]] = regions.map { [$0] }
 
         var didMerge = true
         while didMerge {
             didMerge = false
-            scan: for i in 0..<rects.count {
-                for j in (i + 1)..<rects.count {
-                    if rects[i].intersects(rects[j]) {
-                        rects[i] = rects[i].union(rects[j])
-                        rects.remove(at: j)
+            scan: for i in 0..<groups.count {
+                for j in (i + 1)..<groups.count {
+                    if unionRect(of: groups[i]).intersects(unionRect(of: groups[j])) {
+                        groups[i] += groups[j]
+                        groups.remove(at: j)
                         didMerge = true
                         break scan
                     }
@@ -115,8 +131,22 @@ public enum RedactionRegionMerger {
             }
         }
 
-        return rects.map {
-            RedactionRegion(normalizedRect: CGRectDTO($0), category: .manual, confidence: 1.0, source: .manual, style: style)
+        return groups.map { members in
+            // `max(by:)` always has a result here because every group has at
+            // least one member (`regions.map { [$0] }` above).
+            let strongest = members.max { $0.confidence < $1.confidence }!
+            return RedactionRegion(
+                normalizedRect: CGRectDTO(unionRect(of: members)),
+                category: strongest.category,
+                confidence: strongest.confidence,
+                source: strongest.source,
+                style: style
+            )
         }
+    }
+
+    private static func unionRect(of members: [RedactionRegion]) -> CGRect {
+        let rects = members.map(\.normalizedRect.cgRect)
+        return rects.dropFirst().reduce(rects[0]) { $0.union($1) }
     }
 }
