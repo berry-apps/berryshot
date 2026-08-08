@@ -67,7 +67,13 @@ public final class MCPIntegrationSettings: ObservableObject {
             return
         }
 
-        let newBroker = CaptureBroker(discovery: LiveCaptureBrokerDiscovery())
+        // WP7: keep the artifact store's root under the same overridable
+        // base directory as the socket/descriptor, so tests that isolate
+        // `enable()` to a temp directory get isolated capture artifacts too
+        // instead of writing into the real production Application Support
+        // path.
+        let store = baseDirectory.map { CaptureArtifactStore(rootDirectory: $0.appendingPathComponent("Artifacts", isDirectory: true)) } ?? CaptureArtifactStore()
+        let newBroker = CaptureBroker(discovery: LiveCaptureBrokerDiscovery(), artifactStore: store)
         let newServer = baseDirectory.map { BrokerIPCServer(broker: newBroker, baseDirectory: $0) } ?? BrokerIPCServer(broker: newBroker)
         do {
             _ = try newServer.start()

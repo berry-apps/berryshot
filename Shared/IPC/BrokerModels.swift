@@ -1,10 +1,13 @@
 import Foundation
 
 /// Wire-level permission snapshot. Field shape follows the `permissions_status`
-/// tool output documented in `05-mcp-server-contract.md` section 3; the exact
-/// external JSON key casing for the MCP tool result is a WP7 concern, so this
-/// type intentionally uses ordinary Swift `Codable` synthesis rather than
-/// pinning `snake_case` keys this early.
+/// tool output documented in `05-mcp-server-contract.md` section 3. WP6 left
+/// external JSON key casing as "a WP7 concern" and used ordinary Swift
+/// `Codable` synthesis (camelCase); WP7 pins the exact `snake_case` keys the
+/// contract's section 3 example shows (`screen_capture`, `accessibility`,
+/// `berryshot_running`, `broker_protocol_version`) via explicit
+/// `CodingKeys`, since this DTO is encoded directly as the tool's JSON
+/// result. Swift-side property names/call sites are unchanged.
 public struct PermissionsStatusDTO: Codable, Sendable, Equatable {
     public enum ScreenCaptureStatus: String, Codable, Sendable {
         case granted
@@ -23,6 +26,13 @@ public struct PermissionsStatusDTO: Codable, Sendable, Equatable {
     public let accessibility: AccessibilityStatus
     public let berryshotRunning: Bool
     public let brokerProtocolVersion: UInt16
+
+    private enum CodingKeys: String, CodingKey {
+        case screenCapture = "screen_capture"
+        case accessibility
+        case berryshotRunning = "berryshot_running"
+        case brokerProtocolVersion = "broker_protocol_version"
+    }
 
     public init(
         screenCapture: ScreenCaptureStatus,
@@ -47,6 +57,14 @@ public struct ApplicationSummaryDTO: Codable, Sendable, Equatable, Identifiable 
     public let isFrontmost: Bool
     public let windowCount: Int
 
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case applicationName = "application_name"
+        case processID = "process_id"
+        case isFrontmost = "is_frontmost"
+        case windowCount = "window_count"
+    }
+
     public init(id: String, applicationName: String, processID: Int32, isFrontmost: Bool, windowCount: Int) {
         self.id = id
         self.applicationName = applicationName
@@ -67,6 +85,16 @@ public struct WindowSummaryDTO: Codable, Sendable, Equatable, Identifiable {
     public let title: String
     public let isOnScreen: Bool
     public let isFrontmost: Bool
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case bundleIdentifier = "bundle_id"
+        case applicationName = "application_name"
+        case processID = "process_id"
+        case title
+        case isOnScreen = "is_on_screen"
+        case isFrontmost = "is_frontmost"
+    }
 
     public init(
         id: UInt32,
@@ -103,6 +131,11 @@ public struct ListApplicationsResult: Codable, Sendable, Equatable {
     public let applications: [ApplicationSummaryDTO]
     public let nextCursor: String?
 
+    private enum CodingKeys: String, CodingKey {
+        case applications
+        case nextCursor = "next_cursor"
+    }
+
     public init(applications: [ApplicationSummaryDTO], nextCursor: String? = nil) {
         self.applications = applications
         self.nextCursor = nextCursor
@@ -124,6 +157,11 @@ public struct ListWindowsRequest: Codable, Sendable, Equatable {
 public struct ListWindowsResult: Codable, Sendable, Equatable {
     public let windows: [WindowSummaryDTO]
     public let nextCursor: String?
+
+    private enum CodingKeys: String, CodingKey {
+        case windows
+        case nextCursor = "next_cursor"
+    }
 
     public init(windows: [WindowSummaryDTO], nextCursor: String? = nil) {
         self.windows = windows

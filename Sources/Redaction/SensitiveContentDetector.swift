@@ -344,7 +344,7 @@ public struct SensitiveContentPolicyRedactor: CaptureRedacting {
 
         if !allRegions.isEmpty {
             let flattened = try renderer.flatten(image, regions: allRegions)
-            return RedactedCaptureImage(image: flattened, status: .applied)
+            return RedactedCaptureImage(image: flattened, status: .applied, regionCount: allRegions.count)
         }
 
         switch context.redactionPolicy {
