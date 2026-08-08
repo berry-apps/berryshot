@@ -29,10 +29,24 @@ let log = HelperLogging.bootstrap(label: "com.tan.berryshot.mcp")
 // `~/Library/Application Support` to the real account's home). Integration
 // tests that need a genuinely isolated broker directory — spawning this
 // real binary against a fake broker, as `HelperStdoutProtocolCaptureTests`
-// does — set this variable instead. Unset in every real deployment, so
-// production behavior (`IPCClient.defaultBaseDirectory`) is unchanged.
+// does — set this variable instead.
+//
+// This must not exist in a release build: the broker descriptor this
+// points at carries the IPC session secret that authenticates the whole
+// broker<->helper channel (see `05-mcp-server-contract.md` §2). An
+// unconditional env-var redirect would let anything that controls this
+// process's launch environment (a tampered MCP client config, a malicious
+// parent process) point the helper at a forged broker and spoof capture
+// results — defeating the same-UID/session-secret protections entirely.
+// `#if DEBUG` compiles this seam out of `swift build -c release`, which is
+// what `build_app.sh` ships, so production behavior
+// (`IPCClient.defaultBaseDirectory`) is unconditional there.
+#if DEBUG
 let ipcBaseDirectoryOverride = ProcessInfo.processInfo.environment["BERRYSHOT_MCP_BASE_DIRECTORY"]
     .map { URL(fileURLWithPath: $0, isDirectory: true) }
+#else
+let ipcBaseDirectoryOverride: URL? = nil
+#endif
 let ipcClient = ipcBaseDirectoryOverride.map { IPCClient(baseDirectory: $0, log: log) } ?? IPCClient(log: log)
 let server = await MCPServerFactory.makeServer(ipcClient: ipcClient, log: log)
 let transport = StdioTransport(logger: log)
