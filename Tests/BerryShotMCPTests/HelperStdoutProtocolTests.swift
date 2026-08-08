@@ -74,12 +74,17 @@ final class HelperStdoutProtocolTests: XCTestCase {
 
         let process = Process()
         process.executableURL = executableURL
-        // Redirect HOME so IPCClient's `~/Library/Application Support/BerryShot/MCP`
-        // resolves to an empty, isolated directory: no descriptor exists,
-        // so every IPC-backed tool call deterministically fails with
+        // Point IPCClient's base directory at an empty, isolated directory
+        // via the explicit `BERRYSHOT_MCP_BASE_DIRECTORY` test-only override
+        // (see `main.swift`'s doc comment): no descriptor exists there, so
+        // every IPC-backed tool call deterministically fails with
         // berryshot_unavailable regardless of what else is running on this
-        // machine.
-        process.environment = ["HOME": tempHome.path]
+        // machine. `HOME` is redirected too for the same isolation intent,
+        // but on this platform `FileManager`'s `.applicationSupportDirectory`
+        // does not actually follow a `HOME` override (verified directly),
+        // so it alone would not isolate this test from a real BerryShot
+        // instance's actual descriptor if one happened to be running.
+        process.environment = ["HOME": tempHome.path, "BERRYSHOT_MCP_BASE_DIRECTORY": tempHome.path]
 
         let stdinPipe = Pipe()
         let stdoutPipe = Pipe()
