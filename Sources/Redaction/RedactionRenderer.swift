@@ -171,7 +171,12 @@ public struct ManualRedactionPolicyRedactor: CaptureRedacting {
         self.renderer = renderer
     }
 
-    public func redact(_ image: CGImage, context: CaptureContext) async throws -> RedactedCaptureImage {
+    /// Manual-only: ignores `ocrResult`/`ocrStatus` entirely. This type keeps
+    /// WP4's exact manual-region behavior; it is still used directly by Save
+    /// As (see `CaptureCoordinator`), which does not run automatic
+    /// detection. `SensitiveContentPolicyRedactor` (WP5) is the redactor
+    /// that actually uses the OCR/AX signal for the main capture pipeline.
+    public func redact(_ image: CGImage, context: CaptureContext, ocrResult _: OCRResult, ocrStatus _: OCRStatus) async throws -> RedactedCaptureImage {
         switch context.redactionPolicy {
         case .none:
             return RedactedCaptureImage(image: image, status: .notRequested)

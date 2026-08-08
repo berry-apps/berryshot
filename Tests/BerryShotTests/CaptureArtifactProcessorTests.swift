@@ -422,13 +422,13 @@ private struct UnreachableStore: CaptureImageStoring {
 }
 
 private struct CancellingRedactor: CaptureRedacting {
-    func redact(_: CGImage, context _: CaptureContext) async throws -> RedactedCaptureImage {
+    func redact(_: CGImage, context _: CaptureContext, ocrResult _: OCRResult, ocrStatus _: OCRStatus) async throws -> RedactedCaptureImage {
         throw CancellationError()
     }
 }
 
 private struct UnreachableRedactor: CaptureRedacting {
-    func redact(_: CGImage, context _: CaptureContext) async throws -> RedactedCaptureImage {
+    func redact(_: CGImage, context _: CaptureContext, ocrResult _: OCRResult, ocrStatus _: OCRStatus) async throws -> RedactedCaptureImage {
         XCTFail("Redactor must not run after OCR cancellation")
         throw CancellationError()
     }

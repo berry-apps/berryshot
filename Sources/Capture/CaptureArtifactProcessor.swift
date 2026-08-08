@@ -5,10 +5,38 @@ import Foundation
 
 public protocol CaptureOCRExtracting: Sendable {
     func extractText(from image: CGImage) async throws -> String
+
+    /// The richer OCR surface `CaptureArtifactProcessor` uses so a single
+    /// Vision pass can serve both the plaintext `ocrText` artifact field and
+    /// WP5's automatic sensitive-content detection ("one shared OCR/detection
+    /// pass" per `08-implementation-work-packages.md`'s WP5 tasks), instead
+    /// of running OCR twice.
+    func recognize(from image: CGImage) async throws -> OCRResult
+}
+
+public extension CaptureOCRExtracting {
+    /// Default bridge so every existing `CaptureOCRExtracting` conformer
+    /// (every WP1-WP4 test fake, and any future minimal implementation) keeps
+    /// compiling and behaving unchanged without implementing `recognize`
+    /// itself. It has no bounding boxes to offer, so automatic detection
+    /// simply has nothing to classify from that source; it can never
+    /// fabricate a false `clean`, because `SensitiveContentDetector`
+    /// distinguishes "OCR produced zero blocks" from "OCR did not complete"
+    /// using the thrown-error path, not the block count. `OCRService`
+    /// overrides this with the real Vision implementation that returns
+    /// populated blocks.
+    func recognize(from image: CGImage) async throws -> OCRResult {
+        OCRResult(text: try await extractText(from: image), blocks: [])
+    }
 }
 
 public protocol CaptureRedacting: Sendable {
-    func redact(_ image: CGImage, context: CaptureContext) async throws -> RedactedCaptureImage
+    /// `ocrResult`/`ocrStatus` are the exact output of the processor's own
+    /// (single) OCR pass for this image, passed by value at call time only —
+    /// never stored in `CaptureContext` or any other `Codable` type, so a
+    /// recognized block's text can never end up serialized, logged, or
+    /// persisted anywhere by accident.
+    func redact(_ image: CGImage, context: CaptureContext, ocrResult: OCRResult, ocrStatus: OCRStatus) async throws -> RedactedCaptureImage
 }
 
 public struct RedactedCaptureImage: @unchecked Sendable {
@@ -114,7 +142,7 @@ public func cropDisplayCapture(
 public struct NoOpCaptureRedactor: CaptureRedacting {
     public init() {}
 
-    public func redact(_ image: CGImage, context _: CaptureContext) async throws -> RedactedCaptureImage {
+    public func redact(_ image: CGImage, context _: CaptureContext, ocrResult _: OCRResult, ocrStatus _: OCRStatus) async throws -> RedactedCaptureImage {
         RedactedCaptureImage(image: image, status: .notRequested)
     }
 }
@@ -154,10 +182,15 @@ public actor CaptureArtifactProcessor: CaptureFinalImageProcessing {
     ) async throws -> CaptureArtifact {
         try Task.checkCancellation()
 
+        let ocrResult: OCRResult
         let ocrText: String
         let ocrStatus: OCRStatus
         do {
-            ocrText = try await ocr.extractText(from: image)
+            // One shared OCR pass: its blocks feed the redactor's automatic
+            // detection below, and its joined text becomes the artifact's
+            // `ocrText`, instead of running Vision a second time.
+            ocrResult = try await ocr.recognize(from: image)
+            ocrText = ocrResult.text
             ocrStatus = .extracted
         } catch is CancellationError {
             // OCR is optional, but cancellation is a control-flow signal. Do
@@ -166,12 +199,13 @@ public actor CaptureArtifactProcessor: CaptureFinalImageProcessing {
             throw CancellationError()
         } catch {
             // Preserve existing behavior: OCR failure does not discard a capture.
+            ocrResult = OCRResult(text: "", blocks: [])
             ocrText = ""
             ocrStatus = .unavailable
         }
 
         try Task.checkCancellation()
-        let redacted = try await redactor.redact(image, context: context)
+        let redacted = try await redactor.redact(image, context: context, ocrResult: ocrResult, ocrStatus: ocrStatus)
         try Task.checkCancellation()
 
         let storedURL: URL

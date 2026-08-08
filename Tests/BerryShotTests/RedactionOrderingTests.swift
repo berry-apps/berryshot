@@ -232,7 +232,7 @@ private struct RecordingOCR: CaptureOCRExtracting {
 }
 
 private struct CancellingRedactor: CaptureRedacting {
-    func redact(_: CGImage, context _: CaptureContext) async throws -> RedactedCaptureImage {
+    func redact(_: CGImage, context _: CaptureContext, ocrResult _: OCRResult, ocrStatus _: OCRStatus) async throws -> RedactedCaptureImage {
         throw CancellationError()
     }
 }
