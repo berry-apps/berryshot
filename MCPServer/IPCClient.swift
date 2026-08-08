@@ -59,8 +59,16 @@ public actor IPCClient {
 
     /// Sends `operation` and returns its result, transparently reconnecting
     /// (bounded, with backoff — never busy-polling) if the current
-    /// connection turns out to be dead. `deadline` bounds both socket I/O
-    /// timeouts and how long reconnect attempts are allowed to keep trying.
+    /// connection turns out to be dead or the descriptor is momentarily
+    /// unavailable (e.g. the GUI is still starting up). `deadline` bounds
+    /// both socket I/O timeouts and how long reconnect attempts are
+    /// allowed to keep trying.
+    ///
+    /// A well-formed `BrokerErrorDTO` returned by the broker
+    /// (``IPCClientError/brokerError(_:)``) is never retried: it is a
+    /// deterministic response to this specific request (e.g.
+    /// `invalid_argument`), not a connectivity problem, and retrying it
+    /// would only add latency while producing the identical error again.
     public func send(_ operation: BrokerOperation, deadline: Date) async throws -> BrokerResult {
         var lastError: Error = IPCClientError.connectionFailed
         var attempt = 0
@@ -69,6 +77,16 @@ public actor IPCClient {
             do {
                 try ensureConnected()
                 return try performRequestResponse(operation: operation, deadline: deadline)
+            } catch let error as IPCClientError {
+                if case .brokerError = error {
+                    throw error
+                }
+                lastError = error
+                disconnect()
+                attempt += 1
+                guard attempt <= maxReconnectAttempts, Date() < deadline else { break }
+                log.debug("IPC connection failed; retrying", metadata: ["attempt": "\(attempt)", "error": "\(error)"])
+                try? await Task.sleep(nanoseconds: reconnectBackoffNanoseconds * UInt64(attempt))
             } catch {
                 lastError = error
                 disconnect()
