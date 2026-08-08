@@ -49,6 +49,10 @@ struct MenuView: View {
             captureButton
         }
 
+        Button("Capture App or Window…") {
+            captureCoordinator.startApplicationWindowCapture()
+        }
+
         let scrollButton = Button("Scroll Capture…") {
             captureCoordinator.startScrollCapture()
         }
