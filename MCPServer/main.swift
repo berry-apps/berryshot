@@ -22,7 +22,18 @@ signal(SIGPIPE, SIG_IGN)
 // logs and confirm they go elsewhere").
 let log = HelperLogging.bootstrap(label: "com.tan.berryshot.mcp")
 
-let ipcClient = IPCClient(log: log)
+// Test-only override seam: `FileManager`'s `.applicationSupportDirectory`
+// resolves against the real logged-in user's home directory regardless of
+// a `HOME` environment variable override on this platform (verified
+// directly; a subprocess launched with a custom `HOME` still resolves
+// `~/Library/Application Support` to the real account's home). Integration
+// tests that need a genuinely isolated broker directory — spawning this
+// real binary against a fake broker, as `HelperStdoutProtocolCaptureTests`
+// does — set this variable instead. Unset in every real deployment, so
+// production behavior (`IPCClient.defaultBaseDirectory`) is unchanged.
+let ipcBaseDirectoryOverride = ProcessInfo.processInfo.environment["BERRYSHOT_MCP_BASE_DIRECTORY"]
+    .map { URL(fileURLWithPath: $0, isDirectory: true) }
+let ipcClient = ipcBaseDirectoryOverride.map { IPCClient(baseDirectory: $0, log: log) } ?? IPCClient(log: log)
 let server = await MCPServerFactory.makeServer(ipcClient: ipcClient, log: log)
 let transport = StdioTransport(logger: log)
 

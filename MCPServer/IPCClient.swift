@@ -31,7 +31,11 @@ public enum IPCClientError: Error, Sendable, Equatable {
 /// (`08-implementation-work-packages.md` WP6 anti-pattern guard: "Do not
 /// put capture business logic in helper").
 public actor IPCClient {
-    private let baseDirectory: URL
+    /// `nonisolated` and immutable after `init`: WP7's resource-read path
+    /// (`ArtifactResourceAccess.expectedArtifactsRoot`) needs this to
+    /// compute the artifact store's expected root without an `await` hop
+    /// for what is, in practice, a compile-time-fixed value per process.
+    public nonisolated let baseDirectory: URL
     private let maxReconnectAttempts: Int
     private let reconnectBackoffNanoseconds: UInt64
     private let log: Logger
