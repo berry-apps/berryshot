@@ -73,7 +73,14 @@ public final class MCPIntegrationSettings: ObservableObject {
         // instead of writing into the real production Application Support
         // path.
         let store = baseDirectory.map { CaptureArtifactStore(rootDirectory: $0.appendingPathComponent("Artifacts", isDirectory: true)) } ?? CaptureArtifactStore()
-        let newBroker = CaptureBroker(discovery: LiveCaptureBrokerDiscovery(), artifactStore: store)
+        // WP8: `DocumentationSessionManager`'s `onChange` publishes to the
+        // menu-bar indicator on the main actor
+        // (`06-agent-documentation-security.md` section 6: "Persistent
+        // menu-bar indicator while a broker session is connected").
+        let newSessionManager = DocumentationSessionManager(onChange: { sessions in
+            Task { @MainActor in DocumentationSessionIndicator.shared.update(sessions) }
+        })
+        let newBroker = CaptureBroker(discovery: LiveCaptureBrokerDiscovery(), artifactStore: store, sessionManager: newSessionManager)
         let newServer = baseDirectory.map { BrokerIPCServer(broker: newBroker, baseDirectory: $0) } ?? BrokerIPCServer(broker: newBroker)
         do {
             _ = try newServer.start()
@@ -82,6 +89,13 @@ public final class MCPIntegrationSettings: ObservableObject {
             isRunning = true
             storedEnabled = true
             lastErrorMessage = nil
+            // The indicator's one-click Stop only has a session id to work
+            // with; forward it straight to the session manager that owns
+            // that id (`06-agent-documentation-security.md` section 6:
+            // "One-click Stop revokes session token, cancels queue...").
+            DocumentationSessionIndicator.shared.stopHandler = { sessionID in
+                _ = try? await newSessionManager.end(sessionID: sessionID)
+            }
         } catch {
             // Do not leave the toggle showing "on" for a broker that
             // failed to start — that would be exactly the kind of
@@ -105,5 +119,6 @@ public final class MCPIntegrationSettings: ObservableObject {
         isRunning = false
         storedEnabled = false
         lastErrorMessage = nil
+        DocumentationSessionIndicator.shared.clear()
     }
 }
