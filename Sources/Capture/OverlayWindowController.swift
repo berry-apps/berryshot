@@ -21,9 +21,9 @@ public class OverlayWindowController: NSWindowController, NSWindowDelegate {
         
         let viewModel = OverlayViewModel(
             cgImage: cgImage,
-            onComplete: { renderedImage, selectedRect in
+            onComplete: { renderedImage, selectedRect, redactionRegions in
                 Task { @MainActor in
-                    CaptureCoordinator.shared.finishCapture(cgImage: renderedImage, rect: selectedRect)
+                    CaptureCoordinator.shared.finishCapture(cgImage: renderedImage, rect: selectedRect, redactionRegions: redactionRegions)
                 }
             },
             onCopy: { renderedImage, selectedRect in
@@ -31,14 +31,14 @@ public class OverlayWindowController: NSWindowController, NSWindowDelegate {
                     CaptureCoordinator.shared.copyToClipboard(cgImage: renderedImage, rect: selectedRect)
                 }
             },
-            onUpload: { renderedImage, selectedRect in
+            onUpload: { renderedImage, selectedRect, redactionRegions in
                 Task { @MainActor in
-                    CaptureCoordinator.shared.uploadCapture(cgImage: renderedImage, rect: selectedRect)
+                    CaptureCoordinator.shared.uploadCapture(cgImage: renderedImage, rect: selectedRect, redactionRegions: redactionRegions)
                 }
             },
-            onSaveAs: { renderedImage, selectedRect in
+            onSaveAs: { renderedImage, selectedRect, redactionRegions in
                 Task { @MainActor in
-                    CaptureCoordinator.shared.saveAsCapture(cgImage: renderedImage, rect: selectedRect)
+                    await CaptureCoordinator.shared.saveAsCapture(cgImage: renderedImage, rect: selectedRect, redactionRegions: redactionRegions)
                 }
             }
         )

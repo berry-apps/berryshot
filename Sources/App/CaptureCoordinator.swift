@@ -15,19 +15,27 @@ public class CaptureCoordinator: ObservableObject {
 
     private let captureManager = ScreenCaptureManager()
     private let artifactProcessingRouter: CaptureArtifactProcessingRouter
+    /// Shared with `saveAsCapture`, which bypasses `CaptureArtifactProcessor`
+    /// (no OCR/history/upload) but must still flatten manual regions and
+    /// honor fail-closed `required` policy before writing to disk. Reusing
+    /// one instance keeps the underlying `CIContext` reused rather than
+    /// recreated per Save As.
+    private let manualRedactionRedactor: ManualRedactionPolicyRedactor
     private var aiResultWindowControllers: [AIResultWindowController] = []
     private var liveMeetingWindowController: LiveMeetingWindowController?
     private var captureScreen: NSScreen?
 
     private init() {
+        let redactor = ManualRedactionPolicyRedactor()
         let processor = CaptureArtifactProcessor(
             ocr: OCRService(),
-            redactor: NoOpCaptureRedactor(),
+            redactor: redactor,
             imageStore: DefaultCaptureImageStore(),
             uploadProvider: CurrentCaptureUploadProvider(),
             historySink: SwiftDataCaptureHistorySink()
         )
         self.artifactProcessingRouter = CaptureArtifactProcessingRouter(finalImageProcessor: processor)
+        self.manualRedactionRedactor = redactor
         setupHotkeys()
     }
 
@@ -75,12 +83,12 @@ public class CaptureCoordinator: ObservableObject {
 
     public typealias CaptureAction = CaptureArtifactAction
 
-    public func finishCapture(cgImage: CGImage, rect: CGRect) {
-        processCapture(cgImage: cgImage, rect: rect, action: .saveLocal)
+    public func finishCapture(cgImage: CGImage, rect: CGRect, redactionRegions: [RedactionRegion] = []) {
+        processCapture(cgImage: cgImage, rect: rect, action: .saveLocal, redactionRegions: redactionRegions)
     }
 
-    public func uploadCapture(cgImage: CGImage, rect: CGRect) {
-        processCapture(cgImage: cgImage, rect: rect, action: .upload)
+    public func uploadCapture(cgImage: CGImage, rect: CGRect, redactionRegions: [RedactionRegion] = []) {
+        processCapture(cgImage: cgImage, rect: rect, action: .upload, redactionRegions: redactionRegions)
     }
 
     public enum AIActionType {
@@ -113,13 +121,18 @@ public class CaptureCoordinator: ObservableObject {
         windowController.show()
     }
 
-    private func processCapture(cgImage: CGImage, rect: CGRect, action: CaptureAction) {
+    private func processCapture(cgImage: CGImage, rect: CGRect, action: CaptureAction, redactionRegions: [RedactionRegion] = []) {
         self.overlayWindowController?.hide()
         self.overlayWindowController = nil
         self.closeAIWindow()
 
         let scale = (self.captureScreen ?? NSScreen.main)?.backingScaleFactor ?? 2.0
-        let context = CaptureContext.region(displayID: self.captureScreen?.displayID, rect: rect)
+        let context = CaptureContext.region(
+            displayID: self.captureScreen?.displayID,
+            rect: rect,
+            redactionPolicy: RedactionSettings.shared.policy,
+            manualRedactionRegions: redactionRegions
+        )
         let shouldPresentUpload = action == .upload || StorageConfiguration.shared.selectedProvider != .local
 
         Task { @MainActor in
@@ -137,6 +150,10 @@ public class CaptureCoordinator: ObservableObject {
                 )
                 self.presentUploadResultIfNeeded(artifact, shouldPresent: shouldPresentUpload)
                 print("Capture processed and saved/uploaded to \(artifact.finalURL)\nOCR Text: \(artifact.ocrText)")
+            } catch let error as RedactionRequiredError {
+                // Fail-closed rejection must be visible: unlike the routine
+                // needsReview state, this discarded the capture entirely.
+                self.presentRedactionRequiredAlert(error)
             } catch is CancellationError {
                 // A cancelled capture must not create a history entry.
             } catch {
@@ -145,14 +162,53 @@ public class CaptureCoordinator: ObservableObject {
         }
     }
 
+    private func presentRedactionRequiredAlert(_ error: RedactionRequiredError) {
+        let alert = NSAlert()
+        alert.messageText = "Capture Blocked by Redaction Policy"
+        alert.informativeText = error.localizedDescription
+        alert.alertStyle = .warning
+        alert.runModal()
+    }
+
     /// Save As: let the user pick a destination via NSSavePanel, then write the PNG there.
-    public func saveAsCapture(cgImage: CGImage, rect: CGRect) {
+    ///
+    /// This writes directly to disk and does not go through
+    /// `CaptureArtifactProcessor`, so it must apply the same redaction policy
+    /// itself rather than silently writing raw pixels — the spec's "no raw
+    /// artifact... to disk... before redaction completes" rule applies to
+    /// every persistence path, not only the main pipeline.
+    public func saveAsCapture(cgImage: CGImage, rect: CGRect, redactionRegions: [RedactionRegion] = []) async {
         let scale = (self.captureScreen ?? NSScreen.main)?.backingScaleFactor ?? 2.0
         let cropRect = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
         let cropped = cgImage.cropping(to: cropRect) ?? cgImage
 
-        let bitmapImage = NSBitmapImageRep(cgImage: cropped)
-        bitmapImage.size = NSSize(width: cropped.width, height: cropped.height)
+        let context = CaptureContext.region(
+            displayID: self.captureScreen?.displayID,
+            rect: rect,
+            redactionPolicy: RedactionSettings.shared.policy,
+            manualRedactionRegions: redactionRegions
+        )
+
+        let redactedImage: CGImage
+        let redactionStatus: RedactionStatus
+        do {
+            let redacted = try await manualRedactionRedactor.redact(cropped, context: context)
+            redactedImage = redacted.image
+            redactionStatus = redacted.status
+        } catch let error as RedactionRequiredError {
+            presentRedactionRequiredAlert(error)
+            return
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Save As Failed"
+            alert.informativeText = "Redaction failed: \(error.localizedDescription)"
+            alert.alertStyle = .critical
+            alert.runModal()
+            return
+        }
+
+        let bitmapImage = NSBitmapImageRep(cgImage: redactedImage)
+        bitmapImage.size = NSSize(width: redactedImage.width, height: redactedImage.height)
         guard let pngData = bitmapImage.representation(using: .png, properties: [:]) else {
             print("Save As failed: could not encode PNG")
             return
@@ -213,7 +269,8 @@ public class CaptureCoordinator: ObservableObject {
                 thumbnailPath: destURL.path,
                 width: cropped.width,
                 height: cropped.height,
-                ocrText: ocrText
+                ocrText: ocrText,
+                redactionStatus: redactionStatus.rawValue
             )
             HistoryService.shared.save(screenshot)
             print("Saved screenshot to \(destURL.path)")
@@ -379,14 +436,16 @@ public class CaptureCoordinator: ObservableObject {
                 windowID: capturedDescriptor.id,
                 bundleIdentifier: capturedDescriptor.bundleIdentifier,
                 applicationName: capturedDescriptor.applicationName,
-                windowTitle: capturedDescriptor.title
+                windowTitle: capturedDescriptor.title,
+                redactionPolicy: RedactionSettings.shared.policy
             )
         case .applicationWindow:
             context = .applicationWindow(
                 windowID: capturedDescriptor.id,
                 bundleIdentifier: capturedDescriptor.bundleIdentifier,
                 applicationName: capturedDescriptor.applicationName,
-                windowTitle: capturedDescriptor.title
+                windowTitle: capturedDescriptor.title,
+                redactionPolicy: RedactionSettings.shared.policy
             )
         case .region, .scrollResult:
             preconditionFailure("Independent-window capture requires a window source")
@@ -520,11 +579,13 @@ public class CaptureCoordinator: ObservableObject {
             do {
                 let artifact = try await self.artifactProcessingRouter.processFinalImage(
                     cgImage,
-                    context: .scrollResult(),
+                    context: .scrollResult(redactionPolicy: RedactionSettings.shared.policy),
                     action: .saveLocal
                 )
                 self.presentUploadResultIfNeeded(artifact, shouldPresent: shouldPresentUpload)
                 print("Scroll capture processed and saved to \(artifact.finalURL)\nOCR Text: \(artifact.ocrText)")
+            } catch let error as RedactionRequiredError {
+                self.presentRedactionRequiredAlert(error)
             } catch is CancellationError {
                 // A cancelled capture must not create a history entry.
             } catch {

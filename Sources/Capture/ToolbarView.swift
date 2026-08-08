@@ -59,6 +59,19 @@ struct ToolbarView: View {
                                     ]
                                 )
                                 ToolButton(icon: "textformat", isSelected: viewModel.selectedTool == .text) { viewModel.selectTool(.text) }
+                                DropdownToolButton(
+                                    mainIcon: "eye.slash",
+                                    isSelected: viewModel.activeRedactionStyle != nil,
+                                    mainAction: {
+                                        viewModel.selectRedactionTool(style: viewModel.activeRedactionStyle ?? RedactionSettings.shared.style)
+                                    },
+                                    menuItems: [
+                                        ("Blur", "aqi.medium", { viewModel.selectRedactionTool(style: .blur) }),
+                                        ("Pixelate", "square.grid.3x3.fill", { viewModel.selectRedactionTool(style: .pixelate) }),
+                                        ("Solid Cover", "rectangle.fill", { viewModel.selectRedactionTool(style: .solid) })
+                                    ]
+                                )
+                                .help("Mark a region to redact — BerryShot flattens it (blur, pixelate, or solid cover) before the capture is saved or uploaded")
                                 ToolButton(icon: "photo", isSelected: false) { viewModel.openImage() }
                                 
                                 Divider().frame(width: 1, height: 16).opacity(0.3)
@@ -301,6 +314,23 @@ struct HoverableDragBar: View {
                 }
                 .disabled(!viewModel.canRedo)
                 .opacity(viewModel.canRedo ? 1.0 : 0.4)
+
+                // Visible review badge (04-sensitive-redaction-spec.md section 6):
+                // shows how many regions are currently marked for redaction
+                // before the capture is confirmed.
+                if viewModel.manualRedactionRegionCount > 0 {
+                    HStack(spacing: 3) {
+                        Image(systemName: "eye.slash.fill")
+                        Text("\(viewModel.manualRedactionRegionCount)")
+                    }
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundColor(.pink)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(Color.pink.opacity(0.18))
+                    .clipShape(Capsule())
+                    .help("\(viewModel.manualRedactionRegionCount) region(s) will be redacted before this capture is saved or uploaded")
+                }
             }
             .padding(.leading, 12)
             
