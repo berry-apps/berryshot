@@ -29,6 +29,11 @@ public struct CaptureContext: Codable, Sendable, Equatable {
     public let windowID: UInt32?
     public let windowTitle: String?
     public let redactionPolicy: RedactionPolicy
+    /// User-drawn regions to flatten, normalized to the final image. WP4
+    /// only ever populates this from the Region Capture overlay; other
+    /// sources carry an empty array until a later work package gives them a
+    /// manual-region editor or automatic detection.
+    public let manualRedactionRegions: [RedactionRegion]
 
     public init(
         source: CaptureSource,
@@ -38,7 +43,8 @@ public struct CaptureContext: Codable, Sendable, Equatable {
         applicationName: String? = nil,
         windowID: UInt32? = nil,
         windowTitle: String? = nil,
-        redactionPolicy: RedactionPolicy = .none
+        redactionPolicy: RedactionPolicy = .none,
+        manualRedactionRegions: [RedactionRegion] = []
     ) {
         self.source = source
         self.displayID = displayID
@@ -48,18 +54,21 @@ public struct CaptureContext: Codable, Sendable, Equatable {
         self.windowID = windowID
         self.windowTitle = windowTitle
         self.redactionPolicy = redactionPolicy
+        self.manualRedactionRegions = manualRedactionRegions
     }
 
     public static func region(
         displayID: UInt32?,
         rect: CGRect,
-        redactionPolicy: RedactionPolicy = .none
+        redactionPolicy: RedactionPolicy = .none,
+        manualRedactionRegions: [RedactionRegion] = []
     ) -> CaptureContext {
         CaptureContext(
             source: .region,
             displayID: displayID,
             regionInDisplayPoints: rect,
-            redactionPolicy: redactionPolicy
+            redactionPolicy: redactionPolicy,
+            manualRedactionRegions: manualRedactionRegions
         )
     }
 
@@ -68,7 +77,8 @@ public struct CaptureContext: Codable, Sendable, Equatable {
         bundleIdentifier: String?,
         applicationName: String? = nil,
         windowTitle: String? = nil,
-        redactionPolicy: RedactionPolicy = .none
+        redactionPolicy: RedactionPolicy = .none,
+        manualRedactionRegions: [RedactionRegion] = []
     ) -> CaptureContext {
         CaptureContext(
             source: .window,
@@ -76,7 +86,8 @@ public struct CaptureContext: Codable, Sendable, Equatable {
             applicationName: applicationName,
             windowID: windowID,
             windowTitle: windowTitle,
-            redactionPolicy: redactionPolicy
+            redactionPolicy: redactionPolicy,
+            manualRedactionRegions: manualRedactionRegions
         )
     }
 
@@ -85,7 +96,8 @@ public struct CaptureContext: Codable, Sendable, Equatable {
         bundleIdentifier: String,
         applicationName: String? = nil,
         windowTitle: String? = nil,
-        redactionPolicy: RedactionPolicy = .none
+        redactionPolicy: RedactionPolicy = .none,
+        manualRedactionRegions: [RedactionRegion] = []
     ) -> CaptureContext {
         CaptureContext(
             source: .applicationWindow,
@@ -93,20 +105,23 @@ public struct CaptureContext: Codable, Sendable, Equatable {
             applicationName: applicationName,
             windowID: windowID,
             windowTitle: windowTitle,
-            redactionPolicy: redactionPolicy
+            redactionPolicy: redactionPolicy,
+            manualRedactionRegions: manualRedactionRegions
         )
     }
 
     public static func scrollResult(
         displayID: UInt32? = nil,
         regionInDisplayPoints: CGRect? = nil,
-        redactionPolicy: RedactionPolicy = .none
+        redactionPolicy: RedactionPolicy = .none,
+        manualRedactionRegions: [RedactionRegion] = []
     ) -> CaptureContext {
         CaptureContext(
             source: .scrollResult,
             displayID: displayID,
             regionInDisplayPoints: regionInDisplayPoints,
-            redactionPolicy: redactionPolicy
+            redactionPolicy: redactionPolicy,
+            manualRedactionRegions: manualRedactionRegions
         )
     }
 }

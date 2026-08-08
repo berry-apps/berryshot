@@ -54,7 +54,9 @@ struct OverlayView: View {
                     }
                     
                     ForEach(viewModel.elements) { element in
-                        if element.type == .image, let nsImage = element.nsImage {
+                        if let redactionStyle = element.redactionStyle {
+                            RedactionRegionMarker(rect: element.shapeRect(), style: redactionStyle)
+                        } else if element.type == .image, let nsImage = element.nsImage {
                             ZStack {
                                 Image(nsImage: nsImage)
                                     .resizable()
@@ -141,7 +143,9 @@ struct OverlayView: View {
                     }
                     
                     if let current = viewModel.currentElement {
-                        if current.type == .image, let nsImage = current.nsImage {
+                        if let redactionStyle = current.redactionStyle {
+                            RedactionRegionMarker(rect: current.shapeRect(), style: redactionStyle)
+                        } else if current.type == .image, let nsImage = current.nsImage {
                             Image(nsImage: nsImage)
                                 .resizable()
                                 .frame(width: current.shapeRect().width, height: current.shapeRect().height)
@@ -309,6 +313,43 @@ struct ContextMenuButton: View {
         .onHover { hover in
             isHovered = hover
         }
+    }
+}
+
+/// Live-editing indicator for a region tagged with `AnnotationElement.redactionStyle`.
+/// This is chrome only — it is excluded from `OverlayViewModel.renderAnnotatedImage()`
+/// and never flattened into pixels itself; it exists so "review before
+/// confirmation" (04-sensitive-redaction-spec.md section 6) has something
+/// visible before the user commits the capture. The real masking happens
+/// later in `RedactionRenderer`, from the region's normalized rectangle.
+struct RedactionRegionMarker: View {
+    let rect: CGRect
+    let style: RedactionStyle
+
+    private var label: LocalizedStringKey {
+        switch style {
+        case .blur: return "Blur"
+        case .pixelate: return "Pixelate"
+        case .solid: return "Solid Cover"
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            Rectangle().fill(Color.pink.opacity(0.28))
+            Rectangle().stroke(Color.pink, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+            VStack(spacing: 2) {
+                Image(systemName: "eye.slash.fill")
+                Text(label)
+                    .font(.system(size: 10, weight: .semibold))
+            }
+            .foregroundColor(.white)
+            .shadow(color: .black.opacity(0.6), radius: 2)
+            .opacity(rect.width > 40 && rect.height > 28 ? 1 : 0)
+        }
+        .frame(width: rect.width, height: rect.height)
+        .position(x: rect.midX, y: rect.midY)
+        .allowsHitTesting(false)
     }
 }
 

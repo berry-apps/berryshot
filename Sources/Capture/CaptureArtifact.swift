@@ -37,6 +37,10 @@ public struct CaptureArtifact: Codable, Sendable, Equatable {
     public let ocrText: String
     public let ocrStatus: OCRStatus
     public let redactionStatus: RedactionStatus
+    /// Human-readable, plaintext-free notes about the redaction result (for
+    /// example the "automatic detection is unavailable" milestone warning).
+    /// Never contains recognized secret text.
+    public let redactionWarnings: [String]
     public let imageHash: String?
     public let context: CaptureContext
     public let requestedAction: CaptureArtifactAction
@@ -50,6 +54,7 @@ public struct CaptureArtifact: Codable, Sendable, Equatable {
         ocrText: String,
         ocrStatus: OCRStatus,
         redactionStatus: RedactionStatus,
+        redactionWarnings: [String] = [],
         imageHash: String?,
         context: CaptureContext,
         requestedAction: CaptureArtifactAction,
@@ -63,6 +68,7 @@ public struct CaptureArtifact: Codable, Sendable, Equatable {
         self.ocrText = ocrText
         self.ocrStatus = ocrStatus
         self.redactionStatus = redactionStatus
+        self.redactionWarnings = redactionWarnings
         self.imageHash = imageHash
         self.context = context
         self.requestedAction = requestedAction
