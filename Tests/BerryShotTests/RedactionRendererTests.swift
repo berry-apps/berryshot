@@ -175,6 +175,56 @@ final class RedactionRendererTests: XCTestCase {
         XCTAssertEqual(merged.count, 2)
     }
 
+    /// WP5 mixes automatically detected categories into the same merge pass
+    /// as manual regions. When two overlapping regions of different
+    /// categories merge, the result must keep the *higher-confidence*
+    /// contributor's category/source/confidence, never silently fall back to
+    /// `.manual` (which is what the pre-WP5 merger unconditionally did).
+    func testMergerKeepsTheHigherConfidenceCategoryWhenAutomaticAndManualRegionsOverlap() throws {
+        let manual = RedactionRegion.manual(normalizedRect: CGRectDTO(x: 0, y: 0, width: 0.3, height: 0.3), style: .solid) // confidence 1.0
+        let email = RedactionRegion(
+            normalizedRect: CGRectDTO(x: 0.1, y: 0.1, width: 0.3, height: 0.3),
+            category: .email,
+            confidence: 0.7,
+            source: .visionOCR,
+            style: .solid
+        )
+
+        let merged = RedactionRegionMerger.merge([manual, email])
+
+        XCTAssertEqual(merged.count, 1)
+        let result = try XCTUnwrap(merged.first)
+        // Manual (confidence 1.0) outranks the automatic email match (0.7).
+        XCTAssertEqual(result.category, .manual)
+        XCTAssertEqual(result.source, .manual)
+        XCTAssertEqual(result.confidence, 1.0)
+        XCTAssertEqual(result.normalizedRect.cgRect, manual.normalizedRect.cgRect.union(email.normalizedRect.cgRect))
+    }
+
+    func testMergerKeepsTheStrongerAutomaticCategoryWhenTwoDetectedRegionsOverlap() throws {
+        let phone = RedactionRegion(
+            normalizedRect: CGRectDTO(x: 0, y: 0, width: 0.3, height: 0.3),
+            category: .phoneNumber,
+            confidence: 0.6,
+            source: .visionOCR,
+            style: .blur
+        )
+        let card = RedactionRegion(
+            normalizedRect: CGRectDTO(x: 0.1, y: 0.1, width: 0.3, height: 0.3),
+            category: .creditCard,
+            confidence: 0.9,
+            source: .visionOCR,
+            style: .blur
+        )
+
+        let merged = RedactionRegionMerger.merge([phone, card])
+
+        XCTAssertEqual(merged.count, 1)
+        let result = try XCTUnwrap(merged.first)
+        XCTAssertEqual(result.category, .creditCard)
+        XCTAssertEqual(result.confidence, 0.9)
+    }
+
     func testMergerDoesNotCollapseOverlappingRegionsWithDifferentStyles() {
         let a = RedactionRegion.manual(normalizedRect: CGRectDTO(x: 0, y: 0, width: 0.3, height: 0.3), style: .blur)
         let b = RedactionRegion.manual(normalizedRect: CGRectDTO(x: 0.1, y: 0.1, width: 0.3, height: 0.3), style: .solid)
