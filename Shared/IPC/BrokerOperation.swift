@@ -17,6 +17,23 @@ public enum BrokerOperation: Sendable, Equatable {
     case permissionsStatus
     case listApplications(ListApplicationsRequest)
     case listWindows(ListWindowsRequest)
+    /// WP7: capture one window, run OCR/redaction as required, and persist
+    /// the result into the MCP artifact store. `capture_application`
+    /// (`05-mcp-server-contract.md` section 3) is deliberately *not* a
+    /// separate broker operation: the helper implements it by issuing one
+    /// `listWindows` plus repeated `captureWindow` calls, reusing this
+    /// operation and the existing discovery operation instead of adding a
+    /// second, largely-duplicate multi-window code path at the broker layer.
+    case captureWindow(CaptureWindowRequest)
+    /// Returns the same immutable manifest available through the
+    /// `berryshot://captures/{id}/manifest` resource.
+    case getCaptureManifest(GetCaptureManifestRequest)
+    /// Resolves an opaque capture ID + resource kind to a broker-issued,
+    /// already-contained absolute path the helper may read directly
+    /// (`05-mcp-server-contract.md` section 7). Used for all three resource
+    /// kinds (image/manifest/ocr) and for the bounded inline preview, which
+    /// the helper builds by downsizing the same on-disk final image.
+    case resolveArtifactResource(ResolveArtifactResourceRequest)
     /// Best-effort cancellation of another in-flight or still-queued
     /// request, identified by its `requestID`. Always acknowledged; racing
     /// with a request that already finished is not an error.
@@ -29,6 +46,9 @@ extension BrokerOperation: Codable {
         case permissionsStatus
         case listApplications
         case listWindows
+        case captureWindow
+        case getCaptureManifest
+        case resolveArtifactResource
         case cancel
     }
 
@@ -48,6 +68,12 @@ extension BrokerOperation: Codable {
             self = .listApplications(try container.decode(ListApplicationsRequest.self, forKey: .payload))
         case .listWindows:
             self = .listWindows(try container.decode(ListWindowsRequest.self, forKey: .payload))
+        case .captureWindow:
+            self = .captureWindow(try container.decode(CaptureWindowRequest.self, forKey: .payload))
+        case .getCaptureManifest:
+            self = .getCaptureManifest(try container.decode(GetCaptureManifestRequest.self, forKey: .payload))
+        case .resolveArtifactResource:
+            self = .resolveArtifactResource(try container.decode(ResolveArtifactResourceRequest.self, forKey: .payload))
         case .cancel:
             self = .cancel(try container.decode(UUID.self, forKey: .payload))
         }
@@ -66,6 +92,15 @@ extension BrokerOperation: Codable {
         case .listWindows(let payload):
             try container.encode(Kind.listWindows, forKey: .type)
             try container.encode(payload, forKey: .payload)
+        case .captureWindow(let payload):
+            try container.encode(Kind.captureWindow, forKey: .type)
+            try container.encode(payload, forKey: .payload)
+        case .getCaptureManifest(let payload):
+            try container.encode(Kind.getCaptureManifest, forKey: .type)
+            try container.encode(payload, forKey: .payload)
+        case .resolveArtifactResource(let payload):
+            try container.encode(Kind.resolveArtifactResource, forKey: .type)
+            try container.encode(payload, forKey: .payload)
         case .cancel(let requestID):
             try container.encode(Kind.cancel, forKey: .type)
             try container.encode(requestID, forKey: .payload)
@@ -80,6 +115,12 @@ public enum BrokerResult: Sendable, Equatable {
     case permissionsStatus(PermissionsStatusDTO)
     case applications(ListApplicationsResult)
     case windows(ListWindowsResult)
+    /// Result of both `.captureWindow` and `.getCaptureManifest` — the same
+    /// immutable manifest shape either way (`05-mcp-server-contract.md`
+    /// section 3: "get_capture_manifest... Output is the same immutable
+    /// sanitized manifest available through the manifest resource").
+    case manifest(CaptureManifestDTO)
+    case artifactResource(ArtifactResourceLocationDTO)
     case cancelAcknowledged
 }
 
@@ -89,6 +130,8 @@ extension BrokerResult: Codable {
         case permissionsStatus
         case applications
         case windows
+        case manifest
+        case artifactResource
         case cancelAcknowledged
     }
 
@@ -108,6 +151,10 @@ extension BrokerResult: Codable {
             self = .applications(try container.decode(ListApplicationsResult.self, forKey: .payload))
         case .windows:
             self = .windows(try container.decode(ListWindowsResult.self, forKey: .payload))
+        case .manifest:
+            self = .manifest(try container.decode(CaptureManifestDTO.self, forKey: .payload))
+        case .artifactResource:
+            self = .artifactResource(try container.decode(ArtifactResourceLocationDTO.self, forKey: .payload))
         case .cancelAcknowledged:
             self = .cancelAcknowledged
         }
@@ -126,6 +173,12 @@ extension BrokerResult: Codable {
             try container.encode(payload, forKey: .payload)
         case .windows(let payload):
             try container.encode(Kind.windows, forKey: .type)
+            try container.encode(payload, forKey: .payload)
+        case .manifest(let payload):
+            try container.encode(Kind.manifest, forKey: .type)
+            try container.encode(payload, forKey: .payload)
+        case .artifactResource(let payload):
+            try container.encode(Kind.artifactResource, forKey: .type)
             try container.encode(payload, forKey: .payload)
         case .cancelAcknowledged:
             try container.encode(Kind.cancelAcknowledged, forKey: .type)
