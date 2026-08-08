@@ -104,6 +104,16 @@ public actor CaptureBroker {
 
     private let discovery: any CaptureBrokerDiscovering
     private let permissions: any CaptureBrokerPermissionsChecking
+    /// WP7: performs the actual capture/OCR/redact/store pipeline for
+    /// `captureWindow`. Defaults to a live implementation backed by
+    /// `artifactStore`; tests inject a fake to exercise
+    /// `performCaptureWindow`'s validation/error-mapping without real
+    /// ScreenCaptureKit/Vision/AX.
+    private let captureOperations: any CaptureBrokerCaptureOperating
+    /// One store shared by every capture/resource operation this broker
+    /// instance executes, so TTL/quota/lease bookkeeping stays consistent
+    /// across calls instead of resetting per capture.
+    private let artifactStore: CaptureArtifactStore
     private let ownBundleIdentifier: String?
     public let maxQueueDepth: Int
 
@@ -117,11 +127,15 @@ public actor CaptureBroker {
     public init(
         discovery: any CaptureBrokerDiscovering,
         permissions: any CaptureBrokerPermissionsChecking = LiveCaptureBrokerPermissions(),
+        artifactStore: CaptureArtifactStore = CaptureArtifactStore(),
+        captureOperations: (any CaptureBrokerCaptureOperating)? = nil,
         ownBundleIdentifier: String? = Bundle.main.bundleIdentifier,
         maxQueueDepth: Int = IPCProtocol.maxQueueDepth
     ) {
         self.discovery = discovery
         self.permissions = permissions
+        self.artifactStore = artifactStore
+        self.captureOperations = captureOperations ?? LiveCaptureBrokerCaptureOperations(store: artifactStore)
         self.ownBundleIdentifier = ownBundleIdentifier
         self.maxQueueDepth = maxQueueDepth
     }
@@ -232,6 +246,12 @@ public actor CaptureBroker {
             return try await performListApplications(request)
         case .listWindows(let request):
             return try await performListWindows(request)
+        case .captureWindow(let request):
+            return try await performCaptureWindow(request)
+        case .getCaptureManifest(let request):
+            return try await performGetCaptureManifest(request)
+        case .resolveArtifactResource(let request):
+            return try await performResolveArtifactResource(request)
         case .cancel(let targetID):
             // Unreachable in practice: `submit(_:requestID:deadline:)`
             // intercepts `.cancel` before it is ever enqueued (see its doc
@@ -323,6 +343,74 @@ public actor CaptureBroker {
             )
         }
         return .windows(ListWindowsResult(windows: Array(dtos), nextCursor: nextCursor))
+    }
+
+    // MARK: - captureWindow / getCaptureManifest / resolveArtifactResource (WP7)
+
+    /// Validates bounds, re-resolves the requested window from a fresh
+    /// discovery snapshot, and verifies its bundle identity immediately
+    /// before capture (`05-mcp-server-contract.md` section 3: "The broker
+    /// must verify the current window still belongs to `expected_bundle_id`
+    /// immediately before capture") — the same staleness/identity contract
+    /// `WindowCaptureService.captureWindow` itself enforces a second time
+    /// (defense in depth against a window closing between this lookup and
+    /// the actual `SCScreenshotManager` call a moment later).
+    private func performCaptureWindow(_ request: CaptureWindowRequest) async throws -> BrokerResult {
+        guard !request.expectedBundleIdentifier.isEmpty, request.expectedBundleIdentifier.count <= 255 else {
+            throw BrokerOperationError(code: .invalidArgument, message: "expected_bundle_id is required and must be at most 255 characters")
+        }
+        guard request.previewMaxEdge >= 320, request.previewMaxEdge <= 1280 else {
+            throw BrokerOperationError(code: .invalidArgument, message: "preview_max_edge must be between 320 and 1280")
+        }
+        guard permissions.screenCaptureGranted() else {
+            throw BrokerOperationError(code: .permissionDenied, message: "Screen Recording permission is required to capture content")
+        }
+
+        let windows = try await discovery.discoverWindows()
+        guard let matched = windows.first(where: { $0.id == request.windowID }) else {
+            throw BrokerOperationError(code: .windowNotAvailable, message: "The requested window is not currently available")
+        }
+        guard matched.bundleIdentifier == request.expectedBundleIdentifier else {
+            throw BrokerOperationError(code: .windowIdentityChanged, message: "The window no longer belongs to the expected application")
+        }
+
+        try Task.checkCancellation()
+        let manifest = try await captureOperations.captureWindow(request, matchedWindow: matched)
+        return .manifest(manifest)
+    }
+
+    private func performGetCaptureManifest(_ request: GetCaptureManifestRequest) async throws -> BrokerResult {
+        do {
+            let manifest = try await artifactStore.manifest(captureID: request.captureID)
+            return .manifest(manifest)
+        } catch {
+            throw Self.mapArtifactStoreError(error)
+        }
+    }
+
+    private func performResolveArtifactResource(_ request: ResolveArtifactResourceRequest) async throws -> BrokerResult {
+        do {
+            let location = try await artifactStore.resolve(captureID: request.captureID, kind: request.kind)
+            return .artifactResource(location)
+        } catch {
+            throw Self.mapArtifactStoreError(error)
+        }
+    }
+
+    private static func mapArtifactStoreError(_ error: Error) -> BrokerOperationError {
+        guard let storeError = error as? CaptureArtifactStore.StoreError else {
+            return BrokerOperationError(code: .internalError, message: "Internal error")
+        }
+        switch storeError {
+        case .malformedID:
+            return BrokerOperationError(code: .invalidArgument, message: "capture_id must be a valid UUID")
+        case .notFound, .notPublished:
+            return BrokerOperationError(code: .resourceNotFound, message: "Unknown capture resource")
+        case .expired:
+            return BrokerOperationError(code: .resourceExpired, message: "This capture has expired")
+        case .writeFailed:
+            return BrokerOperationError(code: .internalError, message: "Internal error")
+        }
     }
 
     private func parseCursor(_ cursor: String?) throws -> Int {
