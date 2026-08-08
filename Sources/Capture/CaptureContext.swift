@@ -28,6 +28,19 @@ public struct CaptureContext: Codable, Sendable, Equatable {
     public let applicationName: String?
     public let windowID: UInt32?
     public let windowTitle: String?
+    /// The owning application's process ID at capture time, when this
+    /// context represents one specific window. Observation metadata only
+    /// (matching `WindowDescriptor.processID`'s own contract) — used solely
+    /// to target `SensitiveContentDetector`'s AX secure-field scan at the
+    /// right application; never treated as durable identity. `nil` for
+    /// region/scroll captures, which are not tied to one window's AX tree.
+    public let processID: Int32?
+    /// The captured window's content rect in screen points (the same
+    /// `SCContentFilter.contentRect` WP2's `WindowCaptureService` already
+    /// resolves), used to convert AX secure-field frames — which are in
+    /// screen coordinates — into image-normalized coordinates. `nil`
+    /// whenever `processID` is `nil`, for the same reason.
+    public let windowContentRectInScreenPoints: CGRectDTO?
     public let redactionPolicy: RedactionPolicy
     /// User-drawn regions to flatten, normalized to the final image. WP4
     /// only ever populates this from the Region Capture overlay; other
@@ -43,6 +56,8 @@ public struct CaptureContext: Codable, Sendable, Equatable {
         applicationName: String? = nil,
         windowID: UInt32? = nil,
         windowTitle: String? = nil,
+        processID: Int32? = nil,
+        windowContentRectInScreenPoints: CGRectDTO? = nil,
         redactionPolicy: RedactionPolicy = .none,
         manualRedactionRegions: [RedactionRegion] = []
     ) {
@@ -53,6 +68,8 @@ public struct CaptureContext: Codable, Sendable, Equatable {
         self.applicationName = applicationName
         self.windowID = windowID
         self.windowTitle = windowTitle
+        self.processID = processID
+        self.windowContentRectInScreenPoints = windowContentRectInScreenPoints
         self.redactionPolicy = redactionPolicy
         self.manualRedactionRegions = manualRedactionRegions
     }
@@ -77,6 +94,8 @@ public struct CaptureContext: Codable, Sendable, Equatable {
         bundleIdentifier: String?,
         applicationName: String? = nil,
         windowTitle: String? = nil,
+        processID: Int32? = nil,
+        windowContentRectInScreenPoints: CGRectDTO? = nil,
         redactionPolicy: RedactionPolicy = .none,
         manualRedactionRegions: [RedactionRegion] = []
     ) -> CaptureContext {
@@ -86,6 +105,8 @@ public struct CaptureContext: Codable, Sendable, Equatable {
             applicationName: applicationName,
             windowID: windowID,
             windowTitle: windowTitle,
+            processID: processID,
+            windowContentRectInScreenPoints: windowContentRectInScreenPoints,
             redactionPolicy: redactionPolicy,
             manualRedactionRegions: manualRedactionRegions
         )
@@ -96,6 +117,8 @@ public struct CaptureContext: Codable, Sendable, Equatable {
         bundleIdentifier: String,
         applicationName: String? = nil,
         windowTitle: String? = nil,
+        processID: Int32? = nil,
+        windowContentRectInScreenPoints: CGRectDTO? = nil,
         redactionPolicy: RedactionPolicy = .none,
         manualRedactionRegions: [RedactionRegion] = []
     ) -> CaptureContext {
@@ -105,6 +128,8 @@ public struct CaptureContext: Codable, Sendable, Equatable {
             applicationName: applicationName,
             windowID: windowID,
             windowTitle: windowTitle,
+            processID: processID,
+            windowContentRectInScreenPoints: windowContentRectInScreenPoints,
             redactionPolicy: redactionPolicy,
             manualRedactionRegions: manualRedactionRegions
         )
