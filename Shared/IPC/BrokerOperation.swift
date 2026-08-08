@@ -38,6 +38,27 @@ public enum BrokerOperation: Sendable, Equatable {
     /// request, identified by its `requestID`. Always acknowledged; racing
     /// with a request that already finished is not an error.
     case cancel(UUID)
+
+    // MARK: - WP8 documentation sessions and guarded AX automation
+    // (`06-agent-documentation-security.md`)
+
+    case documentationSessionBegin(DocumentationSessionBeginRequest)
+    case documentationSessionStatus(DocumentationSessionStatusRequest)
+    /// Captures one window through the exact same pipeline
+    /// `captureWindow` uses, scoped by the session (bundle allowlist,
+    /// locked-in redaction policy/style, artifact limit) rather than by
+    /// caller-supplied redaction arguments.
+    case documentationSessionCaptureStep(DocumentationSessionCaptureStepRequest)
+    case documentationSessionEnd(DocumentationSessionEndRequest)
+    /// Guarded interactive automation
+    /// (`06-agent-documentation-security.md` section 4). Every one of these
+    /// five operations validates `sessionID` first and only ever acts on
+    /// that session's allowlisted bundle identifier.
+    case launchApplication(LaunchApplicationRequest)
+    case activateApplication(ActivateApplicationRequest)
+    case inspectUI(InspectUIRequest)
+    case performUIAction(PerformUIActionRequest)
+    case waitForUI(WaitForUIRequest)
 }
 
 extension BrokerOperation: Codable {
@@ -50,6 +71,15 @@ extension BrokerOperation: Codable {
         case getCaptureManifest
         case resolveArtifactResource
         case cancel
+        case documentationSessionBegin
+        case documentationSessionStatus
+        case documentationSessionCaptureStep
+        case documentationSessionEnd
+        case launchApplication
+        case activateApplication
+        case inspectUI
+        case performUIAction
+        case waitForUI
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -76,6 +106,24 @@ extension BrokerOperation: Codable {
             self = .resolveArtifactResource(try container.decode(ResolveArtifactResourceRequest.self, forKey: .payload))
         case .cancel:
             self = .cancel(try container.decode(UUID.self, forKey: .payload))
+        case .documentationSessionBegin:
+            self = .documentationSessionBegin(try container.decode(DocumentationSessionBeginRequest.self, forKey: .payload))
+        case .documentationSessionStatus:
+            self = .documentationSessionStatus(try container.decode(DocumentationSessionStatusRequest.self, forKey: .payload))
+        case .documentationSessionCaptureStep:
+            self = .documentationSessionCaptureStep(try container.decode(DocumentationSessionCaptureStepRequest.self, forKey: .payload))
+        case .documentationSessionEnd:
+            self = .documentationSessionEnd(try container.decode(DocumentationSessionEndRequest.self, forKey: .payload))
+        case .launchApplication:
+            self = .launchApplication(try container.decode(LaunchApplicationRequest.self, forKey: .payload))
+        case .activateApplication:
+            self = .activateApplication(try container.decode(ActivateApplicationRequest.self, forKey: .payload))
+        case .inspectUI:
+            self = .inspectUI(try container.decode(InspectUIRequest.self, forKey: .payload))
+        case .performUIAction:
+            self = .performUIAction(try container.decode(PerformUIActionRequest.self, forKey: .payload))
+        case .waitForUI:
+            self = .waitForUI(try container.decode(WaitForUIRequest.self, forKey: .payload))
         }
     }
 
@@ -104,6 +152,33 @@ extension BrokerOperation: Codable {
         case .cancel(let requestID):
             try container.encode(Kind.cancel, forKey: .type)
             try container.encode(requestID, forKey: .payload)
+        case .documentationSessionBegin(let payload):
+            try container.encode(Kind.documentationSessionBegin, forKey: .type)
+            try container.encode(payload, forKey: .payload)
+        case .documentationSessionStatus(let payload):
+            try container.encode(Kind.documentationSessionStatus, forKey: .type)
+            try container.encode(payload, forKey: .payload)
+        case .documentationSessionCaptureStep(let payload):
+            try container.encode(Kind.documentationSessionCaptureStep, forKey: .type)
+            try container.encode(payload, forKey: .payload)
+        case .documentationSessionEnd(let payload):
+            try container.encode(Kind.documentationSessionEnd, forKey: .type)
+            try container.encode(payload, forKey: .payload)
+        case .launchApplication(let payload):
+            try container.encode(Kind.launchApplication, forKey: .type)
+            try container.encode(payload, forKey: .payload)
+        case .activateApplication(let payload):
+            try container.encode(Kind.activateApplication, forKey: .type)
+            try container.encode(payload, forKey: .payload)
+        case .inspectUI(let payload):
+            try container.encode(Kind.inspectUI, forKey: .type)
+            try container.encode(payload, forKey: .payload)
+        case .performUIAction(let payload):
+            try container.encode(Kind.performUIAction, forKey: .type)
+            try container.encode(payload, forKey: .payload)
+        case .waitForUI(let payload):
+            try container.encode(Kind.waitForUI, forKey: .type)
+            try container.encode(payload, forKey: .payload)
         }
     }
 }
@@ -122,6 +197,14 @@ public enum BrokerResult: Sendable, Equatable {
     case manifest(CaptureManifestDTO)
     case artifactResource(ArtifactResourceLocationDTO)
     case cancelAcknowledged
+    /// Result of `documentationSessionBegin`/`Status`/`End`, and also of
+    /// `documentationSessionCaptureStep` (the session's full state *after*
+    /// recording the step, not just the new step in isolation).
+    case documentationSession(DocumentationSessionDTO)
+    case applicationLaunch(ApplicationLaunchResultDTO)
+    case uiSnapshot(UISnapshotDTO)
+    case uiActionResult(UIActionResultDTO)
+    case uiWaitResult(UIWaitResultDTO)
 }
 
 extension BrokerResult: Codable {
@@ -133,6 +216,11 @@ extension BrokerResult: Codable {
         case manifest
         case artifactResource
         case cancelAcknowledged
+        case documentationSession
+        case applicationLaunch
+        case uiSnapshot
+        case uiActionResult
+        case uiWaitResult
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -157,6 +245,16 @@ extension BrokerResult: Codable {
             self = .artifactResource(try container.decode(ArtifactResourceLocationDTO.self, forKey: .payload))
         case .cancelAcknowledged:
             self = .cancelAcknowledged
+        case .documentationSession:
+            self = .documentationSession(try container.decode(DocumentationSessionDTO.self, forKey: .payload))
+        case .applicationLaunch:
+            self = .applicationLaunch(try container.decode(ApplicationLaunchResultDTO.self, forKey: .payload))
+        case .uiSnapshot:
+            self = .uiSnapshot(try container.decode(UISnapshotDTO.self, forKey: .payload))
+        case .uiActionResult:
+            self = .uiActionResult(try container.decode(UIActionResultDTO.self, forKey: .payload))
+        case .uiWaitResult:
+            self = .uiWaitResult(try container.decode(UIWaitResultDTO.self, forKey: .payload))
         }
     }
 
@@ -182,6 +280,21 @@ extension BrokerResult: Codable {
             try container.encode(payload, forKey: .payload)
         case .cancelAcknowledged:
             try container.encode(Kind.cancelAcknowledged, forKey: .type)
+        case .documentationSession(let payload):
+            try container.encode(Kind.documentationSession, forKey: .type)
+            try container.encode(payload, forKey: .payload)
+        case .applicationLaunch(let payload):
+            try container.encode(Kind.applicationLaunch, forKey: .type)
+            try container.encode(payload, forKey: .payload)
+        case .uiSnapshot(let payload):
+            try container.encode(Kind.uiSnapshot, forKey: .type)
+            try container.encode(payload, forKey: .payload)
+        case .uiActionResult(let payload):
+            try container.encode(Kind.uiActionResult, forKey: .type)
+            try container.encode(payload, forKey: .payload)
+        case .uiWaitResult(let payload):
+            try container.encode(Kind.uiWaitResult, forKey: .type)
+            try container.encode(payload, forKey: .payload)
         }
     }
 }
