@@ -14,10 +14,14 @@ public protocol CaptureRedacting: Sendable {
 public struct RedactedCaptureImage: @unchecked Sendable {
     public let image: CGImage
     public let status: RedactionStatus
+    /// Human-readable, plaintext-free notes surfaced alongside `status` (for
+    /// example the "automatic detection is unavailable" milestone warning).
+    public let warnings: [String]
 
-    public init(image: CGImage, status: RedactionStatus) {
+    public init(image: CGImage, status: RedactionStatus, warnings: [String] = []) {
         self.image = image
         self.status = status
+        self.warnings = warnings
     }
 }
 
@@ -211,6 +215,7 @@ public actor CaptureArtifactProcessor: CaptureFinalImageProcessing {
             ocrText: ocrText,
             ocrStatus: ocrStatus,
             redactionStatus: redacted.status,
+            redactionWarnings: redacted.warnings,
             imageHash: imageHash,
             context: context,
             requestedAction: action,
@@ -332,7 +337,8 @@ public final class SwiftDataCaptureHistorySink: CaptureHistorySinking {
             thumbnailPath: artifact.finalPath,
             width: artifact.width,
             height: artifact.height,
-            ocrText: artifact.ocrText
+            ocrText: artifact.ocrText,
+            redactionStatus: artifact.redactionStatus.rawValue
         )
         HistoryService.shared.save(screenshot)
     }

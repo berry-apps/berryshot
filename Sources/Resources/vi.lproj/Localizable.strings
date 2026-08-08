@@ -59,3 +59,16 @@
 "Cancel and close capture" = "Hủy thao tác chụp màn hình";
 "Toggle this shortcut list" = "Bật/Tắt bảng phím tắt này";
 "Visit Website" = "Truy cập Website";
+
+"Sensitive Content Redaction" = "Che thông tin nhạy cảm";
+"Automatic detection has not shipped yet. Use the Redact tool in the capture toolbar to mark regions by hand; BerryShot flattens them (blur, pixelate, or solid cover) before the image is saved, uploaded, or added to history." = "Tính năng tự động phát hiện chưa ra mắt. Hãy dùng công cụ Che (Redact) trên thanh công cụ chụp để đánh dấu vùng thủ công; BerryShot sẽ áp dụng (làm mờ, pixel hóa, hoặc che kín) trước khi ảnh được lưu, tải lên, hoặc thêm vào lịch sử.";
+"Redaction policy" = "Chính sách che thông tin";
+"Off — do not track redaction status" = "Tắt — không theo dõi trạng thái che";
+"Suggest — warn when a capture has not been reviewed" = "Gợi ý — cảnh báo khi ảnh chụp chưa được kiểm tra";
+"Required — block captures with no reviewed region" = "Bắt buộc — chặn ảnh chụp chưa có vùng được xác nhận";
+"Default redaction style" = "Kiểu che mặc định";
+"Blur" = "Làm mờ";
+"Pixelate" = "Pixel hóa";
+"Solid Cover" = "Che kín";
+"Required mode currently blocks App/Window and Scroll captures, which have no manual-region editor yet. Only Region Capture supports marking regions in this release." = "Chế độ Bắt buộc hiện chặn ảnh chụp Ứng dụng/Cửa sổ và Cuộn trang vì các chế độ này chưa có công cụ đánh dấu vùng thủ công. Chỉ Chụp khu vực hỗ trợ đánh dấu vùng trong phiên bản này.";
+"Mark a region to redact — BerryShot flattens it (blur, pixelate, or solid cover) before the capture is saved or uploaded" = "Đánh dấu vùng cần che — BerryShot sẽ áp dụng (làm mờ, pixel hóa, hoặc che kín) trước khi ảnh được lưu hoặc tải lên";
