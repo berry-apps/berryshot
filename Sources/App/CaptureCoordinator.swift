@@ -26,16 +26,22 @@ public class CaptureCoordinator: ObservableObject {
     private var captureScreen: NSScreen?
 
     private init() {
-        let redactor = ManualRedactionPolicyRedactor()
+        // The main pipeline uses WP5's detecting redactor (manual regions +
+        // automatic AX/Vision detection). Save As keeps using the
+        // manual-only `ManualRedactionPolicyRedactor` below - it does not run
+        // automatic detection.
+        let detectingRedactor = SensitiveContentPolicyRedactor(
+            configurationProvider: { await RedactionSettings.shared.detectionConfiguration() }
+        )
         let processor = CaptureArtifactProcessor(
             ocr: OCRService(),
-            redactor: redactor,
+            redactor: detectingRedactor,
             imageStore: DefaultCaptureImageStore(),
             uploadProvider: CurrentCaptureUploadProvider(),
             historySink: SwiftDataCaptureHistorySink()
         )
         self.artifactProcessingRouter = CaptureArtifactProcessingRouter(finalImageProcessor: processor)
-        self.manualRedactionRedactor = redactor
+        self.manualRedactionRedactor = ManualRedactionPolicyRedactor()
         setupHotkeys()
     }
 
@@ -192,7 +198,16 @@ public class CaptureCoordinator: ObservableObject {
         let redactedImage: CGImage
         let redactionStatus: RedactionStatus
         do {
-            let redacted = try await manualRedactionRedactor.redact(cropped, context: context)
+            // Save As does not run OCR before redaction (OCR for its history
+            // entry happens afterward, below), so there is nothing for
+            // `ManualRedactionPolicyRedactor` to use here - it ignores both
+            // parameters anyway since it only ever flattens manual regions.
+            let redacted = try await manualRedactionRedactor.redact(
+                cropped,
+                context: context,
+                ocrResult: OCRResult(text: "", blocks: []),
+                ocrStatus: .unavailable
+            )
             redactedImage = redacted.image
             redactionStatus = redacted.status
         } catch let error as RedactionRequiredError {
@@ -430,6 +445,10 @@ public class CaptureCoordinator: ObservableObject {
         let capturedWindow = try await WindowCaptureService.shared.captureWindow(descriptor)
         let capturedDescriptor = capturedWindow.descriptor
         let context: CaptureContext
+        // `processID`/`contentRectInPoints` let `SensitiveContentPolicyRedactor`
+        // target its AX secure-field scan at this exact captured window and
+        // convert the resulting screen-space frames into image-normalized
+        // coordinates (see `RedactionCoordinateMapper`).
         switch source {
         case .window:
             context = .window(
@@ -437,6 +456,8 @@ public class CaptureCoordinator: ObservableObject {
                 bundleIdentifier: capturedDescriptor.bundleIdentifier,
                 applicationName: capturedDescriptor.applicationName,
                 windowTitle: capturedDescriptor.title,
+                processID: capturedDescriptor.processID,
+                windowContentRectInScreenPoints: capturedWindow.contentRectInPoints,
                 redactionPolicy: RedactionSettings.shared.policy
             )
         case .applicationWindow:
@@ -445,6 +466,8 @@ public class CaptureCoordinator: ObservableObject {
                 bundleIdentifier: capturedDescriptor.bundleIdentifier,
                 applicationName: capturedDescriptor.applicationName,
                 windowTitle: capturedDescriptor.title,
+                processID: capturedDescriptor.processID,
+                windowContentRectInScreenPoints: capturedWindow.contentRectInPoints,
                 redactionPolicy: RedactionSettings.shared.policy
             )
         case .region, .scrollResult:
