@@ -16,7 +16,14 @@ private var resourceBundle: Bundle? {
 struct MenuView: View {
     @Environment(\.openSettings) private var openSettings
     @ObservedObject var captureCoordinator = CaptureCoordinator.shared
-    
+    /// WP8 persistent indicator (`06-agent-documentation-security.md`
+    /// section 6: "Persistent menu-bar indicator while a broker session is
+    /// connected... Show client name, target bundle ID, mode, elapsed time,
+    /// and last action"). Empty whenever no MCP documentation session is
+    /// active, which is the common case, so this section of the menu is
+    /// invisible unless an agent is actually connected.
+    @ObservedObject var documentationIndicator = DocumentationSessionIndicator.shared
+
     @AppStorage("captureShortcut") private var shortcutData: Data = Data()
     @AppStorage("scrollCaptureShortcut") private var scrollShortcutData: Data = Data()
 
@@ -62,8 +69,25 @@ struct MenuView: View {
             scrollButton
         }
         
+        if !documentationIndicator.activeSessions.isEmpty {
+            Divider()
+            ForEach(documentationIndicator.activeSessions, id: \.sessionID) { session in
+                Menu("Agent session: \(session.displayName)") {
+                    Text("Application: \(session.bundleIdentifier)")
+                    Text("Mode: \(session.mode == .interactive ? "Interactive" : "Read-only")")
+                    Text("Status: \(session.status.rawValue.capitalized)")
+                    Text("Last action: \(session.lastActionDescription)")
+                    Text("Artifacts: \(session.artifactCount)/\(session.maxArtifacts)")
+                    Divider()
+                    Button("Stop Session") {
+                        documentationIndicator.stop(sessionID: session.sessionID)
+                    }
+                }
+            }
+        }
+
         Divider()
-        
+
         Button("Check for Updates...") {
             Task {
                 await UpdateManager.shared.checkForUpdates(showUI: true)
