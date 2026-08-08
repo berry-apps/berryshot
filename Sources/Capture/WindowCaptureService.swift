@@ -24,7 +24,17 @@ public enum WindowCaptureConfiguration {
 }
 
 /// Pixel data and metadata resolved during the same capture snapshot. This remains in-process.
-public struct RawCapturedWindow {
+///
+/// `@unchecked Sendable`: `CGImage` is immutable after creation and Apple's
+/// own guidance treats it as safe to hand across threads/actors despite not
+/// being formally marked `Sendable`; every other field here is a value type
+/// that is already `Sendable`. This is the same rationale
+/// `RedactedCaptureImage` (`Sources/Capture/CaptureArtifactProcessor.swift`)
+/// already documents for wrapping a `CGImage`. WP7's
+/// `CaptureBrokerWindowCapturing` (`Sources/MCP/CaptureBrokerCaptureOperations.swift`)
+/// is what requires this to cross from `WindowCaptureService`'s
+/// `@MainActor` isolation back out to the broker's plain actor context.
+public struct RawCapturedWindow: @unchecked Sendable {
     public let image: CGImage
     public let descriptor: WindowDescriptor
     public let pointPixelScale: Double

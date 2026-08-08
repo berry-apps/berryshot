@@ -45,11 +45,18 @@ public struct RedactedCaptureImage: @unchecked Sendable {
     /// Human-readable, plaintext-free notes surfaced alongside `status` (for
     /// example the "automatic detection is unavailable" milestone warning).
     public let warnings: [String]
+    /// Count of merged regions actually flattened into `image`. `0` for
+    /// every status except `.applied`. WP7 surfaces this as
+    /// `redaction_region_count` in the MCP capture manifest
+    /// (`05-mcp-server-contract.md` section 5); it is additive here so
+    /// WP4/WP5's existing redactors and tests keep compiling unchanged.
+    public let regionCount: Int
 
-    public init(image: CGImage, status: RedactionStatus, warnings: [String] = []) {
+    public init(image: CGImage, status: RedactionStatus, warnings: [String] = [], regionCount: Int = 0) {
         self.image = image
         self.status = status
         self.warnings = warnings
+        self.regionCount = regionCount
     }
 }
 

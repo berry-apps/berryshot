@@ -196,6 +196,6 @@ public struct ManualRedactionPolicyRedactor: CaptureRedacting {
     private func flatten(_ image: CGImage, context: CaptureContext) throws -> RedactedCaptureImage {
         let merged = RedactionRegionMerger.merge(context.manualRedactionRegions)
         let flattened = try renderer.flatten(image, regions: merged)
-        return RedactedCaptureImage(image: flattened, status: .applied)
+        return RedactedCaptureImage(image: flattened, status: .applied, regionCount: merged.count)
     }
 }
