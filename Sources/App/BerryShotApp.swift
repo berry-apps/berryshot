@@ -152,6 +152,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // App setup
         _ = CaptureCoordinator.shared
+
+        // Instantiates the MCP integration settings singleton. This does
+        // NOT unconditionally start the capture broker/IPC server — see
+        // MCPIntegrationSettings' init(), which only resumes it if the
+        // user previously turned the Privacy setting on. A fresh install
+        // (or anyone who has never enabled it) starts nothing here.
+        _ = MCPIntegrationSettings.shared
         
         // Load AppIcon from module resources robustly
         if let bundle = resourceBundle,

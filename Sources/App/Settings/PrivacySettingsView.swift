@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PrivacySettingsView: View {
     @ObservedObject private var redactionSettings = RedactionSettings.shared
+    @ObservedObject private var mcpSettings = MCPIntegrationSettings.shared
     @State private var newCustomTerm: String = ""
 
     var body: some View {
@@ -63,10 +64,46 @@ struct PrivacySettingsView: View {
                 Divider()
 
                 automaticDetectionSection
+
+                Divider()
+
+                mcpIntegrationSection
             }
         }
         .padding(20)
         .frame(width: 480)
+    }
+
+    /// Start/stop control for WP6's local capture broker. Off by default;
+    /// enabling it only opens a same-user, authenticated Unix-domain
+    /// socket for a separate `BerryShotMCP` helper process to connect
+    /// to — it never opens a network port and never grants any new
+    /// application access on its own. WP6 ships no capture tools yet, only
+    /// read-only discovery (permission status, application/window
+    /// listing); capture tools are a later, separately reviewed release.
+    @ViewBuilder
+    private var mcpIntegrationSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Agent Integration (MCP)").bold()
+            Text("Let a local coding agent (Codex, Claude Code, or another MCP client) discover BerryShot on this Mac through a private, same-user, authenticated local connection — no network port is opened. Off by default. This release only exposes permission status and application/window listing; capture tools ship in a later update.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+
+            Toggle("Enable local MCP integration", isOn: Binding(
+                get: { mcpSettings.isEnabled },
+                set: { mcpSettings.isEnabled = $0 }
+            ))
+
+            if mcpSettings.isRunning {
+                Text("Running — a local MCP client can now connect.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } else if let lastErrorMessage = mcpSettings.lastErrorMessage {
+                Text(lastErrorMessage)
+                    .font(.caption)
+                    .foregroundColor(.orange)
+            }
+        }
     }
 
     /// Category toggles and custom-term editing for WP5's automatic
