@@ -28,7 +28,23 @@ final class WindowSelectorViewModelTests: XCTestCase {
         XCTAssertNotNil(viewModel.errorMessage)
     }
 
-    private func descriptor(id: UInt32, name: String, title: String) -> WindowDescriptor {
+    func testSingleFrameModeGroupsDescriptorOnlyWindowsIntoApplications() async {
+        let alphaFrontmost = descriptor(id: 1, name: "Alpha", title: "Frontmost", frontmost: true)
+        let alphaSecond = descriptor(id: 2, name: "Alpha", title: "Second")
+        let beta = descriptor(id: 3, name: "Beta", title: "Only")
+        let discovery = RecordingWindowDiscovery(result: .success([alphaFrontmost, alphaSecond, beta]))
+        let viewModel = WindowSelectorViewModel(mode: .singleFrameCapture, windowDiscovery: discovery)
+
+        await viewModel.loadWindows()
+
+        XCTAssertEqual(viewModel.mode, .singleFrameCapture)
+        XCTAssertEqual(viewModel.applications.map(\.id), ["com.example.alpha", "com.example.beta"])
+        XCTAssertEqual(viewModel.applications.first?.windowCount, 2)
+        XCTAssertEqual(viewModel.applications.first?.frontmostWindow?.descriptor, alphaFrontmost)
+        XCTAssertEqual(discovery.callCount, 1)
+    }
+
+    private func descriptor(id: UInt32, name: String, title: String, frontmost: Bool = false) -> WindowDescriptor {
         WindowDescriptor(
             id: id,
             bundleIdentifier: "com.example.\(name.lowercased())",
@@ -36,7 +52,8 @@ final class WindowSelectorViewModelTests: XCTestCase {
             processID: Int32(id),
             title: title,
             frameInScreenPoints: CGRectDTO(x: 0, y: 0, width: 800, height: 600),
-            isOnScreen: true
+            isOnScreen: true,
+            isFrontmost: frontmost
         )
     }
 

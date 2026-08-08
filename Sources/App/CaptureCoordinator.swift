@@ -269,14 +269,167 @@ public class CaptureCoordinator: ObservableObject {
             }
         } else {
             // 2. Show window selector for full-window scroll capture
-            WindowSelectorPanelController.shared.show { [weak self] windowInfo in
+            WindowSelectorPanelController.shared.show(mode: .scrollCapture) { [weak self] selection in
                 guard let self else { return }
+                guard case let .window(windowInfo) = selection else { return }
                 Task { @MainActor in
                     await self.performScrollCapture(windowInfo: windowInfo)
                 }
             }
         }
     }
+
+    // MARK: - Application and Window Capture
+
+    /// Opens the single-frame selector. Unlike Scroll Capture this path never
+    /// requests Accessibility permission and never enters the scroll workflow.
+    public func startApplicationWindowCapture() {
+        cancelCapture()
+        showApplicationWindowSelector()
+    }
+
+    private func showApplicationWindowSelector(noticeMessage: String? = nil) {
+        WindowSelectorPanelController.shared.show(
+            mode: .singleFrameCapture,
+            noticeMessage: noticeMessage
+        ) { [weak self] selection in
+            guard let self else { return }
+            Task { @MainActor in
+                await self.captureApplicationWindowSelection(selection)
+            }
+        }
+    }
+
+    private func captureApplicationWindowSelection(_ selection: WindowSelectorSelection) async {
+        guard let route = ApplicationWindowCaptureRouter.route(for: selection) else {
+            showApplicationWindowSelector(
+                noticeMessage: "The frontmost window is no longer available. The list was refreshed once."
+            )
+            return
+        }
+
+        switch route {
+        case let .selectedWindow(descriptor):
+            await captureOneApplicationWindow(descriptor, source: .window)
+        case let .applicationWindow(descriptor):
+            await captureOneApplicationWindow(descriptor, source: .applicationWindow)
+        case let .applicationWindows(descriptors):
+            await captureAllApplicationWindows(descriptors)
+        }
+    }
+
+    private func captureOneApplicationWindow(_ descriptor: WindowDescriptor, source: CaptureSource) async {
+        do {
+            let artifact = try await captureIndependentWindow(descriptor, source: source)
+            print("Application window captured to \(artifact.finalURL)")
+        } catch is CancellationError {
+            // A cancelled capture must not create a history entry.
+        } catch {
+            presentApplicationWindowCaptureError(error)
+        }
+    }
+
+    private func captureAllApplicationWindows(_ descriptors: [WindowDescriptor]) async {
+        var capturedCount = 0
+        var failures: [(WindowDescriptor, Error)] = []
+
+        for descriptor in descriptors {
+            do {
+                _ = try await captureIndependentWindow(descriptor, source: .applicationWindow)
+                capturedCount += 1
+            } catch is CancellationError {
+                break
+            } catch {
+                failures.append((descriptor, error))
+            }
+        }
+
+        guard !failures.isEmpty else { return }
+
+        let summary = failures.map { descriptor, error in
+            let label = descriptor.title.isEmpty ? descriptor.applicationName : descriptor.title
+            return "• \(label): \(error.localizedDescription)"
+        }.joined(separator: "\n")
+        let alert = NSAlert()
+        alert.messageText = "Application Capture Completed with Errors"
+        alert.informativeText = "Captured \(capturedCount) of \(descriptors.count) windows.\n\n\(summary)"
+        alert.alertStyle = .warning
+        alert.runModal()
+
+        if failures.contains(where: { isStaleWindowError($0.1) }) {
+            showApplicationWindowSelector(
+                noticeMessage: "One or more windows changed before capture. The list was refreshed once."
+            )
+        }
+    }
+
+    /// Captures only the descriptor selected in the current discovery snapshot,
+    /// then gives its final image directly to WP1's post-processing router.
+    /// No display region crop is used for independent windows.
+    private func captureIndependentWindow(
+        _ descriptor: WindowDescriptor,
+        source: CaptureSource
+    ) async throws -> CaptureArtifact {
+        let capturedWindow = try await WindowCaptureService.shared.captureWindow(descriptor)
+        let capturedDescriptor = capturedWindow.descriptor
+        let context: CaptureContext
+        switch source {
+        case .window:
+            context = .window(
+                windowID: capturedDescriptor.id,
+                bundleIdentifier: capturedDescriptor.bundleIdentifier,
+                applicationName: capturedDescriptor.applicationName,
+                windowTitle: capturedDescriptor.title
+            )
+        case .applicationWindow:
+            context = .applicationWindow(
+                windowID: capturedDescriptor.id,
+                bundleIdentifier: capturedDescriptor.bundleIdentifier,
+                applicationName: capturedDescriptor.applicationName,
+                windowTitle: capturedDescriptor.title
+            )
+        case .region, .scrollResult:
+            preconditionFailure("Independent-window capture requires a window source")
+        }
+
+        let shouldPresentUpload = StorageConfiguration.shared.selectedProvider != .local
+        if shouldPresentUpload {
+            UploadResultWindowManager.shared.showLoading()
+        }
+        let artifact = try await artifactProcessingRouter.processFinalImage(
+            capturedWindow.image,
+            context: context,
+            action: .saveLocal
+        )
+        presentUploadResultIfNeeded(artifact, shouldPresent: shouldPresentUpload)
+        return artifact
+    }
+
+    private func presentApplicationWindowCaptureError(_ error: Error) {
+        if isStaleWindowError(error) {
+            showApplicationWindowSelector(
+                noticeMessage: "\(error.localizedDescription) The list was refreshed once."
+            )
+            return
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "App or Window Capture Failed"
+        alert.informativeText = error.localizedDescription
+        alert.alertStyle = .critical
+        alert.runModal()
+    }
+
+    private func isStaleWindowError(_ error: Error) -> Bool {
+        guard let captureError = error as? CaptureError else { return false }
+        switch captureError {
+        case .windowNotAvailable, .windowStale, .windowIdentityChanged:
+            return true
+        default:
+            return false
+        }
+    }
+
     private func performRegionScrollCapture(rect: CGRect) async {
         // Wait for the overlay window to completely disappear and restore target app focus
         try? await Task.sleep(nanoseconds: 300_000_000)
