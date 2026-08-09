@@ -9,6 +9,11 @@ import SwiftUI
 public class CaptureResultWindowController: NSWindowController {
     public static var activeControllers: [CaptureResultWindowController] = []
 
+    /// Batch "capture whole app" can show several of these at once (one per
+    /// window); cascading instead of centering every one on top of the last
+    /// keeps them all reachable instead of only the topmost being visible.
+    private static var lastCascadePoint: NSPoint = .zero
+
     public convenience init(
         cgImage: CGImage,
         title: String = "Scroll Capture Result",
@@ -50,7 +55,16 @@ public class CaptureResultWindowController: NSWindowController {
             defer: false
         )
         window.title = title
-        window.center()
+        if Self.lastCascadePoint == .zero {
+            // First preview since launch (or since the cascade sequence
+            // last reset): center it, matching the original single-capture
+            // behavior, and seed the cascade origin from where that landed.
+            window.center()
+            let frame = window.frame
+            Self.lastCascadePoint = NSPoint(x: frame.minX, y: frame.maxY)
+        } else {
+            Self.lastCascadePoint = window.cascadeTopLeft(from: Self.lastCascadePoint)
+        }
         window.isReleasedWhenClosed = false
         window.level = .floating // ensure it appears above other windows
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]

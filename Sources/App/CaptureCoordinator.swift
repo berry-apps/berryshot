@@ -402,26 +402,27 @@ public class CaptureCoordinator: ObservableObject {
     /// shows a result preview once that save completes — reloaded from the
     /// artifact's already-redacted `finalURL`, never the pre-redaction
     /// in-memory image, for the same reason `processScrollCaptureResult`
-    /// does. `captureAllApplicationWindows` (batch "capture whole app")
-    /// deliberately does not get this preview: showing N previews in a row
-    /// for a multi-window capture is not useful UX.
+    /// does.
     private func captureOneApplicationWindow(_ descriptor: WindowDescriptor, source: CaptureSource) async {
         do {
             let artifact = try await captureIndependentWindow(descriptor, source: source)
             print("Application window captured to \(artifact.finalURL)")
-            if let previewImage = Self.loadCGImage(from: artifact.finalURL) {
-                let resultWindow = CaptureResultWindowController(
-                    cgImage: previewImage,
-                    title: "Capture Result",
-                    filenamePrefix: "Capture"
-                )
-                resultWindow.show()
-            }
+            showCaptureResultPreview(for: artifact, title: "Capture Result")
         } catch is CancellationError {
             // A cancelled capture must not create a history entry.
         } catch {
             presentApplicationWindowCaptureError(error)
         }
+    }
+
+    /// Shared by single-window and batch "capture whole app" capture.
+    /// Silently skips the preview (capture is already safely saved) if the
+    /// artifact can't be reloaded — never falls back to showing a
+    /// pre-redaction image.
+    private func showCaptureResultPreview(for artifact: CaptureArtifact, title: String) {
+        guard let previewImage = Self.loadCGImage(from: artifact.finalURL) else { return }
+        let resultWindow = CaptureResultWindowController(cgImage: previewImage, title: title, filenamePrefix: "Capture")
+        resultWindow.show()
     }
 
     private func captureAllApplicationWindows(_ descriptors: [WindowDescriptor]) async {
@@ -430,8 +431,10 @@ public class CaptureCoordinator: ObservableObject {
 
         for descriptor in descriptors {
             do {
-                _ = try await captureIndependentWindow(descriptor, source: .applicationWindow)
+                let artifact = try await captureIndependentWindow(descriptor, source: .applicationWindow)
                 capturedCount += 1
+                let label = descriptor.title.isEmpty ? descriptor.applicationName : descriptor.title
+                showCaptureResultPreview(for: artifact, title: "Capture Result — \(label)")
             } catch is CancellationError {
                 break
             } catch {
