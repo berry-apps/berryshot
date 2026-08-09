@@ -1,6 +1,7 @@
 import Foundation
 import CoreGraphics
 import Cocoa
+import ImageIO
 import UniformTypeIdentifiers
 
 extension NSScreen {
@@ -14,11 +15,34 @@ public class CaptureCoordinator: ObservableObject {
     public static let shared = CaptureCoordinator()
 
     private let captureManager = ScreenCaptureManager()
+    private let artifactProcessingRouter: CaptureArtifactProcessingRouter
+    /// Shared with `saveAsCapture`, which bypasses `CaptureArtifactProcessor`
+    /// (no OCR/history/upload) but must still flatten manual regions and
+    /// honor fail-closed `required` policy before writing to disk. Reusing
+    /// one instance keeps the underlying `CIContext` reused rather than
+    /// recreated per Save As.
+    private let manualRedactionRedactor: ManualRedactionPolicyRedactor
     private var aiResultWindowControllers: [AIResultWindowController] = []
     private var liveMeetingWindowController: LiveMeetingWindowController?
     private var captureScreen: NSScreen?
 
     private init() {
+        // The main pipeline uses WP5's detecting redactor (manual regions +
+        // automatic AX/Vision detection). Save As keeps using the
+        // manual-only `ManualRedactionPolicyRedactor` below - it does not run
+        // automatic detection.
+        let detectingRedactor = SensitiveContentPolicyRedactor(
+            configurationProvider: { await RedactionSettings.shared.detectionConfiguration() }
+        )
+        let processor = CaptureArtifactProcessor(
+            ocr: OCRService(),
+            redactor: detectingRedactor,
+            imageStore: DefaultCaptureImageStore(),
+            uploadProvider: CurrentCaptureUploadProvider(),
+            historySink: SwiftDataCaptureHistorySink()
+        )
+        self.artifactProcessingRouter = CaptureArtifactProcessingRouter(finalImageProcessor: processor)
+        self.manualRedactionRedactor = ManualRedactionPolicyRedactor()
         setupHotkeys()
     }
 
@@ -31,6 +55,11 @@ public class CaptureCoordinator: ObservableObject {
         HotkeyManager.shared.onScrollCaptureHotkey = { [weak self] in
             Task { @MainActor in
                 self?.startScrollCapture()
+            }
+        }
+        HotkeyManager.shared.onAppWindowCaptureHotkey = { [weak self] in
+            Task { @MainActor in
+                self?.startApplicationWindowCapture()
             }
         }
         HotkeyManager.shared.registerHotkeys()
@@ -64,17 +93,14 @@ public class CaptureCoordinator: ObservableObject {
         }
     }
 
-    public enum CaptureAction {
-        case saveLocal
-        case upload
+    public typealias CaptureAction = CaptureArtifactAction
+
+    public func finishCapture(cgImage: CGImage, rect: CGRect, redactionRegions: [RedactionRegion] = []) {
+        processCapture(cgImage: cgImage, rect: rect, action: .saveLocal, redactionRegions: redactionRegions)
     }
 
-    public func finishCapture(cgImage: CGImage, rect: CGRect) {
-        processCapture(cgImage: cgImage, rect: rect, action: .saveLocal)
-    }
-
-    public func uploadCapture(cgImage: CGImage, rect: CGRect) {
-        processCapture(cgImage: cgImage, rect: rect, action: .upload)
+    public func uploadCapture(cgImage: CGImage, rect: CGRect, redactionRegions: [RedactionRegion] = []) {
+        processCapture(cgImage: cgImage, rect: rect, action: .upload, redactionRegions: redactionRegions)
     }
 
     public enum AIActionType {
@@ -107,81 +133,103 @@ public class CaptureCoordinator: ObservableObject {
         windowController.show()
     }
 
-    private func processCapture(cgImage: CGImage, rect: CGRect, action: CaptureAction) {
+    private func processCapture(cgImage: CGImage, rect: CGRect, action: CaptureAction, redactionRegions: [RedactionRegion] = []) {
         self.overlayWindowController?.hide()
         self.overlayWindowController = nil
         self.closeAIWindow()
 
         let scale = (self.captureScreen ?? NSScreen.main)?.backingScaleFactor ?? 2.0
-        let cropRect = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
+        let context = CaptureContext.region(
+            displayID: self.captureScreen?.displayID,
+            rect: rect,
+            redactionPolicy: RedactionSettings.shared.policy,
+            manualRedactionRegions: redactionRegions
+        )
+        let shouldPresentUpload = action == .upload || StorageConfiguration.shared.selectedProvider != .local
 
-        if let cropped = cgImage.cropping(to: cropRect) {
-            Task {
-                let ocrService = OCRService()
-                let ocrText = (try? await ocrService.extractText(from: cropped)) ?? ""
+        Task { @MainActor in
+            if shouldPresentUpload {
+                UploadResultWindowManager.shared.showLoading()
+            }
 
-                guard let imagePath = self.saveImageToDisk(cgImage: cropped) else {
-                    print("Capture aborted: failed to write image to disk")
-                    return
-                }
-
-                let finalURL: URL
-                if action == .upload || StorageConfiguration.shared.selectedProvider != .local {
-                    await MainActor.run {
-                        UploadResultWindowManager.shared.showLoading()
-                    }
-                    do {
-                        let uploadService = await UploadServiceFactory.currentService()
-                        finalURL = try await uploadService.uploadImage(fileURL: imagePath)
-                        print("Upload successful: \(finalURL)")
-
-                        // Copy URL to clipboard
-                        let pasteboard = NSPasteboard.general
-                        pasteboard.clearContents()
-                        pasteboard.setString(finalURL.absoluteString, forType: .string)
-
-                        await MainActor.run {
-                            UploadResultWindowManager.shared.show(url: finalURL.absoluteString)
-                        }
-                    } catch {
-                        print("Upload failed: \(error)")
-                        finalURL = imagePath
-
-                        let errorMessage = error.localizedDescription
-                        await MainActor.run {
-                            UploadResultWindowManager.shared.showError(errorMessage)
-                        }
-                    }
-                } else {
-                    do {
-                        let uploadService = LocalUploadService()
-                        finalURL = try await uploadService.uploadImage(fileURL: imagePath)
-                    } catch {
-                        finalURL = imagePath
-                    }
-                }
-
-                let screenshot = ScreenshotModel(
-                    imagePath: finalURL.path,
-                    thumbnailPath: finalURL.path,
-                    width: cropped.width,
-                    height: cropped.height,
-                    ocrText: ocrText
+            do {
+                let artifact = try await self.artifactProcessingRouter.processRegionDisplayCapture(
+                    cgImage,
+                    region: rect,
+                    scale: scale,
+                    context: context,
+                    action: action
                 )
-                HistoryService.shared.save(screenshot)
-                print("Capture processed and saved/uploaded to \(finalURL)\nOCR Text: \(ocrText)")
+                self.presentUploadResultIfNeeded(artifact, shouldPresent: shouldPresentUpload)
+                print("Capture processed and saved/uploaded to \(artifact.finalURL)\nOCR Text: \(artifact.ocrText)")
+            } catch let error as RedactionRequiredError {
+                // Fail-closed rejection must be visible: unlike the routine
+                // needsReview state, this discarded the capture entirely.
+                self.presentRedactionRequiredAlert(error)
+            } catch is CancellationError {
+                // A cancelled capture must not create a history entry.
+            } catch {
+                print("Capture aborted: \(error.localizedDescription)")
             }
         }
     }
 
+    private func presentRedactionRequiredAlert(_ error: RedactionRequiredError) {
+        let alert = NSAlert()
+        alert.messageText = "Capture Blocked by Redaction Policy"
+        alert.informativeText = error.localizedDescription
+        alert.alertStyle = .warning
+        alert.runModal()
+    }
+
     /// Save As: let the user pick a destination via NSSavePanel, then write the PNG there.
-    public func saveAsCapture(cgImage: CGImage, rect: CGRect) {
+    ///
+    /// This writes directly to disk and does not go through
+    /// `CaptureArtifactProcessor`, so it must apply the same redaction policy
+    /// itself rather than silently writing raw pixels — the spec's "no raw
+    /// artifact... to disk... before redaction completes" rule applies to
+    /// every persistence path, not only the main pipeline.
+    public func saveAsCapture(cgImage: CGImage, rect: CGRect, redactionRegions: [RedactionRegion] = []) async {
         let scale = (self.captureScreen ?? NSScreen.main)?.backingScaleFactor ?? 2.0
         let cropRect = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
         let cropped = cgImage.cropping(to: cropRect) ?? cgImage
 
-        let bitmapImage = NSBitmapImageRep(cgImage: cropped)
-        bitmapImage.size = NSSize(width: cropped.width, height: cropped.height)
+        let context = CaptureContext.region(
+            displayID: self.captureScreen?.displayID,
+            rect: rect,
+            redactionPolicy: RedactionSettings.shared.policy,
+            manualRedactionRegions: redactionRegions
+        )
+
+        let redactedImage: CGImage
+        let redactionStatus: RedactionStatus
+        do {
+            // Save As does not run OCR before redaction (OCR for its history
+            // entry happens afterward, below), so there is nothing for
+            // `ManualRedactionPolicyRedactor` to use here - it ignores both
+            // parameters anyway since it only ever flattens manual regions.
+            let redacted = try await manualRedactionRedactor.redact(
+                cropped,
+                context: context,
+                ocrResult: OCRResult(text: "", blocks: []),
+                ocrStatus: .unavailable
+            )
+            redactedImage = redacted.image
+            redactionStatus = redacted.status
+        } catch let error as RedactionRequiredError {
+            presentRedactionRequiredAlert(error)
+            return
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = "Save As Failed"
+            alert.informativeText = "Redaction failed: \(error.localizedDescription)"
+            alert.alertStyle = .critical
+            alert.runModal()
+            return
+        }
+
+        let bitmapImage = NSBitmapImageRep(cgImage: redactedImage)
+        bitmapImage.size = NSSize(width: redactedImage.width, height: redactedImage.height)
         guard let pngData = bitmapImage.representation(using: .png, properties: [:]) else {
             print("Save As failed: could not encode PNG")
             return
@@ -242,7 +290,8 @@ public class CaptureCoordinator: ObservableObject {
                 thumbnailPath: destURL.path,
                 width: cropped.width,
                 height: cropped.height,
-                ocrText: ocrText
+                ocrText: ocrText,
+                redactionStatus: redactionStatus.rawValue
             )
             HistoryService.shared.save(screenshot)
             print("Saved screenshot to \(destURL.path)")
@@ -298,14 +347,197 @@ public class CaptureCoordinator: ObservableObject {
             }
         } else {
             // 2. Show window selector for full-window scroll capture
-            WindowSelectorPanelController.shared.show { [weak self] windowInfo in
+            WindowSelectorPanelController.shared.show(mode: .scrollCapture) { [weak self] selection in
                 guard let self else { return }
+                guard case let .window(windowInfo) = selection else { return }
                 Task { @MainActor in
                     await self.performScrollCapture(windowInfo: windowInfo)
                 }
             }
         }
     }
+
+    // MARK: - Application and Window Capture
+
+    /// Opens the single-frame selector. Unlike Scroll Capture this path never
+    /// requests Accessibility permission and never enters the scroll workflow.
+    public func startApplicationWindowCapture() {
+        cancelCapture()
+        showApplicationWindowSelector()
+    }
+
+    private func showApplicationWindowSelector(noticeMessage: String? = nil) {
+        WindowSelectorPanelController.shared.show(
+            mode: .singleFrameCapture,
+            noticeMessage: noticeMessage
+        ) { [weak self] selection in
+            guard let self else { return }
+            Task { @MainActor in
+                await self.captureApplicationWindowSelection(selection)
+            }
+        }
+    }
+
+    private func captureApplicationWindowSelection(_ selection: WindowSelectorSelection) async {
+        guard let route = ApplicationWindowCaptureRouter.route(for: selection) else {
+            showApplicationWindowSelector(
+                noticeMessage: "The frontmost window is no longer available. The list was refreshed once."
+            )
+            return
+        }
+
+        switch route {
+        case let .selectedWindow(descriptor):
+            await captureOneApplicationWindow(descriptor, source: .window)
+        case let .applicationWindow(descriptor):
+            await captureOneApplicationWindow(descriptor, source: .applicationWindow)
+        case let .applicationWindows(descriptors):
+            await captureAllApplicationWindows(descriptors)
+        }
+    }
+
+    /// Single-window capture keeps its existing auto-save-to-history
+    /// behavior unchanged (unlike Scroll Capture, this always saved
+    /// immediately, and nothing here reverses that). It now additionally
+    /// shows a result preview once that save completes — reloaded from the
+    /// artifact's already-redacted `finalURL`, never the pre-redaction
+    /// in-memory image, for the same reason `processScrollCaptureResult`
+    /// does.
+    private func captureOneApplicationWindow(_ descriptor: WindowDescriptor, source: CaptureSource) async {
+        do {
+            let artifact = try await captureIndependentWindow(descriptor, source: source)
+            print("Application window captured to \(artifact.finalURL)")
+            showCaptureResultPreview(for: artifact, title: "Capture Result")
+        } catch is CancellationError {
+            // A cancelled capture must not create a history entry.
+        } catch {
+            presentApplicationWindowCaptureError(error)
+        }
+    }
+
+    /// Shared by single-window and batch "capture whole app" capture.
+    /// Silently skips the preview (capture is already safely saved) if the
+    /// artifact can't be reloaded — never falls back to showing a
+    /// pre-redaction image.
+    private func showCaptureResultPreview(for artifact: CaptureArtifact, title: String) {
+        guard let previewImage = Self.loadCGImage(from: artifact.finalURL) else { return }
+        let resultWindow = CaptureResultWindowController(cgImage: previewImage, title: title, filenamePrefix: "Capture")
+        resultWindow.show()
+    }
+
+    private func captureAllApplicationWindows(_ descriptors: [WindowDescriptor]) async {
+        var capturedCount = 0
+        var failures: [(WindowDescriptor, Error)] = []
+
+        for descriptor in descriptors {
+            do {
+                let artifact = try await captureIndependentWindow(descriptor, source: .applicationWindow)
+                capturedCount += 1
+                let label = descriptor.title.isEmpty ? descriptor.applicationName : descriptor.title
+                showCaptureResultPreview(for: artifact, title: "Capture Result — \(label)")
+            } catch is CancellationError {
+                break
+            } catch {
+                failures.append((descriptor, error))
+            }
+        }
+
+        guard !failures.isEmpty else { return }
+
+        let summary = failures.map { descriptor, error in
+            let label = descriptor.title.isEmpty ? descriptor.applicationName : descriptor.title
+            return "• \(label): \(error.localizedDescription)"
+        }.joined(separator: "\n")
+        let alert = NSAlert()
+        alert.messageText = "Application Capture Completed with Errors"
+        alert.informativeText = "Captured \(capturedCount) of \(descriptors.count) windows.\n\n\(summary)"
+        alert.alertStyle = .warning
+        alert.runModal()
+
+        if failures.contains(where: { isStaleWindowError($0.1) }) {
+            showApplicationWindowSelector(
+                noticeMessage: "One or more windows changed before capture. The list was refreshed once."
+            )
+        }
+    }
+
+    /// Captures only the descriptor selected in the current discovery snapshot,
+    /// then gives its final image directly to WP1's post-processing router.
+    /// No display region crop is used for independent windows.
+    private func captureIndependentWindow(
+        _ descriptor: WindowDescriptor,
+        source: CaptureSource
+    ) async throws -> CaptureArtifact {
+        let capturedWindow = try await WindowCaptureService.shared.captureWindow(descriptor)
+        let capturedDescriptor = capturedWindow.descriptor
+        let context: CaptureContext
+        // `processID`/`contentRectInPoints` let `SensitiveContentPolicyRedactor`
+        // target its AX secure-field scan at this exact captured window and
+        // convert the resulting screen-space frames into image-normalized
+        // coordinates (see `RedactionCoordinateMapper`).
+        switch source {
+        case .window:
+            context = .window(
+                windowID: capturedDescriptor.id,
+                bundleIdentifier: capturedDescriptor.bundleIdentifier,
+                applicationName: capturedDescriptor.applicationName,
+                windowTitle: capturedDescriptor.title,
+                processID: capturedDescriptor.processID,
+                windowContentRectInScreenPoints: capturedWindow.contentRectInPoints,
+                redactionPolicy: RedactionSettings.shared.policy
+            )
+        case .applicationWindow:
+            context = .applicationWindow(
+                windowID: capturedDescriptor.id,
+                bundleIdentifier: capturedDescriptor.bundleIdentifier,
+                applicationName: capturedDescriptor.applicationName,
+                windowTitle: capturedDescriptor.title,
+                processID: capturedDescriptor.processID,
+                windowContentRectInScreenPoints: capturedWindow.contentRectInPoints,
+                redactionPolicy: RedactionSettings.shared.policy
+            )
+        case .region, .scrollResult:
+            preconditionFailure("Independent-window capture requires a window source")
+        }
+
+        let shouldPresentUpload = StorageConfiguration.shared.selectedProvider != .local
+        if shouldPresentUpload {
+            UploadResultWindowManager.shared.showLoading()
+        }
+        let artifact = try await artifactProcessingRouter.processFinalImage(
+            capturedWindow.image,
+            context: context,
+            action: .saveLocal
+        )
+        presentUploadResultIfNeeded(artifact, shouldPresent: shouldPresentUpload)
+        return artifact
+    }
+
+    private func presentApplicationWindowCaptureError(_ error: Error) {
+        if isStaleWindowError(error) {
+            showApplicationWindowSelector(
+                noticeMessage: "\(error.localizedDescription) The list was refreshed once."
+            )
+            return
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "App or Window Capture Failed"
+        alert.informativeText = error.localizedDescription
+        alert.alertStyle = .critical
+        alert.runModal()
+    }
+
+    private func isStaleWindowError(_ error: Error) -> Bool {
+        guard let captureError = error as? CaptureError else { return false }
+        switch captureError {
+        case .windowNotAvailable, .windowStale, .windowIdentityChanged:
+            return true
+        default:
+            return false
+        }
+    }
+
     private func performRegionScrollCapture(rect: CGRect) async {
         // Wait for the overlay window to completely disappear and restore target app focus
         try? await Task.sleep(nanoseconds: 300_000_000)
@@ -325,10 +557,8 @@ public class CaptureCoordinator: ObservableObject {
                 }
             )
 
-            progressController.finish()
-
-            let finalRect = CGRect(x: 0, y: 0, width: stitched.width, height: stitched.height)
-            processScrollCaptureResult(cgImage: stitched, rect: finalRect)
+            progressController.showProcessing("Applying redaction…")
+            await processScrollCaptureResult(cgImage: stitched, progressController: progressController)
         } catch {
             progressController.close()
             if let scrollError = error as? ScrollCaptureError, case .cancelled = scrollError {
@@ -359,22 +589,23 @@ public class CaptureCoordinator: ObservableObject {
         }
 
         do {
-            let stitched = try await ScrollCaptureManager.shared.captureScrollable(
-                window: windowInfo.scWindow,
-                pid: windowInfo.pid,
-                onProgress: { progress in
-                    Task { @MainActor in
-                        ScrollCaptureProgressController.shared.update(progress)
+            let stitched = try await WindowCaptureService.shared.withResolvedWindow(windowInfo.descriptor) { window in
+                try await ScrollCaptureManager.shared.captureScrollable(
+                    window: window,
+                    pid: windowInfo.pid,
+                    onProgress: { progress in
+                        Task { @MainActor in
+                            ScrollCaptureProgressController.shared.update(progress)
+                        }
                     }
-                }
-            )
+                )
+            }
 
-            progressController.finish()
+            progressController.showProcessing("Applying redaction…")
 
-            // Route through existing save/upload pipeline
-            // Use full image rect (scroll capture already produced final image)
-            let rect = CGRect(origin: .zero, size: CGSize(width: stitched.width, height: stitched.height))
-            processScrollCaptureResult(cgImage: stitched, rect: rect)
+            // Scroll capture already produced a final image; it must not pass
+            // through display-region crop coordinates.
+            await processScrollCaptureResult(cgImage: stitched, progressController: progressController)
 
         } catch ScrollCaptureError.cancelled {
             progressController.close()
@@ -383,101 +614,115 @@ public class CaptureCoordinator: ObservableObject {
         }
     }
 
-    private func processScrollCaptureResult(cgImage: CGImage, rect: CGRect) {
-        let resultWindow = ScrollCaptureResultWindowController(cgImage: cgImage)
-        resultWindow.show()
+    /// Waits for the full redact/OCR/persist pipeline before showing any
+    /// preview. The previous version showed `cgImage` (pre-redaction) in the
+    /// result window immediately while redaction ran in the background, so
+    /// Copy/Save.../Upload in that window operated on unredacted pixels even
+    /// though the artifact saved to history was correctly redacted — the
+    /// same trust-boundary class of bug fixed for region-capture Cmd+C
+    /// (`docs/tests/01.md` item 5). `progressController` stays open with a
+    /// "still working" message for however long this takes instead of
+    /// disappearing and leaving a silent gap.
+    private func processScrollCaptureResult(cgImage: CGImage, progressController: ScrollCaptureProgressController) async {
+        let shouldPresentUpload = StorageConfiguration.shared.selectedProvider != .local
+        if shouldPresentUpload {
+            UploadResultWindowManager.shared.showLoading()
+        }
 
-        Task {
-            let ocrService = OCRService()
-            let ocrText = (try? await ocrService.extractText(from: cgImage)) ?? ""
-
-            guard let imagePath = self.saveImageToDisk(cgImage: cgImage) else {
-                print("Scroll capture aborted: failed to write image to disk")
-                return
-            }
-
-            let finalURL: URL
-            if StorageConfiguration.shared.selectedProvider != .local {
-                await MainActor.run {
-                    UploadResultWindowManager.shared.showLoading()
-                }
-                do {
-                    let uploadService = await UploadServiceFactory.currentService()
-                    finalURL = try await uploadService.uploadImage(fileURL: imagePath)
-                    let pasteboard = NSPasteboard.general
-                    pasteboard.clearContents()
-                    pasteboard.setString(finalURL.absoluteString, forType: .string)
-                    await MainActor.run {
-                        UploadResultWindowManager.shared.show(url: finalURL.absoluteString)
-                    }
-                } catch {
-                    finalURL = imagePath
-                    let errorMessage = error.localizedDescription
-                    await MainActor.run {
-                        UploadResultWindowManager.shared.showError(errorMessage)
-                    }
-                }
-            } else {
-                do {
-                    let uploadService = LocalUploadService()
-                    finalURL = try await uploadService.uploadImage(fileURL: imagePath)
-                } catch {
-                    finalURL = imagePath
-                }
-            }
-
-            let screenshot = ScreenshotModel(
-                imagePath: finalURL.path,
-                thumbnailPath: finalURL.path,
-                width: cgImage.width,
-                height: cgImage.height,
-                ocrText: ocrText
+        do {
+            let artifact = try await self.artifactProcessingRouter.processFinalImage(
+                cgImage,
+                context: .scrollResult(redactionPolicy: RedactionSettings.shared.policy),
+                action: .saveLocal
             )
-            HistoryService.shared.save(screenshot)
-            print("Scroll capture processed and saved to \(finalURL)\nOCR Text: \(ocrText)")
+            progressController.close()
+            if let previewImage = Self.loadCGImage(from: artifact.finalURL) {
+                let resultWindow = CaptureResultWindowController(cgImage: previewImage)
+                resultWindow.show()
+            } else {
+                // The capture is already safely saved (redacted) even if the
+                // preview reload fails — never fall back to showing the
+                // pre-redaction `cgImage` here, that would silently
+                // reintroduce the exact bug this fixes.
+                print("Scroll capture saved to \(artifact.finalURL) but its preview image could not be reloaded")
+            }
+            self.presentUploadResultIfNeeded(artifact, shouldPresent: shouldPresentUpload)
+            print("Scroll capture processed and saved to \(artifact.finalURL)\nOCR Text: \(artifact.ocrText)")
+        } catch let error as RedactionRequiredError {
+            progressController.close()
+            self.presentRedactionRequiredAlert(error)
+        } catch is CancellationError {
+            // A cancelled capture must not create a history entry.
+            progressController.close()
+        } catch {
+            progressController.close()
+            print("Scroll capture aborted: \(error.localizedDescription)")
         }
     }
 
-    public func copyToClipboard(cgImage: CGImage, rect: CGRect) {
+    /// Loads an already-persisted capture back into memory for preview
+    /// purposes. Never used to read anything other than this process's own
+    /// just-written artifact files.
+    private static func loadCGImage(from url: URL) -> CGImage? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        return CGImageSourceCreateImageAtIndex(source, 0, nil)
+    }
+
+    public func copyToClipboard(cgImage: CGImage, rect: CGRect, redactionRegions: [RedactionRegion] = []) async {
         self.overlayWindowController?.hide()
         self.overlayWindowController = nil
         self.closeAIWindow()
 
         let scale = (self.captureScreen ?? NSScreen.main)?.backingScaleFactor ?? 2.0
         let cropRect = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
+        guard let cropped = cgImage.cropping(to: cropRect) else { return }
 
-        if let cropped = cgImage.cropping(to: cropRect) {
-            let nsImage = NSImage(cgImage: cropped, size: .zero)
-            let pasteboard = NSPasteboard.general
-            pasteboard.clearContents()
-            pasteboard.writeObjects([nsImage])
-            print("Copied to clipboard")
+        let context = CaptureContext.region(
+            displayID: self.captureScreen?.displayID,
+            rect: rect,
+            redactionPolicy: RedactionSettings.shared.policy,
+            manualRedactionRegions: redactionRegions
+        )
+
+        let imageToCopy: CGImage
+        do {
+            // Copy does not run OCR before redaction, matching `saveAsCapture`
+            // below — `ManualRedactionPolicyRedactor` ignores both OCR
+            // parameters, it only ever flattens manual regions.
+            let redacted = try await manualRedactionRedactor.redact(
+                cropped,
+                context: context,
+                ocrResult: OCRResult(text: "", blocks: []),
+                ocrStatus: .unavailable
+            )
+            imageToCopy = redacted.image
+        } catch let error as RedactionRequiredError {
+            presentRedactionRequiredAlert(error)
+            return
+        } catch {
+            print("Copy to clipboard failed: redaction failed: \(error.localizedDescription)")
+            return
         }
+
+        let nsImage = NSImage(cgImage: imageToCopy, size: .zero)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.writeObjects([nsImage])
+        print("Copied to clipboard")
     }
 
-    private func saveImageToDisk(cgImage: CGImage) -> URL? {
-        // Encode straight from the CGImage. Avoids building a full TIFF copy first,
-        // which can fail or exhaust memory for very tall stitched scroll captures —
-        // a failure there used to crash the whole app via fatalError.
-        let bitmapImage = NSBitmapImageRep(cgImage: cgImage)
-        guard let pngData = bitmapImage.representation(using: .png, properties: [:]) else {
-            print("Failed to convert CGImage to PNG data (image \(cgImage.width)x\(cgImage.height))")
-            return nil
+    private func presentUploadResultIfNeeded(_ artifact: CaptureArtifact, shouldPresent: Bool) {
+        guard shouldPresent else { return }
+
+        switch artifact.deliveryStatus {
+        case .delivered:
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            pasteboard.setString(artifact.finalURL.absoluteString, forType: .string)
+            UploadResultWindowManager.shared.show(url: artifact.finalURL.absoluteString)
+        case let .fellBackToStoredFile(errorDescription):
+            UploadResultWindowManager.shared.showError(errorDescription)
         }
-
-        let fileManager = FileManager.default
-        let appSupportDir = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let appDir = appSupportDir.appendingPathComponent("BerryShot", isDirectory: true)
-
-        if !fileManager.fileExists(atPath: appDir.path) {
-            try? fileManager.createDirectory(at: appDir, withIntermediateDirectories: true, attributes: nil)
-        }
-
-        let filename = "Screenshot-\(UUID().uuidString).png"
-        let fileURL = appDir.appendingPathComponent(filename)
-
-        try? pngData.write(to: fileURL)
-        return fileURL
     }
 
     public func closeAIWindow() {

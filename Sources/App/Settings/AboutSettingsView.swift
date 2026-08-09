@@ -39,7 +39,7 @@ struct AboutSettingsView: View {
                     Text("BerryShot")
                         .font(.system(size: 28, weight: .bold))
                     
-                    Text("Version 1.1.9")
+                    Text("Version 2.0.0")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
@@ -88,7 +88,7 @@ struct AboutSettingsView: View {
                     HStack(spacing: 4) {
                         Text("Support:")
                             .foregroundColor(.secondary)
-                        Link("support@notex.work", destination: URL(string: "mailto:support@notex.work")!)
+                        Link("info@notex.work", destination: URL(string: "mailto:info@notex.work")!)
                             .buttonStyle(.plain)
                             .foregroundColor(.accentColor)
                     }
@@ -113,7 +113,7 @@ struct AboutSettingsView: View {
                         if storeManager.donateProduct != nil {
                             Task { await storeManager.purchase() }
                         } else {
-                            if let url = URL(string: "https://notex.work/donate") {
+                            if let url = URL(string: "https://ko-fi.com/dautay") {
                                 NSWorkspace.shared.open(url)
                             }
                         }
@@ -142,9 +142,21 @@ struct AboutSettingsView: View {
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 40)
             .padding(.top, 40)
+            .background(
+                GeometryReader { geo in
+                    Color.clear.preference(key: SettingsContentHeightKey.self, value: geo.size.height)
+                }
+            )
         }
+        .frame(width: 550)
+        .frame(maxHeight: SettingsSizing.maxContentHeight)
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(key: SettingsViewportHeightKey.self, value: geo.size.height)
+            }
+        )
     }
-    
+
     private func checkForUpdates() {
         isCheckingForUpdates = true
         updateMessage = nil

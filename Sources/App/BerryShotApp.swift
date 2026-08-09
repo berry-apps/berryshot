@@ -1,6 +1,9 @@
 import SwiftUI
 import Speech
 import AVFoundation
+#if canImport(Darwin)
+import Darwin
+#endif
 
 private var resourceBundle: Bundle? {
     let candidates = [
@@ -16,9 +19,17 @@ private var resourceBundle: Bundle? {
 struct MenuView: View {
     @Environment(\.openSettings) private var openSettings
     @ObservedObject var captureCoordinator = CaptureCoordinator.shared
-    
+    /// WP8 persistent indicator (`06-agent-documentation-security.md`
+    /// section 6: "Persistent menu-bar indicator while a broker session is
+    /// connected... Show client name, target bundle ID, mode, elapsed time,
+    /// and last action"). Empty whenever no MCP documentation session is
+    /// active, which is the common case, so this section of the menu is
+    /// invisible unless an agent is actually connected.
+    @ObservedObject var documentationIndicator = DocumentationSessionIndicator.shared
+
     @AppStorage("captureShortcut") private var shortcutData: Data = Data()
     @AppStorage("scrollCaptureShortcut") private var scrollShortcutData: Data = Data()
+    @AppStorage("appWindowCaptureShortcut") private var appWindowShortcutData: Data = Data()
 
     private var currentShortcut: Shortcut {
         if let decoded = try? JSONDecoder().decode(Shortcut.self, from: shortcutData) {
@@ -34,9 +45,17 @@ struct MenuView: View {
         return Shortcut.defaultScrollShortcut
     }
 
+    private var currentAppWindowShortcut: Shortcut {
+        if let decoded = try? JSONDecoder().decode(Shortcut.self, from: appWindowShortcutData) {
+            return decoded
+        }
+        return Shortcut.defaultAppWindowCaptureShortcut
+    }
+
     var body: some View {
         let shortcut = currentShortcut
         let scrollShortcut = currentScrollShortcut
+        let appWindowShortcut = currentAppWindowShortcut
         let captureButton = Button("Capture Region") {
             Task {
                 await captureCoordinator.startCapture()
@@ -49,6 +68,15 @@ struct MenuView: View {
             captureButton
         }
 
+        let appWindowButton = Button("Capture App or Window…") {
+            captureCoordinator.startApplicationWindowCapture()
+        }
+        if let appWindowKey = appWindowShortcut.swiftuiKeyEquivalent {
+            appWindowButton.keyboardShortcut(appWindowKey, modifiers: appWindowShortcut.swiftuiModifiers)
+        } else {
+            appWindowButton
+        }
+
         let scrollButton = Button("Scroll Capture…") {
             captureCoordinator.startScrollCapture()
         }
@@ -58,8 +86,25 @@ struct MenuView: View {
             scrollButton
         }
         
+        if !documentationIndicator.activeSessions.isEmpty {
+            Divider()
+            ForEach(documentationIndicator.activeSessions, id: \.sessionID) { session in
+                Menu("Agent session: \(session.displayName)") {
+                    Text("Application: \(session.bundleIdentifier)")
+                    Text("Mode: \(session.mode == .interactive ? "Interactive" : "Read-only")")
+                    Text("Status: \(session.status.rawValue.capitalized)")
+                    Text("Last action: \(session.lastActionDescription)")
+                    Text("Artifacts: \(session.artifactCount)/\(session.maxArtifacts)")
+                    Divider()
+                    Button("Stop Session") {
+                        documentationIndicator.stop(sessionID: session.sessionID)
+                    }
+                }
+            }
+        }
+
         Divider()
-        
+
         Button("Check for Updates...") {
             Task {
                 await UpdateManager.shared.checkForUpdates(showUI: true)
@@ -138,6 +183,17 @@ struct MenuBarIconView: View {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // `BrokerIPCServer.acceptConnection` already sets `SO_NOSIGPIPE` on
+        // every accepted IPC socket, but that is a per-fd opt-in that only
+        // covers writes this app remembers to protect. `SIGPIPE`'s default
+        // disposition terminates the whole process on ANY broken-pipe
+        // write anywhere (a future log/upload/socket path that forgets the
+        // flag), which is never the right behavior for a long-lived GUI
+        // app — the same reasoning `MCPServer/main.swift` already applies
+        // to the MCP helper. Ignore it process-wide so such writes fail
+        // with `EPIPE` instead.
+        signal(SIGPIPE, SIG_IGN)
+
         // Enforce single instance
         let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "com.tan.berryshot")
         if runningApps.count > 1 {
@@ -148,6 +204,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // App setup
         _ = CaptureCoordinator.shared
+
+        // Instantiates the MCP integration settings singleton. This does
+        // NOT unconditionally start the capture broker/IPC server — see
+        // MCPIntegrationSettings' init(), which only resumes it if the
+        // user previously turned the Privacy setting on. A fresh install
+        // (or anyone who has never enabled it) starts nothing here.
+        _ = MCPIntegrationSettings.shared
         
         // Load AppIcon from module resources robustly
         if let bundle = resourceBundle,

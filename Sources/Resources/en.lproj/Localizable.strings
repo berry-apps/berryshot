@@ -59,3 +59,16 @@
 "Cancel and close capture" = "Cancel and close capture";
 "Toggle this shortcut list" = "Toggle this shortcut list";
 "Visit Website" = "Visit Website";
+
+"Sensitive Content Redaction" = "Sensitive Content Redaction";
+"Automatic detection has not shipped yet. Use the Redact tool in the capture toolbar to mark regions by hand; BerryShot flattens them (blur, pixelate, or solid cover) before the image is saved, uploaded, or added to history." = "Automatic detection has not shipped yet. Use the Redact tool in the capture toolbar to mark regions by hand; BerryShot flattens them (blur, pixelate, or solid cover) before the image is saved, uploaded, or added to history.";
+"Redaction policy" = "Redaction policy";
+"Off — do not track redaction status" = "Off — do not track redaction status";
+"Suggest — warn when a capture has not been reviewed" = "Suggest — warn when a capture has not been reviewed";
+"Required — block captures with no reviewed region" = "Required — block captures with no reviewed region";
+"Default redaction style" = "Default redaction style";
+"Blur" = "Blur";
+"Pixelate" = "Pixelate";
+"Solid Cover" = "Solid Cover";
+"Required mode currently blocks App/Window and Scroll captures, which have no manual-region editor yet. Only Region Capture supports marking regions in this release." = "Required mode currently blocks App/Window and Scroll captures, which have no manual-region editor yet. Only Region Capture supports marking regions in this release.";
+"Mark a region to redact — BerryShot flattens it (blur, pixelate, or solid cover) before the capture is saved or uploaded" = "Mark a region to redact — BerryShot flattens it (blur, pixelate, or solid cover) before the capture is saved or uploaded";

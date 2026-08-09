@@ -10,8 +10,13 @@ public final class ScreenshotModel {
     public var width: Int
     public var height: Int
     public var ocrText: String?
-    
-    public init(id: UUID = UUID(), createdAt: Date = Date(), imagePath: String, thumbnailPath: String, width: Int, height: Int, ocrText: String? = nil) {
+    /// `RedactionStatus.rawValue`, or `nil` for rows written before WP4. Kept
+    /// as a plain optional `String` (not the enum) so history persistence
+    /// does not depend on the `Redaction` module's type identity across
+    /// SwiftData's lightweight-migration schema comparison.
+    public var redactionStatus: String?
+
+    public init(id: UUID = UUID(), createdAt: Date = Date(), imagePath: String, thumbnailPath: String, width: Int, height: Int, ocrText: String? = nil, redactionStatus: String? = nil) {
         self.id = id
         self.createdAt = createdAt
         self.imagePath = imagePath
@@ -19,5 +24,6 @@ public final class ScreenshotModel {
         self.width = width
         self.height = height
         self.ocrText = ocrText
+        self.redactionStatus = redactionStatus
     }
 }

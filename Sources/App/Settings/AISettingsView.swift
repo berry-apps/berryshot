@@ -220,8 +220,19 @@ struct AISettingsView: View {
                 .frame(maxWidth: .infinity, alignment: .center)
             }
             .padding(24)
+            .background(
+                GeometryReader { geo in
+                    Color.clear.preference(key: SettingsContentHeightKey.self, value: geo.size.height)
+                }
+            )
         }
-        .frame(minWidth: 480, minHeight: 600)
+        .frame(width: 550)
+        .frame(maxHeight: SettingsSizing.maxContentHeight)
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(key: SettingsViewportHeightKey.self, value: geo.size.height)
+            }
+        )
         .onAppear {
             loadKey()
             loadTranscriptionKey()

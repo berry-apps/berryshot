@@ -20,52 +20,122 @@ struct GeneralSettingsView: View {
         return Shortcut.defaultScrollShortcut
     }()
 
+    @State private var appWindowShortcut: Shortcut = {
+        if let data = UserDefaults.standard.data(forKey: "appWindowCaptureShortcut"),
+           let decoded = try? JSONDecoder().decode(Shortcut.self, from: data) {
+            return decoded
+        }
+        return Shortcut.defaultAppWindowCaptureShortcut
+    }()
+
     @State private var launchAtLogin = false
-    
+
+    @State private var toolbarPosition: ToolbarPosition = {
+        if let raw = UserDefaults.standard.string(forKey: "toolbarPosition"),
+           let pos = ToolbarPosition(rawValue: raw) {
+            return pos
+        }
+        return .bottom
+    }()
+
     var body: some View {
-        Form {
-            Section(header: Text("System").font(.headline)) {
-                Toggle("Launch at login", isOn: $launchAtLogin)
-            }
-            
-            Divider().padding(.vertical, 8)
-            
-            Section(header: Text("Capture").font(.headline)) {
-                HStack {
-                    Text("Capture Shortcut:")
-                    ShortcutRecorderView(shortcut: $shortcut, defaultsKey: "captureShortcut")
-                        .frame(width: 150, height: 24)
+        ScrollView {
+            Form {
+                Section(header: Text("System").font(.headline)) {
+                    Toggle("Launch at login", isOn: $launchAtLogin)
                 }
-                HStack {
-                    Text("Scroll Capture Shortcut:")
-                    ShortcutRecorderView(shortcut: $scrollShortcut, defaultsKey: "scrollCaptureShortcut")
-                        .frame(width: 150, height: 24)
-                }
-            }
-            
-            Divider().padding(.vertical, 8)
-            
-            Section(header: Text("After Capture").font(.headline)) {
-                Picker("Default Action:", selection: $config.selectedProvider) {
-                    ForEach(StorageProviderType.allCases) { provider in
-                        Label {
-                            Text(LocalizedStringKey(provider.rawValue))
-                        } icon: {
-                            Image(systemName: provider.icon)
-                                .foregroundColor(.accentColor)
+
+                Divider().padding(.vertical, 8)
+
+                Section(header: Text("Capture").font(.headline)) {
+                    // Fixed label width (matching the longest label below) so
+                    // every value control in this section starts at the same
+                    // x-offset instead of trailing whichever label happens to
+                    // be shortest — Form's own automatic alignment doesn't
+                    // apply here since these are plain HStacks, not
+                    // LabeledContent/Form-native rows.
+                    HStack {
+                        Text("Capture Shortcut:")
+                            .frame(width: 220, alignment: .leading)
+                        ShortcutRecorderView(shortcut: $shortcut, defaultsKey: "captureShortcut")
+                            .frame(width: 150, height: 24)
+                    }
+                    HStack {
+                        Text("Scroll Capture Shortcut:")
+                            .frame(width: 220, alignment: .leading)
+                        ShortcutRecorderView(shortcut: $scrollShortcut, defaultsKey: "scrollCaptureShortcut")
+                            .frame(width: 150, height: 24)
+                    }
+                    HStack {
+                        Text("Capture App or Window Shortcut:")
+                            .frame(width: 220, alignment: .leading)
+                        ShortcutRecorderView(shortcut: $appWindowShortcut, defaultsKey: "appWindowCaptureShortcut")
+                            .frame(width: 150, height: 24)
+                    }
+                    HStack {
+                        Text("Toolbar Position:")
+                            .frame(width: 220, alignment: .leading)
+                        Picker("", selection: $toolbarPosition) {
+                            ForEach(ToolbarPosition.allCases, id: \.self) { position in
+                                Text(position.displayName).tag(position)
+                            }
                         }
-                        .tag(provider)
+                        .pickerStyle(.segmented)
+                        .labelsHidden()
+                        .frame(width: 220)
+                    }
+                    .onChange(of: toolbarPosition) { _, newValue in
+                        UserDefaults.standard.set(newValue.rawValue, forKey: "toolbarPosition")
+                    }
+                    Text("Where the floating annotation toolbar appears relative to your capture selection. Dragging it manually during a capture overrides this until you start a new one.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+
+                Divider().padding(.vertical, 8)
+
+                Section(header: Text("After Capture").font(.headline)) {
+                    // "Default Action:" is a manual label above the picker
+                    // rather than the Picker's own title — Form's automatic
+                    // label-column alignment doesn't handle a .radioGroup
+                    // picker's stacked, icon-bearing options well, and threw
+                    // the whole page's label column out of alignment.
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Default Action:")
+                        Picker("", selection: $config.selectedProvider) {
+                            ForEach(StorageProviderType.allCases) { provider in
+                                Label {
+                                    Text(LocalizedStringKey(provider.rawValue))
+                                } icon: {
+                                    Image(systemName: provider.icon)
+                                        .foregroundColor(.accentColor)
+                                }
+                                .tag(provider)
+                            }
+                        }
+                        .pickerStyle(.radioGroup)
+                        .labelsHidden()
+
+                        Text("When clicking the Complete button (Checkmark), the application will perform this action.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
-                .pickerStyle(.radioGroup)
-                
-                Text("When clicking the Complete button (Checkmark), the application will perform this action.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
             }
+            .padding(20)
+            .background(
+                GeometryReader { geo in
+                    Color.clear.preference(key: SettingsContentHeightKey.self, value: geo.size.height)
+                }
+            )
         }
-        .padding(20)
-        .frame(width: 450)
+        .frame(width: 550)
+        .frame(maxHeight: SettingsSizing.maxContentHeight)
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(key: SettingsViewportHeightKey.self, value: geo.size.height)
+            }
+        )
         .onAppear {
             launchAtLogin = SMAppService.mainApp.status == .enabled
         }
@@ -73,7 +143,7 @@ struct GeneralSettingsView: View {
             updateLaunchAtLogin(enabled: newValue)
         }
     }
-    
+
     private func updateLaunchAtLogin(enabled: Bool) {
         let service = SMAppService.mainApp
         if enabled {

@@ -20,6 +20,12 @@ public struct Shortcut: Codable, Equatable, Sendable {
         keyCode: 28, // 8
         modifierFlags: NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue
     )
+
+    public static let defaultAppWindowCaptureShortcut = Shortcut(
+        keyCode: 26, // 7 — avoids both the other in-app defaults (2, 8) and
+        // macOS's own reserved Cmd+Shift+3/4/5/6 screenshot shortcuts.
+        modifierFlags: NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue
+    )
     
     public var displayString: String {
         var str = ""
@@ -49,6 +55,23 @@ public struct Shortcut: Codable, Equatable, Sendable {
         if flags.contains(.option) { mods.insert(.option) }
         if flags.contains(.control) { mods.insert(.control) }
         return mods
+    }
+}
+
+/// Where the floating annotation toolbar defaults to, relative to the
+/// active capture selection — persisted at UserDefaults key
+/// "toolbarPosition". Overridden per-capture the moment the user manually
+/// drags the toolbar (`OverlayViewModel.customToolbarPosition`).
+public enum ToolbarPosition: String, CaseIterable {
+    case top, left, right, bottom
+
+    public var displayName: String {
+        switch self {
+        case .top: return "Top"
+        case .left: return "Left"
+        case .right: return "Right"
+        case .bottom: return "Bottom"
+        }
     }
 }
 

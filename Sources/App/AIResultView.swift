@@ -236,12 +236,12 @@ public class AIResultViewModel: ObservableObject {
     public var cgImage: CGImage?
     
     public init() {
-        if UserDefaults.standard.string(forKey: "ai_output_language") == nil {
-            let sysLang = Locale.current.language.languageCode?.identifier ?? "en"
-            let supported = ["en", "vi", "ja"]
-            UserDefaults.standard.set(supported.contains(sysLang) ? sysLang : "en", forKey: "ai_output_language")
-        }
-        
+        // Deliberately does not auto-detect and persist a language from
+        // Locale.current: doing so once, the first time this view model was
+        // ever constructed, would stick a language choice into UserDefaults
+        // permanently — never re-evaluated again, even if the user's system
+        // language later changes. AISettingsView's own @AppStorage default
+        // ("en") is the single source of truth for "no explicit choice yet".
         let lang = UserDefaults.standard.string(forKey: "ai_output_language") ?? "en"
         let msg: String
         switch lang {

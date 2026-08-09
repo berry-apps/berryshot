@@ -1,95 +1,167 @@
 import SwiftUI
-@preconcurrency import ScreenCaptureKit
 import AppKit
 
 // MARK: - Window Info Model
 
 public struct WindowInfo: Identifiable, Hashable {
-    public let id: CGWindowID
-    public let appName: String
-    public let windowTitle: String
-    public let pid: pid_t
-    public let scWindow: SCWindow
-    public var thumbnail: NSImage?
+    /// The selector retains only this value descriptor. A live capture object
+    /// is resolved by `WindowCaptureService` immediately before scroll capture.
+    public let descriptor: WindowDescriptor
 
-    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
-    public static func == (lhs: WindowInfo, rhs: WindowInfo) -> Bool { lhs.id == rhs.id }
+    public var id: UInt32 { descriptor.id }
+    public var appName: String { descriptor.applicationName }
+    public var windowTitle: String { descriptor.title }
+    public var pid: pid_t { descriptor.processID }
+}
+
+/// Describes how the same discovery UI is being used. Scroll capture keeps its
+/// original one-window workflow, while single-frame capture can also group the
+/// discovered windows by application.
+public enum WindowSelectorPresentationMode: Sendable, Equatable {
+    case scrollCapture
+    case singleFrameCapture
+
+    fileprivate var title: String {
+        switch self {
+        case .scrollCapture: "Scroll Capture"
+        case .singleFrameCapture: "Capture App or Window"
+        }
+    }
+
+    fileprivate var subtitle: String {
+        switch self {
+        case .scrollCapture: "Select a window to capture its full scrollable content"
+        case .singleFrameCapture: "Select one window, or capture eligible windows from one app"
+        }
+    }
+
+    fileprivate var symbolName: String {
+        switch self {
+        case .scrollCapture: "scroll"
+        case .singleFrameCapture: "macwindow.on.rectangle"
+        }
+    }
+
+    fileprivate var panelTitle: String {
+        switch self {
+        case .scrollCapture: "Scroll Capture — Select Window"
+        case .singleFrameCapture: "Capture App or Window"
+        }
+    }
+}
+
+public struct ApplicationInfo: Identifiable, Hashable {
+    public let descriptor: ApplicationDescriptor
+    public let windows: [WindowInfo]
+
+    public init(descriptor: ApplicationDescriptor, windows: [WindowInfo]) {
+        self.descriptor = descriptor
+        self.windows = windows
+    }
+
+    public var id: String { descriptor.id }
+    public var appName: String { descriptor.applicationName }
+    public var windowCount: Int { descriptor.windowCount }
+    public var frontmostWindow: WindowInfo? { windows.first(where: { $0.descriptor.isFrontmost }) }
+}
+
+public enum WindowSelectorSelection {
+    case window(WindowInfo)
+    case application(ApplicationInfo, policy: ApplicationCapturePolicy)
+}
+
+/// A deterministic translation of a UI selection into the exact descriptors
+/// that may be captured. It deliberately never substitutes a different window
+/// if the selected descriptor is no longer available when the capture starts.
+public enum ApplicationWindowCaptureRoute: Equatable {
+    case selectedWindow(WindowDescriptor)
+    case applicationWindow(WindowDescriptor)
+    case applicationWindows([WindowDescriptor])
+}
+
+public enum ApplicationWindowCaptureRouter {
+    public static func route(for selection: WindowSelectorSelection) -> ApplicationWindowCaptureRoute? {
+        switch selection {
+        case let .window(window):
+            return .selectedWindow(window.descriptor)
+        case let .application(application, .frontmostWindow):
+            guard let window = application.frontmostWindow else { return nil }
+            return .applicationWindow(window.descriptor)
+        case let .application(application, .allOnScreenWindows):
+            return .applicationWindows(application.windows.map(\.descriptor))
+        }
+    }
 }
 
 // MARK: - WindowSelectorViewModel
 
+/// The selector needs discovery only; independent-window capture remains owned
+/// by `WindowCaptureService` and is never performed for every listed window.
+@MainActor
+public protocol WindowDiscovering {
+    func discoverWindows() async throws -> [WindowDescriptor]
+}
+
+extension WindowCaptureService: WindowDiscovering {}
+
 @MainActor
 public class WindowSelectorViewModel: ObservableObject {
     @Published public var windows: [WindowInfo] = []
+    @Published public var applications: [ApplicationInfo] = []
     @Published public var isLoading = true
     @Published public var selectedWindow: WindowInfo? = nil
     @Published public var errorMessage: String? = nil
+    @Published public var noticeMessage: String? = nil
+    @Published public var selectedSingleFrameTab: SingleFrameSelectorTab = .applications
 
-    public init() {}
+    private let windowDiscovery: any WindowDiscovering
+    public let mode: WindowSelectorPresentationMode
+
+    public init(
+        mode: WindowSelectorPresentationMode = .scrollCapture,
+        windowDiscovery: any WindowDiscovering = WindowCaptureService.shared,
+        noticeMessage: String? = nil
+    ) {
+        self.mode = mode
+        self.windowDiscovery = windowDiscovery
+        self.noticeMessage = noticeMessage
+    }
 
     public func loadWindows() async {
         isLoading = true
         errorMessage = nil
 
         do {
-            let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
-            var infos: [WindowInfo] = []
-
-            for window in content.windows {
-                guard let app = window.owningApplication,
-                      window.frame.width > 100,
-                      window.frame.height > 100 else { continue }
-
-                let title = window.title ?? "(No Title)"
-                let appName = app.applicationName
-                var info = WindowInfo(
-                    id: window.windowID,
-                    appName: appName,
-                    windowTitle: title,
-                    pid: app.processID,
-                    scWindow: window
+            let descriptors = try await windowDiscovery.discoverWindows()
+            self.windows = descriptors.map(WindowInfo.init(descriptor:))
+            self.applications = ApplicationWindowDiscovery.applicationDescriptors(from: descriptors).map { application in
+                ApplicationInfo(
+                    descriptor: application,
+                    windows: self.windows.filter { $0.descriptor.bundleIdentifier == application.id }
                 )
-
-                // Attempt to capture thumbnail
-                if let thumb = try? await captureThumbnail(window: window) {
-                    info.thumbnail = thumb
-                }
-
-                infos.append(info)
             }
-
-            // Sort: active app first, then by app name
-            let activeAppPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
-            infos.sort {
-                if $0.pid == activeAppPID { return true }
-                if $1.pid == activeAppPID { return false }
-                return $0.appName < $1.appName
-            }
-
-            self.windows = infos
         } catch {
+            self.windows = []
+            self.applications = []
             self.errorMessage = "Failed to load windows: \(error.localizedDescription)"
         }
 
         isLoading = false
     }
+}
 
-    private func captureThumbnail(window: SCWindow) async throws -> NSImage? {
-        let filter = SCContentFilter(desktopIndependentWindow: window)
-        let config = SCStreamConfiguration()
-        config.width = 180
-        config.height = 120
-        config.showsCursor = false
-        let image = try await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config)
-        return NSImage(cgImage: image, size: NSSize(width: 180, height: 120))
-    }
+public enum SingleFrameSelectorTab: String, CaseIterable, Identifiable, Equatable {
+    case applications = "Apps"
+    case windows = "Windows"
+
+    public var id: String { rawValue }
 }
 
 // MARK: - WindowSelectorView
 
 public struct WindowSelectorView: View {
     @ObservedObject var viewModel: WindowSelectorViewModel
-    let onSelect: (WindowInfo) -> Void
+    let onSelect: (WindowSelectorSelection) -> Void
     let onCancel: () -> Void
 
     private let columns = [
@@ -100,13 +172,13 @@ public struct WindowSelectorView: View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Image(systemName: "scroll")
+                Image(systemName: viewModel.mode.symbolName)
                     .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.blue)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Scroll Capture")
+                    Text(viewModel.mode.title)
                         .font(.system(size: 16, weight: .bold))
-                    Text("Select a window to capture its full scrollable content")
+                    Text(viewModel.mode.subtitle)
                         .font(.system(size: 11))
                         .foregroundColor(.secondary)
                 }
@@ -156,26 +228,75 @@ public struct WindowSelectorView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(40)
             } else {
-                ScrollView {
-                    LazyVGrid(columns: columns, spacing: 16) {
-                        ForEach(viewModel.windows) { info in
-                            WindowCardView(
-                                info: info,
-                                isSelected: viewModel.selectedWindow?.id == info.id
-                            ) {
-                                viewModel.selectedWindow = info
-                                onSelect(info)
-                            }
-                        }
-                    }
-                    .padding(16)
-                }
+                selectorContents
             }
         }
         .frame(minWidth: 640, idealWidth: 720, minHeight: 440, idealHeight: 520)
         .background(Color(NSColor.controlBackgroundColor))
         .task {
             await viewModel.loadWindows()
+        }
+    }
+
+    @ViewBuilder
+    private var selectorContents: some View {
+        switch viewModel.mode {
+        case .scrollCapture:
+            windowGrid
+        case .singleFrameCapture:
+            VStack(spacing: 0) {
+                if let notice = viewModel.noticeMessage {
+                    Label(notice, systemImage: "arrow.clockwise")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 10)
+                        .background(Color(NSColor.controlBackgroundColor))
+                }
+
+                Picker("Capture target", selection: $viewModel.selectedSingleFrameTab) {
+                    ForEach(SingleFrameSelectorTab.allCases) { tab in
+                        Text(tab.rawValue).tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(16)
+
+                if viewModel.selectedSingleFrameTab == .applications {
+                    applicationGrid
+                } else {
+                    windowGrid
+                }
+            }
+        }
+    }
+
+    private var windowGrid: some View {
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: 16) {
+                ForEach(viewModel.windows) { info in
+                    WindowCardView(
+                        info: info,
+                        isSelected: viewModel.selectedWindow?.id == info.id
+                    ) {
+                        viewModel.selectedWindow = info
+                        onSelect(.window(info))
+                    }
+                }
+            }
+            .padding(16)
+        }
+    }
+
+    private var applicationGrid: some View {
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: 16) {
+                ForEach(viewModel.applications) { application in
+                    ApplicationCardView(application: application, onSelect: onSelect)
+                }
+            }
+            .padding(16)
         }
     }
 }
@@ -197,16 +318,12 @@ struct WindowCardView: View {
                     .fill(Color(NSColor.quaternaryLabelColor))
                     .aspectRatio(16/9, contentMode: .fit)
 
-                if let thumb = info.thumbnail {
-                    Image(nsImage: thumb)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                } else {
-                    Image(systemName: "macwindow")
-                        .font(.system(size: 28))
-                        .foregroundColor(.secondary)
-                }
+                // Thumbnails are intentionally deferred. Capturing every
+                // discovered window would eagerly allocate images and cross the
+                // live ScreenCaptureKit boundary before the user selects one.
+                Image(systemName: "macwindow")
+                    .font(.system(size: 28))
+                    .foregroundColor(.secondary)
             }
             .aspectRatio(16/9, contentMode: .fit)
             .overlay(
@@ -253,6 +370,63 @@ struct WindowCardView: View {
     }
 }
 
+struct ApplicationCardView: View {
+    let application: ApplicationInfo
+    let onSelect: (WindowSelectorSelection) -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                if let appIcon = NSRunningApplication(processIdentifier: application.descriptor.processID)?.icon {
+                    Image(nsImage: appIcon)
+                        .resizable()
+                        .frame(width: 20, height: 20)
+                } else {
+                    Image(systemName: "app.dashed")
+                        .foregroundColor(.secondary)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(application.appName)
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                    Text("\(application.windowCount) eligible window\(application.windowCount == 1 ? "" : "s")")
+                        .font(.system(size: 11))
+                        .foregroundColor(.secondary)
+                }
+                Spacer(minLength: 0)
+            }
+
+            if application.frontmostWindow != nil {
+                Button("Capture Frontmost Window") {
+                    onSelect(.application(application, policy: .frontmostWindow))
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Button("Capture All Windows") {
+                onSelect(.application(application, policy: .allOnScreenWindows))
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color(NSColor.windowBackgroundColor))
+                .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(Color(NSColor.separatorColor).opacity(0.3), lineWidth: 1)
+        )
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(application.appName), \(application.windowCount) eligible windows")
+    }
+}
+
 // MARK: - Window Selector Panel Controller
 
 @MainActor
@@ -264,7 +438,11 @@ public class WindowSelectorPanelController {
     public static let shared = WindowSelectorPanelController()
     private init() {}
 
-    public func show(onSelect: @escaping (WindowInfo) -> Void) {
+    public func show(
+        mode: WindowSelectorPresentationMode = .scrollCapture,
+        noticeMessage: String? = nil,
+        onSelect: @escaping (WindowSelectorSelection) -> Void
+    ) {
         // If a panel already exists and is still on screen, just bring it forward.
         // If it exists but is no longer visible (e.g. it was closed via the native
         // close button, which does NOT route through close()), reset our state so a
@@ -278,7 +456,7 @@ public class WindowSelectorPanelController {
             resetState()
         }
 
-        let vm = WindowSelectorViewModel()
+        let vm = WindowSelectorViewModel(mode: mode, noticeMessage: noticeMessage)
         viewModel = vm
 
         let panel = NSPanel(
@@ -287,7 +465,7 @@ public class WindowSelectorPanelController {
             backing: .buffered,
             defer: false
         )
-        panel.title = "Scroll Capture — Select Window"
+        panel.title = mode.panelTitle
         panel.level = NSWindow.Level(rawValue: Int(CGShieldingWindowLevel()) + 2)
         panel.isFloatingPanel = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]

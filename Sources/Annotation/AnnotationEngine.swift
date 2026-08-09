@@ -37,8 +37,18 @@ public struct AnnotationElement: Identifiable {
     
     public var startBinding: BindingAnchor?
     public var endBinding: BindingAnchor?
-    
-    public init(type: AnnotationToolType, startPoint: CGPoint, color: Color = .red, lineWidth: CGFloat = 2, text: String = "", nsImage: NSImage? = nil, isFilled: Bool = false, fillOpacity: CGFloat = 0.4, fontSize: CGFloat = 24) {
+
+    /// Non-nil marks this element as a redaction mask rather than a
+    /// decorative annotation. It is always paired with `type == .rectangle`
+    /// so the existing rectangle draw/resize/select machinery is reused
+    /// as-is; only rendering and export treat redaction elements specially.
+    /// Per the spec's "do not call annotation rectangles redaction unless
+    /// pixels are flattened" guard, this flag alone never redacts anything —
+    /// it only carries the user's chosen style through to
+    /// `RedactionRenderer`, which performs the actual flattening.
+    public var redactionStyle: RedactionStyle?
+
+    public init(type: AnnotationToolType, startPoint: CGPoint, color: Color = .red, lineWidth: CGFloat = 2, text: String = "", nsImage: NSImage? = nil, isFilled: Bool = false, fillOpacity: CGFloat = 0.4, fontSize: CGFloat = 24, redactionStyle: RedactionStyle? = nil) {
         self.type = type
         self.startPoint = startPoint
         self.endPoint = startPoint
@@ -50,6 +60,7 @@ public struct AnnotationElement: Identifiable {
         self.path = Path()
         self.text = text
         self.nsImage = nsImage
+        self.redactionStyle = redactionStyle
     }
     
     public var hasBindingPoints: Bool {

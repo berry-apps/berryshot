@@ -290,7 +290,18 @@ struct StorageSettingsView: View {
                 .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.secondary.opacity(0.1), lineWidth: 1))
             }
             .padding(16)
+            .background(
+                GeometryReader { geo in
+                    Color.clear.preference(key: SettingsContentHeightKey.self, value: geo.size.height)
+                }
+            )
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(width: 550)
+        .frame(maxHeight: SettingsSizing.maxContentHeight)
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(key: SettingsViewportHeightKey.self, value: geo.size.height)
+            }
+        )
     }
 }

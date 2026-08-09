@@ -23,16 +23,21 @@ enum Handle: CaseIterable {
 @MainActor
 final class OverlayViewModel: ObservableObject {
     let cgImage: CGImage
-    let onComplete: (CGImage, CGRect) -> Void
-    let onCopy: (CGImage, CGRect) -> Void
-    let onUpload: (CGImage, CGRect) -> Void
-    let onSaveAs: (CGImage, CGRect) -> Void
+    let onComplete: (CGImage, CGRect, [RedactionRegion]) -> Void
+    let onCopy: (CGImage, CGRect, [RedactionRegion]) -> Void
+    let onUpload: (CGImage, CGRect, [RedactionRegion]) -> Void
+    let onSaveAs: (CGImage, CGRect, [RedactionRegion]) -> Void
     
     @Published var selectionRect: CGRect = .zero
     @Published var isSelectingFinished = false
     @Published var dragMode: DragMode = .none
     
     @Published var selectedTool: AnnotationToolType = .select
+    /// Non-nil while the "Redact" tool is armed: the next rectangle(s) drawn
+    /// are tagged as redaction masks (see `AnnotationElement.redactionStyle`)
+    /// instead of decorative annotations. Cleared whenever any other tool is
+    /// selected through `selectTool(_:)`.
+    @Published var activeRedactionStyle: RedactionStyle? = nil
     @Published var currentCursor: NSCursor = .arrow
     @Published var selectedColor: Color = .red {
         didSet {
@@ -113,7 +118,7 @@ final class OverlayViewModel: ObservableObject {
     
     let colors: [Color] = [.red, .orange, .yellow, .green, .blue, .purple, .black, .white]
     
-    init(cgImage: CGImage, onComplete: @escaping (CGImage, CGRect) -> Void, onCopy: @escaping (CGImage, CGRect) -> Void, onUpload: @escaping (CGImage, CGRect) -> Void, onSaveAs: @escaping (CGImage, CGRect) -> Void) {
+    init(cgImage: CGImage, onComplete: @escaping (CGImage, CGRect, [RedactionRegion]) -> Void, onCopy: @escaping (CGImage, CGRect, [RedactionRegion]) -> Void, onUpload: @escaping (CGImage, CGRect, [RedactionRegion]) -> Void, onSaveAs: @escaping (CGImage, CGRect, [RedactionRegion]) -> Void) {
         self.cgImage = cgImage
         self.onComplete = onComplete
         self.onCopy = onCopy
@@ -184,12 +189,44 @@ final class OverlayViewModel: ObservableObject {
     
     var canUndo: Bool { !undoStack.isEmpty }
     var canRedo: Bool { !redoStack.isEmpty }
+
+    /// Clearing is itself one undo step (via `saveState()`), consistent with
+    /// every other mutation in this file — a misclick doesn't have to be
+    /// unrecoverable.
+    func clearAllElements() {
+        guard !elements.isEmpty else { return }
+        commitActiveText()
+        saveState()
+        elements.removeAll()
+        selectedElementIDs.removeAll()
+    }
     @Published var isToolbarCollapsed = false
     @Published var isInteractMode = false
     @Published var showHelpPopover = false
     
     @Published var customToolbarPosition: CGPoint? = nil
     @Published var toolbarSize: CGSize = CGSize(width: 440, height: 120)
+
+    /// Reads fresh from UserDefaults on every access rather than caching —
+    /// same convention as Shortcut lookups elsewhere in this file, and
+    /// necessary since Settings can change this while a capture is already
+    /// open and the toolbar-position timer loop (`ToolbarWindowController`)
+    /// polls this repeatedly, not just once at capture start.
+    private var toolbarPositionPreference: ToolbarPosition {
+        if let raw = UserDefaults.standard.string(forKey: "toolbarPosition"),
+           let pos = ToolbarPosition(rawValue: raw) {
+            return pos
+        }
+        return .bottom
+    }
+
+    /// Whether the toolbar's own internal rows should flow as a vertical
+    /// column instead of a horizontal row — true when docked to the left or
+    /// right edge of the selection, where a wide horizontal bar turned on
+    /// its side would either overflow off-screen or just look wrong.
+    var isToolbarVertical: Bool {
+        toolbarPositionPreference == .left || toolbarPositionPreference == .right
+    }
     
     func openImage() {
         let panel = NSOpenPanel()
@@ -360,31 +397,44 @@ final class OverlayViewModel: ObservableObject {
         return context.makeImage() ?? image
     }
     
+    /// Copy-to-clipboard still does not run through `CaptureContext`/
+    /// `CaptureArtifactProcessor` (no history entry, no OCR, no automatic
+    /// detection policy), but it must apply the regions the user explicitly
+    /// drew and picked a style for — the same as `handleSaveAs`/`handleUpload`
+    /// already do. Silently copying unredacted pixels after the UI showed a
+    /// drawn blur/pixelate/solid box is a trust-boundary gap: the user
+    /// reasonably believes what they copy matches what they see. Fixed per
+    /// manual QA (`docs/tests/01.md` item 5): "khi khoanh vùng chọn và bấm
+    /// cmd+c thì đang không làm mờ được (đã chọn làm mờ)."
     func handleCopy() {
         commitActiveText()
         let finalImage = processImage(renderAnnotatedImage() ?? cgImage)
-        onCopy(finalImage, selectionRect)
+        onCopy(finalImage, selectionRect, manualRedactionRegions())
     }
-    
+
     func handleComplete() {
         commitActiveText()
         let finalImage = processImage(renderAnnotatedImage() ?? cgImage)
-        onComplete(finalImage, selectionRect)
+        onComplete(finalImage, selectionRect, manualRedactionRegions())
     }
 
     func handleSaveAs() {
         commitActiveText()
-        // With no annotations, crop the original crisp capture instead of
-        // re-rasterizing through ImageRenderer, which would soften the image.
-        let base = elements.isEmpty ? cgImage : (renderAnnotatedImage() ?? cgImage)
+        // With no decorative annotations, crop the original crisp capture
+        // instead of re-rasterizing through ImageRenderer, which would soften
+        // the image. Redaction-only markup does not force a re-rasterize
+        // either, since redaction elements are excluded from the bake below;
+        // actual flattening happens later from the normalized regions.
+        let hasDecorativeElements = elements.contains { $0.redactionStyle == nil }
+        let base = hasDecorativeElements ? (renderAnnotatedImage() ?? cgImage) : cgImage
         let finalImage = processImage(base)
-        onSaveAs(finalImage, selectionRect)
+        onSaveAs(finalImage, selectionRect, manualRedactionRegions())
     }
-    
+
     func handleUpload() {
         commitActiveText()
         let finalImage = processImage(renderAnnotatedImage() ?? cgImage)
-        onUpload(finalImage, selectionRect)
+        onUpload(finalImage, selectionRect, manualRedactionRegions())
     }
     
     func handleCancel() {
@@ -417,6 +467,11 @@ final class OverlayViewModel: ObservableObject {
     
     func selectTool(_ tool: AnnotationToolType) {
         commitActiveText()
+        // Any tool chosen through the normal palette draws a decorative
+        // annotation, not a redaction mask. Disarm redaction mode so a plain
+        // "Rectangle" click after using "Redact" does not keep tagging
+        // elements silently.
+        activeRedactionStyle = nil
         if selectedTool == tool && tool != .select {
             selectedTool = .select
         } else {
@@ -424,6 +479,46 @@ final class OverlayViewModel: ObservableObject {
         }
         if selectedTool != .select && selectedTool != .line && selectedTool != .curvedLine && selectedTool != .arrow && selectedTool != .curvedArrow {
             selectedElementIDs.removeAll()
+        }
+    }
+
+    /// Arms the redaction tool: the next rectangle(s) the user drags are
+    /// tagged with `style` instead of being decorative. Reuses the existing
+    /// `.rectangle` draw/resize/select code path — see
+    /// `AnnotationElement.redactionStyle`.
+    func selectRedactionTool(style: RedactionStyle) {
+        commitActiveText()
+        selectedTool = .rectangle
+        activeRedactionStyle = style
+        selectedElementIDs.removeAll()
+    }
+
+    /// Elements the user tagged as redaction masks rather than decorative
+    /// annotations.
+    var redactionElements: [AnnotationElement] {
+        elements.filter { $0.redactionStyle != nil }
+    }
+
+    var manualRedactionRegionCount: Int { redactionElements.count }
+
+    /// Converts the on-screen redaction rectangles into regions normalized
+    /// against the current selection. `CaptureCoordinator` crops the final
+    /// image to this exact `selectionRect` (scaled uniformly), so a
+    /// rectangle normalized against `selectionRect` lands at the same
+    /// fractional position in the final cropped image regardless of scale.
+    func manualRedactionRegions() -> [RedactionRegion] {
+        guard selectionRect.width > 0, selectionRect.height > 0 else { return [] }
+        return redactionElements.compactMap { element -> RedactionRegion? in
+            guard let style = element.redactionStyle else { return nil }
+            let rect = element.shapeRect().intersection(selectionRect)
+            guard !rect.isNull, rect.width > 0, rect.height > 0 else { return nil }
+            let normalized = CGRect(
+                x: (rect.minX - selectionRect.minX) / selectionRect.width,
+                y: (rect.minY - selectionRect.minY) / selectionRect.height,
+                width: rect.width / selectionRect.width,
+                height: rect.height / selectionRect.height
+            )
+            return RedactionRegion.manual(normalizedRect: CGRectDTO(normalized), style: style)
         }
     }
     
@@ -776,6 +871,21 @@ final class OverlayViewModel: ObservableObject {
                             if let hitElement = elementAt(point: start) {
                                 saveState()
                                 if !isShiftPressed { selectedElementIDs.removeAll() }; selectedElementIDs.insert(hitElement.id)
+                                // This is the primary click-to-select path (mouse
+                                // down on an existing shape), so it must sync the
+                                // toolbar's published fill state from the shape
+                                // being selected the same way the tap-only path
+                                // below (dragMode == .none) already does — without
+                                // this, the Fill Opacity slider reflects whatever
+                                // shape was last edited, not the one just selected,
+                                // so it can silently edit the wrong shape or not
+                                // appear at all for one whose isFilled differs.
+                                selectedColor = hitElement.color
+                                isFilled = hitElement.isFilled
+                                fillOpacity = hitElement.fillOpacity
+                                if hitElement.type == .text {
+                                    selectedFontSize = hitElement.fontSize
+                                }
                                 let originals = elements.filter { selectedElementIDs.contains($0.id) }
 dragMode = .movingElements(originals)
                                 print("DEBUG: Entered .movingElement for \(hitElement.id)")
@@ -821,6 +931,9 @@ dragMode = .movingElements(originals)
                             }
                             if selectedTool == .text {
                                 el.text = "Text"
+                            }
+                            if selectedTool == .rectangle {
+                                el.redactionStyle = activeRedactionStyle
                             }
                             el.rebuildPath()
                             currentElement = el
@@ -1116,7 +1229,13 @@ dragMode = .movingElements(originals)
                 .frame(width: geometrySize.width, height: geometrySize.height)
             
             ForEach(elements) { element in
-                if element.type == .image, let nsImage = element.nsImage {
+                if element.redactionStyle != nil {
+                    // Redaction masks are never baked in here as a decorative
+                    // box: that would misrepresent unflattened pixels as
+                    // redacted. The real flattening happens later, from the
+                    // normalized regions, in `RedactionRenderer`.
+                    EmptyView()
+                } else if element.type == .image, let nsImage = element.nsImage {
                     ZStack {
                         Image(nsImage: nsImage)
                             .resizable()
@@ -1210,20 +1329,53 @@ dragMode = .movingElements(originals)
             return CGPoint(x: x, y: y)
         }
         
-        // Nằm ở giữa góc dưới vùng capture
-        var x = rect.midX
-        var y = rect.maxY + toolbarHeight / 2 + margin
-        
-        if x + toolbarWidth / 2 > screenWidth { x = screenWidth - toolbarWidth / 2 - margin }
-        if x - toolbarWidth / 2 < 0 { x = toolbarWidth / 2 + margin }
-        
-        // Nếu chạm góc cạnh dưới màn hình thì hiển thị phía dưới bên trong vùng capture
-        if y + toolbarHeight / 2 > screenHeight {
-            y = rect.maxY - toolbarHeight / 2 - margin
-            // Đảm bảo không bị tràn lên trên
+        var x: CGFloat
+        var y: CGFloat
+
+        switch toolbarPositionPreference {
+        case .bottom:
+            // Centered below the selection (original, unchanged default behavior).
+            x = rect.midX
+            y = rect.maxY + toolbarHeight / 2 + margin
+            if x + toolbarWidth / 2 > screenWidth { x = screenWidth - toolbarWidth / 2 - margin }
+            if x - toolbarWidth / 2 < 0 { x = toolbarWidth / 2 + margin }
+            // Hits the bottom screen edge → show inside the bottom of the selection instead.
+            if y + toolbarHeight / 2 > screenHeight {
+                y = rect.maxY - toolbarHeight / 2 - margin
+                if y - toolbarHeight / 2 < 0 { y = toolbarHeight / 2 + margin }
+            }
+        case .top:
+            x = rect.midX
+            y = rect.minY - toolbarHeight / 2 - margin
+            if x + toolbarWidth / 2 > screenWidth { x = screenWidth - toolbarWidth / 2 - margin }
+            if x - toolbarWidth / 2 < 0 { x = toolbarWidth / 2 + margin }
+            // Hits the top screen edge → show inside the top of the selection instead.
+            if y - toolbarHeight / 2 < 0 {
+                y = rect.minY + toolbarHeight / 2 + margin
+                if y + toolbarHeight / 2 > screenHeight { y = screenHeight - toolbarHeight / 2 - margin }
+            }
+        case .left:
+            x = rect.minX - toolbarWidth / 2 - margin
+            y = rect.midY
+            if y + toolbarHeight / 2 > screenHeight { y = screenHeight - toolbarHeight / 2 - margin }
             if y - toolbarHeight / 2 < 0 { y = toolbarHeight / 2 + margin }
+            // Hits the left screen edge → show inside the left of the selection instead.
+            if x - toolbarWidth / 2 < 0 {
+                x = rect.minX + toolbarWidth / 2 + margin
+                if x + toolbarWidth / 2 > screenWidth { x = screenWidth - toolbarWidth / 2 - margin }
+            }
+        case .right:
+            x = rect.maxX + toolbarWidth / 2 + margin
+            y = rect.midY
+            if y + toolbarHeight / 2 > screenHeight { y = screenHeight - toolbarHeight / 2 - margin }
+            if y - toolbarHeight / 2 < 0 { y = toolbarHeight / 2 + margin }
+            // Hits the right screen edge → show inside the right of the selection instead.
+            if x + toolbarWidth / 2 > screenWidth {
+                x = rect.maxX - toolbarWidth / 2 - margin
+                if x - toolbarWidth / 2 < 0 { x = toolbarWidth / 2 + margin }
+            }
         }
-        
+
         return CGPoint(x: x, y: y)
     }
     

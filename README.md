@@ -14,13 +14,16 @@ For precompiled releases, user guides, and developer articles, visit the officia
 
 ## ✨ Key Features
 
-- **🍓 Native Capture Overlay**: Fast, interactive region selector initiated via keyboard shortcut (`⌘ + ⇧ + 1`) or Menu Bar item.
-- **📜 Scrolling Capture**: Stitch multiple screenshots together for entire webpages or long documents.
-- **🎨 Live Annotation Tools**: Draw rectangles, lines, arrows, custom highlights, and overlay rich text on the canvas before completing the capture.
+- **🍓 Native Capture Overlay**: Fast, interactive region selector initiated via keyboard shortcut (`⌘ + ⇧ + 2`) or Menu Bar item.
+- **🖼️ App & Window Capture**: Capture a single window or all eligible windows of any application via dedicated selector (`⌘ + ⇧ + 7`), featuring multi-window batch capture and an aspect-ratio-matched preview window with Copy (`⌘C`), Save As, and Cloud Upload.
+- **📜 Scrolling Capture**: Stitch multiple screenshots together for entire webpages or long documents (`⌘ + ⇧ + 8`).
+- **🎨 Live Annotation Tools**: Draw rectangles, lines, arrows, custom highlights, overlay rich text, or wipe canvas shapes with "Clear All" (undoable via `⌘Z`).
+- **🔒 Sensitive Content Redaction**: Apply manual blur, pixelate, or solid cover masks, or rely on automatic on-device redaction (Accessibility + Vision OCR) for passwords, credit cards (Luhn-validated), API keys/tokens, emails, phone numbers, and custom terms under configurable policies (Off / Suggest / Required).
 - **🔍 100% Local OCR**: Perform lightning-fast, offline Optical Character Recognition (OCR) to copy text from screen selections instantly.
 - **🤖 Cloud & AI Assistant Integration**:
   - Connect captures to AI models (Gemini, Claude, OpenAI, OpenRouter, and Xiaomi Mimo) to summarize code, translate, or extract data.
   - Choose your output language and customize prompt templates.
+- **🤝 Local MCP Server**: Connect local AI coding agents (Claude Code, Codex) over private local IPC to list apps/windows, capture with redaction, or run guarded documentation sessions with strict action allowlists and persistent menu-bar session status.
 - **🎙️ Live Meeting Transcription**: Real-time speech-to-text via Deepgram Nova or OpenAI Whisper with dual-source (mic + system audio) capture.
 - **🎬 Screen Recording**: HEVC 60fps recording with system audio, microphone, pause/resume, and dynamic region updates.
 - **📸 Screenshot History**: Automatic local history with SwiftData for browsing and managing past captures.
@@ -73,6 +76,57 @@ You can download precompiled versions of BerryShot:
 
 ---
 
+## 🤝 Agent Integration (MCP)
+
+BerryShot ships a small, separate stdio [MCP](https://modelcontextprotocol.io/) helper executable inside the app bundle, at a fixed location:
+
+```text
+/Applications/BerryShot.app/Contents/Helpers/BerryShotMCP
+```
+
+(or `<wherever you installed BerryShot>/Contents/Helpers/BerryShotMCP` if not installed in `/Applications`). The helper only speaks MCP stdio and a private, same-user, authenticated local IPC connection to the BerryShot GUI — it never opens a network port, never calls ScreenCaptureKit/Accessibility directly, and never becomes a background daemon (it starts when an MCP client spawns it and exits when that client disconnects). BerryShot itself remains the sole holder of the Screen Recording/Accessibility permissions and must be running with **Settings → Privacy → Agent Integration (MCP)** turned on before a client can connect.
+
+### Codex
+
+```toml
+[mcp_servers.berryshot]
+command = "/Applications/BerryShot.app/Contents/Helpers/BerryShotMCP"
+startup_timeout_sec = 10
+tool_timeout_sec = 60
+required = false
+```
+
+### Claude Code
+
+```bash
+claude mcp add berryshot -- /Applications/BerryShot.app/Contents/Helpers/BerryShotMCP
+```
+
+or add it directly to `.mcp.json` / `~/.claude.json`:
+
+```json
+{
+  "mcpServers": {
+    "berryshot": {
+      "type": "stdio",
+      "command": "/Applications/BerryShot.app/Contents/Helpers/BerryShotMCP",
+      "args": []
+    }
+  }
+}
+```
+
+### Tool Tiers & Security Policy
+
+BerryShot MCP provides two distinct tool tiers for agent clients:
+
+1. **Read-only Discovery & Capture Tools**: List running applications and windows, capture a window or full application with automatic/manual redaction applied, and fetch capture manifests. Results return a bounded inline preview (long edge ≤960px) plus an artifact ID; full-resolution images and OCR text are fetched lazily as MCP resources only when requested. Artifacts expire automatically after 24 hours (or under 500 MiB / 200-artifact quota limits).
+2. **Guarded Documentation Sessions**: Enables agent-driven UI exploration and documentation generation. A session is strictly locked to a single allowlisted application (never a different app). Allowed UI interactions are restricted to a safe subset (press, show menu, increment, decrement, set plain text field value); secure input fields and destructive or external side-effect controls are rejected by policy. A persistent menu-bar indicator displays active session details (target app, mode, elapsed time) with a one-click Stop control.
+
+Every capture performed via MCP is subject to the same manual and automatic redaction policy as GUI captures.
+
+---
+
 ## 🔧 AI & Cloud API Structure
 
 ### Custom Upload Integration
@@ -92,7 +146,7 @@ The server response should be a JSON payload. By specifying a path in **Callback
 
 BerryShot is **source-available** under the [PolyForm Noncommercial License 1.0.0](LICENSE).
 
-You may use, modify, and share it freely for **any noncommercial purpose** — personal use, study, research, hobby projects, and use by nonprofits, schools, or government. **Commercial use is not permitted.** For commercial licensing, contact [support@notex.work](mailto:support@notex.work).
+You may use, modify, and share it freely for **any noncommercial purpose** — personal use, study, research, hobby projects, and use by nonprofits, schools, or government. **Commercial use is not permitted.** For commercial licensing, contact [info@notex.work](mailto:info@notex.work).
 
 ---
 
