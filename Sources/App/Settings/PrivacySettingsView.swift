@@ -71,9 +71,19 @@ struct PrivacySettingsView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(20)
+            .background(
+                GeometryReader { geo in
+                    Color.clear.preference(key: SettingsContentHeightKey.self, value: geo.size.height)
+                }
+            )
         }
         .frame(width: 550)
         .frame(maxHeight: SettingsSizing.maxContentHeight)
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(key: SettingsViewportHeightKey.self, value: geo.size.height)
+            }
+        )
     }
 
     /// Start/stop control for WP6's local capture broker. Off by default;

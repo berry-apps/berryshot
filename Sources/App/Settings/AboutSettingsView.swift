@@ -142,11 +142,21 @@ struct AboutSettingsView: View {
             .frame(maxWidth: .infinity)
             .padding(.horizontal, 40)
             .padding(.top, 40)
+            .background(
+                GeometryReader { geo in
+                    Color.clear.preference(key: SettingsContentHeightKey.self, value: geo.size.height)
+                }
+            )
         }
         .frame(width: 550)
         .frame(maxHeight: SettingsSizing.maxContentHeight)
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(key: SettingsViewportHeightKey.self, value: geo.size.height)
+            }
+        )
     }
-    
+
     private func checkForUpdates() {
         isCheckingForUpdates = true
         updateMessage = nil
