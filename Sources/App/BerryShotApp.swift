@@ -1,6 +1,9 @@
 import SwiftUI
 import Speech
 import AVFoundation
+#if canImport(Darwin)
+import Darwin
+#endif
 
 private var resourceBundle: Bundle? {
     let candidates = [
@@ -166,6 +169,17 @@ struct MenuBarIconView: View {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // `BrokerIPCServer.acceptConnection` already sets `SO_NOSIGPIPE` on
+        // every accepted IPC socket, but that is a per-fd opt-in that only
+        // covers writes this app remembers to protect. `SIGPIPE`'s default
+        // disposition terminates the whole process on ANY broken-pipe
+        // write anywhere (a future log/upload/socket path that forgets the
+        // flag), which is never the right behavior for a long-lived GUI
+        // app — the same reasoning `MCPServer/main.swift` already applies
+        // to the MCP helper. Ignore it process-wide so such writes fail
+        // with `EPIPE` instead.
+        signal(SIGPIPE, SIG_IGN)
+
         // Enforce single instance
         let runningApps = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "com.tan.berryshot")
         if runningApps.count > 1 {
