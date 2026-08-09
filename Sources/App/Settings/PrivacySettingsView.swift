@@ -85,7 +85,7 @@ struct PrivacySettingsView: View {
     private var mcpIntegrationSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Agent Integration (MCP)").bold()
-            Text("Let a local coding agent (Codex, Claude Code, or another MCP client) discover BerryShot on this Mac through a private, same-user, authenticated local connection — no network port is opened. Off by default. This release only exposes permission status and application/window listing; capture tools ship in a later update.")
+            Text("Let a local coding agent (Codex, Claude Code, or another MCP client) discover and capture BerryShot windows on this Mac through a private, same-user, authenticated local connection — no network port is opened. Off by default. Agents can list applications/windows and capture a redacted preview plus a lazily-fetched full-resolution artifact; OCR text is included only when explicitly requested. Every artifact is deleted automatically after 24 hours (or sooner under the retention quota) and this Mac remains the sole authority for Screen Recording and Accessibility permission — the helper process never requests its own.")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
 
