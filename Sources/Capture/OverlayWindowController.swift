@@ -26,9 +26,9 @@ public class OverlayWindowController: NSWindowController, NSWindowDelegate {
                     CaptureCoordinator.shared.finishCapture(cgImage: renderedImage, rect: selectedRect, redactionRegions: redactionRegions)
                 }
             },
-            onCopy: { renderedImage, selectedRect in
+            onCopy: { renderedImage, selectedRect, redactionRegions in
                 Task { @MainActor in
-                    CaptureCoordinator.shared.copyToClipboard(cgImage: renderedImage, rect: selectedRect)
+                    await CaptureCoordinator.shared.copyToClipboard(cgImage: renderedImage, rect: selectedRect, redactionRegions: redactionRegions)
                 }
             },
             onUpload: { renderedImage, selectedRect, redactionRegions in

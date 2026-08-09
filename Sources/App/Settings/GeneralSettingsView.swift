@@ -20,6 +20,14 @@ struct GeneralSettingsView: View {
         return Shortcut.defaultScrollShortcut
     }()
 
+    @State private var appWindowShortcut: Shortcut = {
+        if let data = UserDefaults.standard.data(forKey: "appWindowCaptureShortcut"),
+           let decoded = try? JSONDecoder().decode(Shortcut.self, from: data) {
+            return decoded
+        }
+        return Shortcut.defaultAppWindowCaptureShortcut
+    }()
+
     @State private var launchAtLogin = false
     
     var body: some View {
@@ -39,6 +47,11 @@ struct GeneralSettingsView: View {
                 HStack {
                     Text("Scroll Capture Shortcut:")
                     ShortcutRecorderView(shortcut: $scrollShortcut, defaultsKey: "scrollCaptureShortcut")
+                        .frame(width: 150, height: 24)
+                }
+                HStack {
+                    Text("Capture App or Window Shortcut:")
+                    ShortcutRecorderView(shortcut: $appWindowShortcut, defaultsKey: "appWindowCaptureShortcut")
                         .frame(width: 150, height: 24)
                 }
             }
