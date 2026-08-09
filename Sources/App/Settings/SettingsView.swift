@@ -35,7 +35,7 @@ struct SettingsView: View {
                     Label("About", systemImage: "info.circle")
                 }
         }
-        .frame(width: 550, height: 450)
+        .frame(width: 550, height: 700)
         .onAppear {
             NSApp.setActivationPolicy(.regular)
             if let bundle = resourceBundle,
