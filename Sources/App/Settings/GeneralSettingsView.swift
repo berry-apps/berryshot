@@ -48,23 +48,33 @@ struct GeneralSettingsView: View {
                 Divider().padding(.vertical, 8)
 
                 Section(header: Text("Capture").font(.headline)) {
+                    // Fixed label width (matching the longest label below) so
+                    // every value control in this section starts at the same
+                    // x-offset instead of trailing whichever label happens to
+                    // be shortest — Form's own automatic alignment doesn't
+                    // apply here since these are plain HStacks, not
+                    // LabeledContent/Form-native rows.
                     HStack {
                         Text("Capture Shortcut:")
+                            .frame(width: 220, alignment: .leading)
                         ShortcutRecorderView(shortcut: $shortcut, defaultsKey: "captureShortcut")
                             .frame(width: 150, height: 24)
                     }
                     HStack {
                         Text("Scroll Capture Shortcut:")
+                            .frame(width: 220, alignment: .leading)
                         ShortcutRecorderView(shortcut: $scrollShortcut, defaultsKey: "scrollCaptureShortcut")
                             .frame(width: 150, height: 24)
                     }
                     HStack {
                         Text("Capture App or Window Shortcut:")
+                            .frame(width: 220, alignment: .leading)
                         ShortcutRecorderView(shortcut: $appWindowShortcut, defaultsKey: "appWindowCaptureShortcut")
                             .frame(width: 150, height: 24)
                     }
                     HStack {
                         Text("Toolbar Position:")
+                            .frame(width: 220, alignment: .leading)
                         Picker("", selection: $toolbarPosition) {
                             ForEach(ToolbarPosition.allCases, id: \.self) { position in
                                 Text(position.displayName).tag(position)
@@ -113,9 +123,19 @@ struct GeneralSettingsView: View {
                 }
             }
             .padding(20)
+            .background(
+                GeometryReader { geo in
+                    Color.clear.preference(key: SettingsContentHeightKey.self, value: geo.size.height)
+                }
+            )
         }
         .frame(width: 550)
         .frame(maxHeight: SettingsSizing.maxContentHeight)
+        .background(
+            GeometryReader { geo in
+                Color.clear.preference(key: SettingsViewportHeightKey.self, value: geo.size.height)
+            }
+        )
         .onAppear {
             launchAtLogin = SMAppService.mainApp.status == .enabled
         }

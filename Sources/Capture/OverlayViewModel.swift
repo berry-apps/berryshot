@@ -219,6 +219,14 @@ final class OverlayViewModel: ObservableObject {
         }
         return .bottom
     }
+
+    /// Whether the toolbar's own internal rows should flow as a vertical
+    /// column instead of a horizontal row — true when docked to the left or
+    /// right edge of the selection, where a wide horizontal bar turned on
+    /// its side would either overflow off-screen or just look wrong.
+    var isToolbarVertical: Bool {
+        toolbarPositionPreference == .left || toolbarPositionPreference == .right
+    }
     
     func openImage() {
         let panel = NSOpenPanel()
