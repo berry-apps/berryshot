@@ -29,6 +29,7 @@ struct MenuView: View {
 
     @AppStorage("captureShortcut") private var shortcutData: Data = Data()
     @AppStorage("scrollCaptureShortcut") private var scrollShortcutData: Data = Data()
+    @AppStorage("appWindowCaptureShortcut") private var appWindowShortcutData: Data = Data()
 
     private var currentShortcut: Shortcut {
         if let decoded = try? JSONDecoder().decode(Shortcut.self, from: shortcutData) {
@@ -44,9 +45,17 @@ struct MenuView: View {
         return Shortcut.defaultScrollShortcut
     }
 
+    private var currentAppWindowShortcut: Shortcut {
+        if let decoded = try? JSONDecoder().decode(Shortcut.self, from: appWindowShortcutData) {
+            return decoded
+        }
+        return Shortcut.defaultAppWindowCaptureShortcut
+    }
+
     var body: some View {
         let shortcut = currentShortcut
         let scrollShortcut = currentScrollShortcut
+        let appWindowShortcut = currentAppWindowShortcut
         let captureButton = Button("Capture Region") {
             Task {
                 await captureCoordinator.startCapture()
@@ -59,8 +68,13 @@ struct MenuView: View {
             captureButton
         }
 
-        Button("Capture App or Window…") {
+        let appWindowButton = Button("Capture App or Window…") {
             captureCoordinator.startApplicationWindowCapture()
+        }
+        if let appWindowKey = appWindowShortcut.swiftuiKeyEquivalent {
+            appWindowButton.keyboardShortcut(appWindowKey, modifiers: appWindowShortcut.swiftuiModifiers)
+        } else {
+            appWindowButton
         }
 
         let scrollButton = Button("Scroll Capture…") {

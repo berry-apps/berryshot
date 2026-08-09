@@ -31,6 +31,37 @@ final class RedactionRendererTests: XCTestCase {
         XCTAssertEqual(bottomHalf, CGRect(x: 0, y: 0, width: 40, height: 20))
     }
 
+    // MARK: - Pixelate block scaling
+
+    /// A fixed block size (previously always 24px) looks right at one
+    /// resolution and wrong everywhere else — too coarse on a small region,
+    /// too fine to reliably obscure text on a large capture. Pins the
+    /// proportional-with-clamps formula so it cannot silently regress back
+    /// to a constant. Per manual QA (`docs/tests/01.md` item 5).
+    func testPixellateScaleIsProportionalToSmallerDimensionWithClamps() {
+        // Tiny image: proportional value (0.02 * 40 = 0.8) is far below the
+        // illegibility floor, so the floor clamp applies.
+        XCTAssertEqual(RedactionRenderer.pixellateScale(forImageWidth: 40, height: 40), 12)
+
+        // Mid-size image within the unclamped range: exactly proportional.
+        XCTAssertEqual(RedactionRenderer.pixellateScale(forImageWidth: 2000, height: 1000), 20)
+
+        // Huge Retina capture: proportional value (0.02 * 3000 = 60) still
+        // under the ceiling — stays proportional rather than degenerating
+        // into a handful of giant squares.
+        XCTAssertEqual(RedactionRenderer.pixellateScale(forImageWidth: 3000, height: 3000), 60)
+
+        // Very large capture: proportional value would exceed the ceiling,
+        // so the ceiling clamp applies.
+        XCTAssertEqual(RedactionRenderer.pixellateScale(forImageWidth: 6000, height: 4000), 64)
+
+        // Only the smaller dimension drives the scale, regardless of orientation.
+        XCTAssertEqual(
+            RedactionRenderer.pixellateScale(forImageWidth: 2000, height: 1000),
+            RedactionRenderer.pixellateScale(forImageWidth: 1000, height: 2000)
+        )
+    }
+
     // MARK: - Extent preservation
 
     func testFlattenPreservesExactInputExtentForEveryStyle() throws {

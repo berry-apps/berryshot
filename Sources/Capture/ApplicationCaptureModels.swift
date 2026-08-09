@@ -127,6 +127,15 @@ public enum ApplicationWindowDiscovery {
     /// Windows below this size are control surfaces or transient layers, not useful captures.
     public static let minimumUsefulDimension: Double = 100
 
+    /// `SCShareableContent` reports these as ordinary on-screen windows —
+    /// full-display-sized, so they pass `minimumUsefulDimension` easily —
+    /// but they are desktop backdrop layers, not anything a user can
+    /// meaningfully select as a capture target. Confirmed via manual QA
+    /// (`docs/tests/01.md` item 2): the app/window selector listed
+    /// "Display 1 Backstop" and two `Dock`-owned entries ("Dock" /
+    /// "Wallpaper-") alongside real application windows.
+    private static let systemBackdropBundleIdentifiers: Set<String> = ["com.apple.dock"]
+
     public static func eligibleWindowDescriptors(
         from records: [WindowDiscoveryRecord],
         excludingBundleIdentifier ownBundleIdentifier: String?
@@ -135,6 +144,7 @@ public enum ApplicationWindowDiscovery {
             guard record.isOnScreen,
                   let bundleIdentifier = record.bundleIdentifier,
                   bundleIdentifier != ownBundleIdentifier,
+                  !systemBackdropBundleIdentifiers.contains(bundleIdentifier),
                   record.frameInScreenPoints.width > minimumUsefulDimension,
                   record.frameInScreenPoints.height > minimumUsefulDimension else {
                 return nil
