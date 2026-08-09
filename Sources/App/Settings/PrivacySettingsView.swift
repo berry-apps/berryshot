@@ -69,8 +69,8 @@ struct PrivacySettingsView: View {
 
                 mcpIntegrationSection
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(20)
-            .frame(width: 480)
         }
     }
 
