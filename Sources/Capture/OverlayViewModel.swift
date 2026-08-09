@@ -189,6 +189,17 @@ final class OverlayViewModel: ObservableObject {
     
     var canUndo: Bool { !undoStack.isEmpty }
     var canRedo: Bool { !redoStack.isEmpty }
+
+    /// Clearing is itself one undo step (via `saveState()`), consistent with
+    /// every other mutation in this file — a misclick doesn't have to be
+    /// unrecoverable.
+    func clearAllElements() {
+        guard !elements.isEmpty else { return }
+        commitActiveText()
+        saveState()
+        elements.removeAll()
+        selectedElementIDs.removeAll()
+    }
     @Published var isToolbarCollapsed = false
     @Published var isInteractMode = false
     @Published var showHelpPopover = false
