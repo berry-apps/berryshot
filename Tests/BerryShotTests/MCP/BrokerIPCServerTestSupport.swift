@@ -10,7 +10,26 @@ import Darwin
 /// without depending on the `BerryShotMCP` helper target, which is built
 /// and tested separately (`IPCClient` in `BerryShotMCPTests`).
 enum TestIPCClient {
+    /// This test harness is the one place in the codebase where a
+    /// Unix-domain socket "client" and the real `BrokerIPCServer` under
+    /// test share a single process's file-descriptor table — production
+    /// `BerryShotMCP` and `BerryShot.app` never do, since they're always
+    /// separate OS processes with independent fd tables. That sharing
+    /// makes this specific test setup susceptible to fd-number reuse races
+    /// under `dispatch_apply`-driven concurrent connect/send/close cycles
+    /// (verified via `lldb` catching a live `SIGPIPE` inside a concurrent
+    /// iteration's `readOneFrame`, spawned from
+    /// `testConcurrentConnectionsIncludingSomeRejectedPeersDoNotCorruptState`),
+    /// even though every individual fd here already carries `SO_NOSIGPIPE`.
+    /// A `SIGPIPE` should never be allowed to kill the whole test process;
+    /// ignore it process-wide once, the same way `HelperStdoutProtocolTests`
+    /// and `MCPServer/main.swift` already do for their own writers.
+    private static let sigpipeIgnored: Void = {
+        signal(SIGPIPE, SIG_IGN)
+    }()
+
     static func connect(path: String) -> Int32? {
+        _ = sigpipeIgnored
         let fd = socket(AF_UNIX, SOCK_STREAM, 0)
         guard fd >= 0 else { return nil }
 
