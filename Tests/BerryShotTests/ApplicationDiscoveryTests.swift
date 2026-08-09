@@ -20,6 +20,21 @@ final class ApplicationDiscoveryTests: XCTestCase {
         XCTAssertEqual(actual.map(\.id), [6])
     }
 
+    func testEligibleWindowsExcludeDockOwnedDesktopBackdropLayers() {
+        let records = [
+            record(id: 1, bundle: "com.apple.dock", name: nil, width: 2560, height: 1440),
+            record(id: 2, bundle: "com.apple.dock", name: "Dock", width: 2560, height: 1440),
+            record(id: 3, bundle: "com.example.real", name: "Real App", width: 800, height: 600)
+        ]
+
+        let actual = ApplicationWindowDiscovery.eligibleWindowDescriptors(
+            from: records,
+            excludingBundleIdentifier: nil
+        )
+
+        XCTAssertEqual(actual.map(\.id), [3], "Display 1 Backstop / Dock Wallpaper- entries must not appear as capturable windows")
+    }
+
     func testApplicationsGroupEligibleWindowsAndSortFrontmostFirst() {
         let windows = [
             descriptor(id: 3, bundle: "com.zeta", name: "Zeta", title: "B"),

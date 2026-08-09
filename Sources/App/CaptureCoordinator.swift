@@ -617,21 +617,47 @@ public class CaptureCoordinator: ObservableObject {
         }
     }
 
-    public func copyToClipboard(cgImage: CGImage, rect: CGRect) {
+    public func copyToClipboard(cgImage: CGImage, rect: CGRect, redactionRegions: [RedactionRegion] = []) async {
         self.overlayWindowController?.hide()
         self.overlayWindowController = nil
         self.closeAIWindow()
 
         let scale = (self.captureScreen ?? NSScreen.main)?.backingScaleFactor ?? 2.0
         let cropRect = CGRect(x: rect.minX * scale, y: rect.minY * scale, width: rect.width * scale, height: rect.height * scale)
+        guard let cropped = cgImage.cropping(to: cropRect) else { return }
 
-        if let cropped = cgImage.cropping(to: cropRect) {
-            let nsImage = NSImage(cgImage: cropped, size: .zero)
-            let pasteboard = NSPasteboard.general
-            pasteboard.clearContents()
-            pasteboard.writeObjects([nsImage])
-            print("Copied to clipboard")
+        let context = CaptureContext.region(
+            displayID: self.captureScreen?.displayID,
+            rect: rect,
+            redactionPolicy: RedactionSettings.shared.policy,
+            manualRedactionRegions: redactionRegions
+        )
+
+        let imageToCopy: CGImage
+        do {
+            // Copy does not run OCR before redaction, matching `saveAsCapture`
+            // below — `ManualRedactionPolicyRedactor` ignores both OCR
+            // parameters, it only ever flattens manual regions.
+            let redacted = try await manualRedactionRedactor.redact(
+                cropped,
+                context: context,
+                ocrResult: OCRResult(text: "", blocks: []),
+                ocrStatus: .unavailable
+            )
+            imageToCopy = redacted.image
+        } catch let error as RedactionRequiredError {
+            presentRedactionRequiredAlert(error)
+            return
+        } catch {
+            print("Copy to clipboard failed: redaction failed: \(error.localizedDescription)")
+            return
         }
+
+        let nsImage = NSImage(cgImage: imageToCopy, size: .zero)
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.writeObjects([nsImage])
+        print("Copied to clipboard")
     }
 
     private func presentUploadResultIfNeeded(_ artifact: CaptureArtifact, shouldPresent: Bool) {

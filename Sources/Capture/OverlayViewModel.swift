@@ -24,7 +24,7 @@ enum Handle: CaseIterable {
 final class OverlayViewModel: ObservableObject {
     let cgImage: CGImage
     let onComplete: (CGImage, CGRect, [RedactionRegion]) -> Void
-    let onCopy: (CGImage, CGRect) -> Void
+    let onCopy: (CGImage, CGRect, [RedactionRegion]) -> Void
     let onUpload: (CGImage, CGRect, [RedactionRegion]) -> Void
     let onSaveAs: (CGImage, CGRect, [RedactionRegion]) -> Void
     
@@ -118,7 +118,7 @@ final class OverlayViewModel: ObservableObject {
     
     let colors: [Color] = [.red, .orange, .yellow, .green, .blue, .purple, .black, .white]
     
-    init(cgImage: CGImage, onComplete: @escaping (CGImage, CGRect, [RedactionRegion]) -> Void, onCopy: @escaping (CGImage, CGRect) -> Void, onUpload: @escaping (CGImage, CGRect, [RedactionRegion]) -> Void, onSaveAs: @escaping (CGImage, CGRect, [RedactionRegion]) -> Void) {
+    init(cgImage: CGImage, onComplete: @escaping (CGImage, CGRect, [RedactionRegion]) -> Void, onCopy: @escaping (CGImage, CGRect, [RedactionRegion]) -> Void, onUpload: @escaping (CGImage, CGRect, [RedactionRegion]) -> Void, onSaveAs: @escaping (CGImage, CGRect, [RedactionRegion]) -> Void) {
         self.cgImage = cgImage
         self.onComplete = onComplete
         self.onCopy = onCopy
@@ -365,16 +365,19 @@ final class OverlayViewModel: ObservableObject {
         return context.makeImage() ?? image
     }
     
-    /// Note: Copy-to-clipboard does not run through `CaptureContext`/
-    /// `CaptureArtifactProcessor`, so marked redaction regions are not
-    /// flattened here — this pre-existing path is unchanged by WP4. The
-    /// underlying pixels are shown as captured, exactly as they were before
-    /// this work package (redaction elements are excluded from the bake
-    /// below, never as a decorative box pretending to be applied redaction).
+    /// Copy-to-clipboard still does not run through `CaptureContext`/
+    /// `CaptureArtifactProcessor` (no history entry, no OCR, no automatic
+    /// detection policy), but it must apply the regions the user explicitly
+    /// drew and picked a style for — the same as `handleSaveAs`/`handleUpload`
+    /// already do. Silently copying unredacted pixels after the UI showed a
+    /// drawn blur/pixelate/solid box is a trust-boundary gap: the user
+    /// reasonably believes what they copy matches what they see. Fixed per
+    /// manual QA (`docs/tests/01.md` item 5): "khi khoanh vùng chọn và bấm
+    /// cmd+c thì đang không làm mờ được (đã chọn làm mờ)."
     func handleCopy() {
         commitActiveText()
         let finalImage = processImage(renderAnnotatedImage() ?? cgImage)
-        onCopy(finalImage, selectionRect)
+        onCopy(finalImage, selectionRect, manualRedactionRegions())
     }
 
     func handleComplete() {

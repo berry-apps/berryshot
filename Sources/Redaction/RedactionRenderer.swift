@@ -34,7 +34,26 @@ public struct RedactionRenderer: Sendable {
     /// Strong enough that fixture text is not legible after blur, per the
     /// spec's "no blur radius so small that text remains readable" guard.
     public static let blurRadius: Double = 30
-    public static let pixellateScale: Double = 24
+
+    /// `CIFilter.pixellate`'s `scale` is a block size in *image* pixels, not
+    /// points. A fixed value (previously 24, tuned by eye against one 2x
+    /// Retina capture) looks right on the resolution it was tuned against
+    /// and wrong everywhere else: too coarse on a small cropped region, too
+    /// fine — and therefore not reliably illegible — on a large capture.
+    /// Confirmed via manual QA (`docs/tests/01.md` item 5): "pixelate thô,
+    /// không tính toán được kích thước hình." Scale block size to a fraction
+    /// of the image's own smaller dimension instead, clamped to a range that
+    /// stays illegible on tiny regions and doesn't turn a whole capture into
+    /// a handful of giant squares.
+    private static let pixellateBlockFraction: Double = 0.02
+    private static let minPixellateScale: Double = 12
+    private static let maxPixellateScale: Double = 64
+
+    static func pixellateScale(forImageWidth width: Int, height: Int) -> Double {
+        let smallerDimension = Double(min(width, height))
+        let proportional = smallerDimension * pixellateBlockFraction
+        return min(maxPixellateScale, max(minPixellateScale, proportional))
+    }
 
     /// One process-wide `CIContext`, created lazily and reused for every
     /// operation. Creating a `CIContext` is expensive and the spec forbids a
@@ -62,12 +81,13 @@ public struct RedactionRenderer: Sendable {
 
         var working = CIImage(cgImage: image)
         let extent = working.extent
+        let pixellateScale = Self.pixellateScale(forImageWidth: image.width, height: image.height)
 
         for region in regions {
             let maskRect = Self.pixelRect(for: region.normalizedRect, imageWidth: image.width, imageHeight: image.height)
                 .intersection(extent)
             guard maskRect.width > 0, maskRect.height > 0 else { continue }
-            working = try apply(style: region.style, to: working, maskRect: maskRect, fullExtent: extent)
+            working = try apply(style: region.style, to: working, maskRect: maskRect, fullExtent: extent, pixellateScale: pixellateScale)
         }
 
         let cropped = working.cropped(to: extent)
@@ -102,7 +122,7 @@ public struct RedactionRenderer: Sendable {
     /// untouched background using a mask local to this call. Every filter
     /// instance is created fresh here so concurrent operations never share
     /// mutable `CIFilter` state.
-    private func apply(style: RedactionStyle, to source: CIImage, maskRect: CGRect, fullExtent: CGRect) throws -> CIImage {
+    private func apply(style: RedactionStyle, to source: CIImage, maskRect: CGRect, fullExtent: CGRect, pixellateScale: Double) throws -> CIImage {
         let foreground: CIImage
         switch style {
         case .solid:
@@ -110,7 +130,7 @@ public struct RedactionRenderer: Sendable {
         case .pixelate:
             let filter = CIFilter.pixellate()
             filter.inputImage = source.clampedToExtent()
-            filter.scale = Float(Self.pixellateScale)
+            filter.scale = Float(pixellateScale)
             guard let output = filter.outputImage else { throw RedactionRendererError.renderFailed }
             foreground = output.cropped(to: fullExtent)
         case .blur:
