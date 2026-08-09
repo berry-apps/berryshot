@@ -72,6 +72,8 @@ struct PrivacySettingsView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(20)
         }
+        .frame(width: 550)
+        .frame(maxHeight: SettingsSizing.maxContentHeight)
     }
 
     /// Start/stop control for WP6's local capture broker. Off by default;
