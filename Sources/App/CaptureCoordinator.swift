@@ -57,6 +57,11 @@ public class CaptureCoordinator: ObservableObject {
                 self?.startScrollCapture()
             }
         }
+        HotkeyManager.shared.onAppWindowCaptureHotkey = { [weak self] in
+            Task { @MainActor in
+                self?.startApplicationWindowCapture()
+            }
+        }
         HotkeyManager.shared.registerHotkeys()
     }
 
