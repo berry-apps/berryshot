@@ -73,6 +73,50 @@ You can download precompiled versions of BerryShot:
 
 ---
 
+## 🤝 Agent Integration (MCP)
+
+BerryShot ships a small, separate stdio [MCP](https://modelcontextprotocol.io/) helper executable inside the app bundle, at a fixed location:
+
+```text
+/Applications/BerryShot.app/Contents/Helpers/BerryShotMCP
+```
+
+(or `<wherever you installed BerryShot>/Contents/Helpers/BerryShotMCP` if not installed in `/Applications`). The helper only speaks MCP stdio and a private, same-user, authenticated local IPC connection to the BerryShot GUI — it never opens a network port, never calls ScreenCaptureKit/Accessibility directly, and never becomes a background daemon (it starts when an MCP client spawns it and exits when that client disconnects). BerryShot itself remains the sole holder of the Screen Recording/Accessibility permissions and must be running with **Settings → Privacy → Agent Integration (MCP)** turned on before a client can connect.
+
+### Codex
+
+```toml
+[mcp_servers.berryshot]
+command = "/Applications/BerryShot.app/Contents/Helpers/BerryShotMCP"
+startup_timeout_sec = 10
+tool_timeout_sec = 60
+required = false
+```
+
+### Claude Code
+
+```bash
+claude mcp add berryshot -- /Applications/BerryShot.app/Contents/Helpers/BerryShotMCP
+```
+
+or add it directly to `.mcp.json` / `~/.claude.json`:
+
+```json
+{
+  "mcpServers": {
+    "berryshot": {
+      "type": "stdio",
+      "command": "/Applications/BerryShot.app/Contents/Helpers/BerryShotMCP",
+      "args": []
+    }
+  }
+}
+```
+
+Capture results return a bounded inline preview (long edge ≤960px) plus an artifact ID; the full-resolution image and OCR text (if requested) are fetched lazily as MCP resources only when needed. Artifacts are deleted automatically after a 24-hour TTL (or sooner under the 500 MiB / 200-artifact retention quota), and every capture is subject to the same manual/automatic redaction policy as the GUI.
+
+---
+
 ## 🔧 AI & Cloud API Structure
 
 ### Custom Upload Integration
