@@ -206,6 +206,19 @@ final class OverlayViewModel: ObservableObject {
     
     @Published var customToolbarPosition: CGPoint? = nil
     @Published var toolbarSize: CGSize = CGSize(width: 440, height: 120)
+
+    /// Reads fresh from UserDefaults on every access rather than caching —
+    /// same convention as Shortcut lookups elsewhere in this file, and
+    /// necessary since Settings can change this while a capture is already
+    /// open and the toolbar-position timer loop (`ToolbarWindowController`)
+    /// polls this repeatedly, not just once at capture start.
+    private var toolbarPositionPreference: ToolbarPosition {
+        if let raw = UserDefaults.standard.string(forKey: "toolbarPosition"),
+           let pos = ToolbarPosition(rawValue: raw) {
+            return pos
+        }
+        return .bottom
+    }
     
     func openImage() {
         let panel = NSOpenPanel()
@@ -850,6 +863,21 @@ final class OverlayViewModel: ObservableObject {
                             if let hitElement = elementAt(point: start) {
                                 saveState()
                                 if !isShiftPressed { selectedElementIDs.removeAll() }; selectedElementIDs.insert(hitElement.id)
+                                // This is the primary click-to-select path (mouse
+                                // down on an existing shape), so it must sync the
+                                // toolbar's published fill state from the shape
+                                // being selected the same way the tap-only path
+                                // below (dragMode == .none) already does — without
+                                // this, the Fill Opacity slider reflects whatever
+                                // shape was last edited, not the one just selected,
+                                // so it can silently edit the wrong shape or not
+                                // appear at all for one whose isFilled differs.
+                                selectedColor = hitElement.color
+                                isFilled = hitElement.isFilled
+                                fillOpacity = hitElement.fillOpacity
+                                if hitElement.type == .text {
+                                    selectedFontSize = hitElement.fontSize
+                                }
                                 let originals = elements.filter { selectedElementIDs.contains($0.id) }
 dragMode = .movingElements(originals)
                                 print("DEBUG: Entered .movingElement for \(hitElement.id)")
@@ -1293,20 +1321,53 @@ dragMode = .movingElements(originals)
             return CGPoint(x: x, y: y)
         }
         
-        // Nằm ở giữa góc dưới vùng capture
-        var x = rect.midX
-        var y = rect.maxY + toolbarHeight / 2 + margin
-        
-        if x + toolbarWidth / 2 > screenWidth { x = screenWidth - toolbarWidth / 2 - margin }
-        if x - toolbarWidth / 2 < 0 { x = toolbarWidth / 2 + margin }
-        
-        // Nếu chạm góc cạnh dưới màn hình thì hiển thị phía dưới bên trong vùng capture
-        if y + toolbarHeight / 2 > screenHeight {
-            y = rect.maxY - toolbarHeight / 2 - margin
-            // Đảm bảo không bị tràn lên trên
+        var x: CGFloat
+        var y: CGFloat
+
+        switch toolbarPositionPreference {
+        case .bottom:
+            // Centered below the selection (original, unchanged default behavior).
+            x = rect.midX
+            y = rect.maxY + toolbarHeight / 2 + margin
+            if x + toolbarWidth / 2 > screenWidth { x = screenWidth - toolbarWidth / 2 - margin }
+            if x - toolbarWidth / 2 < 0 { x = toolbarWidth / 2 + margin }
+            // Hits the bottom screen edge → show inside the bottom of the selection instead.
+            if y + toolbarHeight / 2 > screenHeight {
+                y = rect.maxY - toolbarHeight / 2 - margin
+                if y - toolbarHeight / 2 < 0 { y = toolbarHeight / 2 + margin }
+            }
+        case .top:
+            x = rect.midX
+            y = rect.minY - toolbarHeight / 2 - margin
+            if x + toolbarWidth / 2 > screenWidth { x = screenWidth - toolbarWidth / 2 - margin }
+            if x - toolbarWidth / 2 < 0 { x = toolbarWidth / 2 + margin }
+            // Hits the top screen edge → show inside the top of the selection instead.
+            if y - toolbarHeight / 2 < 0 {
+                y = rect.minY + toolbarHeight / 2 + margin
+                if y + toolbarHeight / 2 > screenHeight { y = screenHeight - toolbarHeight / 2 - margin }
+            }
+        case .left:
+            x = rect.minX - toolbarWidth / 2 - margin
+            y = rect.midY
+            if y + toolbarHeight / 2 > screenHeight { y = screenHeight - toolbarHeight / 2 - margin }
             if y - toolbarHeight / 2 < 0 { y = toolbarHeight / 2 + margin }
+            // Hits the left screen edge → show inside the left of the selection instead.
+            if x - toolbarWidth / 2 < 0 {
+                x = rect.minX + toolbarWidth / 2 + margin
+                if x + toolbarWidth / 2 > screenWidth { x = screenWidth - toolbarWidth / 2 - margin }
+            }
+        case .right:
+            x = rect.maxX + toolbarWidth / 2 + margin
+            y = rect.midY
+            if y + toolbarHeight / 2 > screenHeight { y = screenHeight - toolbarHeight / 2 - margin }
+            if y - toolbarHeight / 2 < 0 { y = toolbarHeight / 2 + margin }
+            // Hits the right screen edge → show inside the right of the selection instead.
+            if x + toolbarWidth / 2 > screenWidth {
+                x = rect.maxX - toolbarWidth / 2 - margin
+                if x - toolbarWidth / 2 < 0 { x = toolbarWidth / 2 + margin }
+            }
         }
-        
+
         return CGPoint(x: x, y: y)
     }
     

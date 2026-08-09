@@ -58,6 +58,23 @@ public struct Shortcut: Codable, Equatable, Sendable {
     }
 }
 
+/// Where the floating annotation toolbar defaults to, relative to the
+/// active capture selection — persisted at UserDefaults key
+/// "toolbarPosition". Overridden per-capture the moment the user manually
+/// drags the toolbar (`OverlayViewModel.customToolbarPosition`).
+public enum ToolbarPosition: String, CaseIterable {
+    case top, left, right, bottom
+
+    public var displayName: String {
+        switch self {
+        case .top: return "Top"
+        case .left: return "Left"
+        case .right: return "Right"
+        case .bottom: return "Bottom"
+        }
+    }
+}
+
 public class KeycodeHelper {
     public static func string(for keyCode: UInt16) -> String {
         // Basic mapping for common keys

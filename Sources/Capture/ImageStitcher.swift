@@ -43,10 +43,19 @@ public class ImageStitcher {
             (L, R) = detectFixedColumns(a, b, W: W, H: H)
         }
 
+        // Measure the real sticky header height once (compare frame 0 vs 1 — the
+        // biggest guaranteed-different pair) instead of assuming it's always
+        // shorter than a fixed 20% of frame height. An app whose header/toolbar
+        // is taller than that guess would otherwise leak header rows into
+        // detectContentShift's sampling band, corrupting the detected shift and
+        // letting the header get appended again in later "newly revealed" strips
+        // instead of appearing exactly once, per the original design intent.
+        let measuredHeaderHeight = frames.count > 1 ? detectStickyHeader(frame1: frames[0], frame2: frames[1]) : 0
+
         var pieces: [CGImage] = [frames[0]]
         for i in 1..<frames.count {
             guard let a = bufs[i-1], let b = bufs[i] else { continue }
-            var shift = detectContentShift(prev: a, next: b, L: L, R: R, W: W, H: H)
+            var shift = detectContentShift(prev: a, next: b, L: L, R: R, W: W, H: H, headerHeight: measuredHeaderHeight)
             if shift <= 2 {
                 // Detection failed (e.g. visually near-identical repeating rows). Rather than drop
                 // the frame and lose the bottom of the page, fall back to the commanded scroll amount.
@@ -128,11 +137,13 @@ public class ImageStitcher {
 
     /// Measure how many pixels the content scrolled between `prev` and `next`, sampling only the
     /// central scrolling content band/columns. Returns 0 if no confident alignment is found.
-    private static func detectContentShift(prev a: PixBuf, next b: PixBuf, L: Int, R: Int, W: Int, H: Int) -> Int {
+    /// `headerHeight` is the real measured sticky-header height (0 if none/undetected); the
+    /// sampling band always starts below it rather than assuming a fixed fraction of the frame.
+    private static func detectContentShift(prev a: PixBuf, next b: PixBuf, L: Int, R: Int, W: Int, H: Int, headerHeight: Int = 0) -> Int {
         let cw = W - L - R
         guard cw > 16 else { return 0 }
         let x0 = L + cw / 8, x1 = (W - R) - cw / 8
-        let bandTop = H / 5, bandBot = H * 9 / 10
+        let bandTop = max(H / 5, headerHeight), bandBot = H * 9 / 10
         var bestShift = 0, bestCost = Double.greatestFiniteMagnitude
         var s = 4
         let maxShift = H * 4 / 5

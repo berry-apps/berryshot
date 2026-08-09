@@ -6,9 +6,18 @@ struct ToolbarView: View {
     @ObservedObject var viewModel: OverlayViewModel
     @Binding var showColorPicker: Bool
     let screenBounds: CGRect
-    
+
     @State private var isHovered = false
     @State private var isColorHovered = false
+
+    private func redactionIcon(for style: RedactionStyle?) -> String {
+        switch style {
+        case .blur: return "aqi.medium"
+        case .pixelate: return "square.grid.3x3.fill"
+        case .solid: return "rectangle.fill"
+        case nil: return "eye.slash"
+        }
+    }
     
     var body: some View {
         ZStack {
@@ -60,23 +69,26 @@ struct ToolbarView: View {
                                 )
                                 ToolButton(icon: "textformat", isSelected: viewModel.selectedTool == .text) { viewModel.selectTool(.text) }
                                 DropdownToolButton(
-                                    mainIcon: "eye.slash",
+                                    // Reflects whichever style (blur/pixelate/solid) is
+                                    // actually active, matching how the Arrow/Line
+                                    // dropdowns already show their active sub-tool's icon
+                                    // instead of one static icon regardless of selection.
+                                    mainIcon: redactionIcon(for: viewModel.activeRedactionStyle),
                                     isSelected: viewModel.activeRedactionStyle != nil,
                                     mainAction: {
                                         viewModel.selectRedactionTool(style: viewModel.activeRedactionStyle ?? RedactionSettings.shared.style)
                                     },
                                     menuItems: [
-                                        ("Blur", "aqi.medium", { viewModel.selectRedactionTool(style: .blur) }),
-                                        ("Pixelate", "square.grid.3x3.fill", { viewModel.selectRedactionTool(style: .pixelate) }),
-                                        ("Solid Cover", "rectangle.fill", { viewModel.selectRedactionTool(style: .solid) })
+                                        ("Blur", redactionIcon(for: .blur), { viewModel.selectRedactionTool(style: .blur) }),
+                                        ("Pixelate", redactionIcon(for: .pixelate), { viewModel.selectRedactionTool(style: .pixelate) }),
+                                        ("Solid Cover", redactionIcon(for: .solid), { viewModel.selectRedactionTool(style: .solid) })
                                     ]
                                 )
                                 .help("Mark a region to redact — BerryShot flattens it (blur, pixelate, or solid cover) before the capture is saved or uploaded")
                                 ToolButton(icon: "photo", isSelected: false) { viewModel.openImage() }
                                 
                                 Divider().frame(width: 1, height: 16).opacity(0.3)
-                                
-                                ToolButton(icon: "macwindow", isSelected: false) { viewModel.selectFullScreen() }
+
                                 ToolButton(icon: "scroll", isSelected: false) {
                                     CaptureCoordinator.shared.startScrollCapture()
                                 }
@@ -315,13 +327,21 @@ struct HoverableDragBar: View {
                 .disabled(!viewModel.canRedo)
                 .opacity(viewModel.canRedo ? 1.0 : 0.4)
 
-                // Clear All Button
-                ActionToolButton(icon: "trash", color: .white, size: 10) {
+                // Clear All Button — "eraser" reads as clearing the canvas;
+                // "trash" reads as permanently deleting something, which
+                // this isn't (it's one normal, undoable ⌘Z step).
+                ActionToolButton(icon: "eraser.fill", color: .white, size: 10) {
                     viewModel.clearAllElements()
                 }
                 .disabled(viewModel.elements.isEmpty)
                 .opacity(viewModel.elements.isEmpty ? 0.4 : 1.0)
                 .help("Clear all drawn shapes")
+
+                // Select Full Screen — moved here from the main tool row.
+                ActionToolButton(icon: "macwindow", color: .white, size: 10) {
+                    viewModel.selectFullScreen()
+                }
+                .help("Select Full Screen")
 
                 // Visible review badge (04-sensitive-redaction-spec.md section 6):
                 // shows how many regions are currently marked for redaction

@@ -291,6 +291,7 @@ struct StorageSettingsView: View {
             }
             .padding(16)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(width: 550)
+        .frame(maxHeight: SettingsSizing.maxContentHeight)
     }
 }
