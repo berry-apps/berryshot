@@ -6,7 +6,7 @@ struct PrivacySettingsView: View {
     @State private var newCustomTerm: String = ""
 
     var body: some View {
-        Form {
+        ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text("Privacy & Data")
                     .font(.headline)
@@ -69,9 +69,9 @@ struct PrivacySettingsView: View {
 
                 mcpIntegrationSection
             }
+            .padding(20)
+            .frame(width: 480)
         }
-        .padding(20)
-        .frame(width: 480)
     }
 
     /// Start/stop control for WP6's local capture broker. Off by default;
