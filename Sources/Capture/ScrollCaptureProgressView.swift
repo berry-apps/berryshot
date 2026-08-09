@@ -158,6 +158,19 @@ public class ScrollCaptureProgressController {
         }
     }
 
+    /// Keeps the panel open with an indeterminate-feeling "still working"
+    /// message and does NOT schedule an auto-close, unlike `finish()`.
+    /// Callers that still have async work left (redaction/OCR/persistence
+    /// before a result preview can show an already-redacted image) call this
+    /// instead of `finish()`, then `close()` themselves once that work ends —
+    /// otherwise the progress panel would vanish while the user stares at
+    /// nothing for however long redaction takes.
+    public func showProcessing(_ message: String) {
+        viewModel.isDone = false
+        viewModel.errorMessage = nil
+        viewModel.statusMessage = message
+    }
+
     public func showError(_ message: String) {
         viewModel.errorMessage = message
         viewModel.isDone = false

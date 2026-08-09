@@ -1,6 +1,7 @@
 import Foundation
 import CoreGraphics
 import Cocoa
+import ImageIO
 import UniformTypeIdentifiers
 
 extension NSScreen {
@@ -390,10 +391,27 @@ public class CaptureCoordinator: ObservableObject {
         }
     }
 
+    /// Single-window capture keeps its existing auto-save-to-history
+    /// behavior unchanged (unlike Scroll Capture, this always saved
+    /// immediately, and nothing here reverses that). It now additionally
+    /// shows a result preview once that save completes — reloaded from the
+    /// artifact's already-redacted `finalURL`, never the pre-redaction
+    /// in-memory image, for the same reason `processScrollCaptureResult`
+    /// does. `captureAllApplicationWindows` (batch "capture whole app")
+    /// deliberately does not get this preview: showing N previews in a row
+    /// for a multi-window capture is not useful UX.
     private func captureOneApplicationWindow(_ descriptor: WindowDescriptor, source: CaptureSource) async {
         do {
             let artifact = try await captureIndependentWindow(descriptor, source: source)
             print("Application window captured to \(artifact.finalURL)")
+            if let previewImage = Self.loadCGImage(from: artifact.finalURL) {
+                let resultWindow = CaptureResultWindowController(
+                    cgImage: previewImage,
+                    title: "Capture Result",
+                    filenamePrefix: "Capture"
+                )
+                resultWindow.show()
+            }
         } catch is CancellationError {
             // A cancelled capture must not create a history entry.
         } catch {
@@ -531,9 +549,8 @@ public class CaptureCoordinator: ObservableObject {
                 }
             )
 
-            progressController.finish()
-
-            processScrollCaptureResult(cgImage: stitched)
+            progressController.showProcessing("Applying redaction…")
+            await processScrollCaptureResult(cgImage: stitched, progressController: progressController)
         } catch {
             progressController.close()
             if let scrollError = error as? ScrollCaptureError, case .cancelled = scrollError {
@@ -576,11 +593,11 @@ public class CaptureCoordinator: ObservableObject {
                 )
             }
 
-            progressController.finish()
+            progressController.showProcessing("Applying redaction…")
 
             // Scroll capture already produced a final image; it must not pass
             // through display-region crop coordinates.
-            processScrollCaptureResult(cgImage: stitched)
+            await processScrollCaptureResult(cgImage: stitched, progressController: progressController)
 
         } catch ScrollCaptureError.cancelled {
             progressController.close()
@@ -589,32 +606,58 @@ public class CaptureCoordinator: ObservableObject {
         }
     }
 
-    private func processScrollCaptureResult(cgImage: CGImage) {
-        let resultWindow = ScrollCaptureResultWindowController(cgImage: cgImage)
-        resultWindow.show()
-
+    /// Waits for the full redact/OCR/persist pipeline before showing any
+    /// preview. The previous version showed `cgImage` (pre-redaction) in the
+    /// result window immediately while redaction ran in the background, so
+    /// Copy/Save.../Upload in that window operated on unredacted pixels even
+    /// though the artifact saved to history was correctly redacted — the
+    /// same trust-boundary class of bug fixed for region-capture Cmd+C
+    /// (`docs/tests/01.md` item 5). `progressController` stays open with a
+    /// "still working" message for however long this takes instead of
+    /// disappearing and leaving a silent gap.
+    private func processScrollCaptureResult(cgImage: CGImage, progressController: ScrollCaptureProgressController) async {
         let shouldPresentUpload = StorageConfiguration.shared.selectedProvider != .local
-        Task { @MainActor in
-            if shouldPresentUpload {
-                UploadResultWindowManager.shared.showLoading()
-            }
-
-            do {
-                let artifact = try await self.artifactProcessingRouter.processFinalImage(
-                    cgImage,
-                    context: .scrollResult(redactionPolicy: RedactionSettings.shared.policy),
-                    action: .saveLocal
-                )
-                self.presentUploadResultIfNeeded(artifact, shouldPresent: shouldPresentUpload)
-                print("Scroll capture processed and saved to \(artifact.finalURL)\nOCR Text: \(artifact.ocrText)")
-            } catch let error as RedactionRequiredError {
-                self.presentRedactionRequiredAlert(error)
-            } catch is CancellationError {
-                // A cancelled capture must not create a history entry.
-            } catch {
-                print("Scroll capture aborted: \(error.localizedDescription)")
-            }
+        if shouldPresentUpload {
+            UploadResultWindowManager.shared.showLoading()
         }
+
+        do {
+            let artifact = try await self.artifactProcessingRouter.processFinalImage(
+                cgImage,
+                context: .scrollResult(redactionPolicy: RedactionSettings.shared.policy),
+                action: .saveLocal
+            )
+            progressController.close()
+            if let previewImage = Self.loadCGImage(from: artifact.finalURL) {
+                let resultWindow = CaptureResultWindowController(cgImage: previewImage)
+                resultWindow.show()
+            } else {
+                // The capture is already safely saved (redacted) even if the
+                // preview reload fails — never fall back to showing the
+                // pre-redaction `cgImage` here, that would silently
+                // reintroduce the exact bug this fixes.
+                print("Scroll capture saved to \(artifact.finalURL) but its preview image could not be reloaded")
+            }
+            self.presentUploadResultIfNeeded(artifact, shouldPresent: shouldPresentUpload)
+            print("Scroll capture processed and saved to \(artifact.finalURL)\nOCR Text: \(artifact.ocrText)")
+        } catch let error as RedactionRequiredError {
+            progressController.close()
+            self.presentRedactionRequiredAlert(error)
+        } catch is CancellationError {
+            // A cancelled capture must not create a history entry.
+            progressController.close()
+        } catch {
+            progressController.close()
+            print("Scroll capture aborted: \(error.localizedDescription)")
+        }
+    }
+
+    /// Loads an already-persisted capture back into memory for preview
+    /// purposes. Never used to read anything other than this process's own
+    /// just-written artifact files.
+    private static func loadCGImage(from url: URL) -> CGImage? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        return CGImageSourceCreateImageAtIndex(source, 0, nil)
     }
 
     public func copyToClipboard(cgImage: CGImage, rect: CGRect, redactionRegions: [RedactionRegion] = []) async {
