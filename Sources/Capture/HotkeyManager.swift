@@ -7,16 +7,19 @@ public class HotkeyManager {
 
     private var captureHotKeyRef: EventHotKeyRef?
     private var scrollHotKeyRef: EventHotKeyRef?
+    private var appWindowHotKeyRef: EventHotKeyRef?
     private var eventHandler: EventHandlerRef?
     private var localMonitor: Any?
 
     public var onCaptureHotkey: (() -> Void)?
     public var onScrollCaptureHotkey: (() -> Void)?
+    public var onAppWindowCaptureHotkey: (() -> Void)?
 
     private init() {}
 
     private static let captureHotKeyID: UInt32 = 1
     private static let scrollHotKeyID: UInt32 = 2
+    private static let appWindowHotKeyID: UInt32 = 3
 
     private var signature: OSType {
         OSType("bshT".utf8.reduce(0) { $0 << 8 | OSType($1) })
@@ -36,6 +39,10 @@ public class HotkeyManager {
 
     private var scrollShortcut: Shortcut {
         shortcut(forKey: "scrollCaptureShortcut", fallback: .defaultScrollShortcut)
+    }
+
+    private var appWindowShortcut: Shortcut {
+        shortcut(forKey: "appWindowCaptureShortcut", fallback: .defaultAppWindowCaptureShortcut)
     }
 
     private func carbonModifiers(for shortcut: Shortcut) -> UInt32 {
@@ -59,6 +66,7 @@ public class HotkeyManager {
 
         let capture = captureShortcut
         let scroll = scrollShortcut
+        let appWindow = appWindowShortcut
 
         // Register Carbon hotkeys (global, work even when app is in background)
         let captureID = EventHotKeyID(signature: signature, id: Self.captureHotKeyID)
@@ -66,6 +74,9 @@ public class HotkeyManager {
 
         let scrollID = EventHotKeyID(signature: signature, id: Self.scrollHotKeyID)
         RegisterEventHotKey(UInt32(scroll.keyCode), carbonModifiers(for: scroll), scrollID, GetApplicationEventTarget(), 0, &scrollHotKeyRef)
+
+        let appWindowID = EventHotKeyID(signature: signature, id: Self.appWindowHotKeyID)
+        RegisterEventHotKey(UInt32(appWindow.keyCode), carbonModifiers(for: appWindow), appWindowID, GetApplicationEventTarget(), 0, &appWindowHotKeyRef)
 
         // Install a single event handler that dispatches by hotkey id
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
@@ -85,6 +96,8 @@ public class HotkeyManager {
                     HotkeyManager.shared.onCaptureHotkey?()
                 } else if id == HotkeyManager.scrollHotKeyID {
                     HotkeyManager.shared.onScrollCaptureHotkey?()
+                } else if id == HotkeyManager.appWindowHotKeyID {
+                    HotkeyManager.shared.onAppWindowCaptureHotkey?()
                 }
             }
             return noErr
@@ -109,6 +122,10 @@ public class HotkeyManager {
                 self.onScrollCaptureHotkey?()
                 return nil
             }
+            if matches(appWindow) {
+                self.onAppWindowCaptureHotkey?()
+                return nil
+            }
             return event
         }
     }
@@ -121,6 +138,10 @@ public class HotkeyManager {
         if let ref = scrollHotKeyRef {
             UnregisterEventHotKey(ref)
             scrollHotKeyRef = nil
+        }
+        if let ref = appWindowHotKeyRef {
+            UnregisterEventHotKey(ref)
+            appWindowHotKeyRef = nil
         }
         if let handler = eventHandler {
             RemoveEventHandler(handler)

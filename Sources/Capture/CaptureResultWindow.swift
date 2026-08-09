@@ -16,12 +16,35 @@ public class CaptureResultWindowController: NSWindowController {
     ) {
         let nsImage = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
 
-        // Size window to fit image up to 800x800
-        let winWidth = min(800.0, CGFloat(cgImage.width) / (NSScreen.main?.backingScaleFactor ?? 2.0))
-        let winHeight = min(800.0, CGFloat(cgImage.height) / (NSScreen.main?.backingScaleFactor ?? 2.0))
+        // Size the image area to the capture's own aspect ratio, clamped to
+        // a sane range, instead of independently capping width and height —
+        // that let a non-square image (nearly every real capture) get
+        // forced into a near-square window, leaving `scaledToFit()` to
+        // letterbox it with empty space above/below or beside the image.
+        let scale = NSScreen.main?.backingScaleFactor ?? 2.0
+        let imagePointWidth = CGFloat(cgImage.width) / scale
+        let imagePointHeight = CGFloat(cgImage.height) / scale
+        let maxDimension: CGFloat = 900
+        let minDimension: CGFloat = 320
+        var displayWidth = imagePointWidth
+        var displayHeight = imagePointHeight
+        if displayWidth > maxDimension || displayHeight > maxDimension {
+            let shrink = min(maxDimension / displayWidth, maxDimension / displayHeight)
+            displayWidth *= shrink
+            displayHeight *= shrink
+        }
+        if displayWidth < minDimension || displayHeight < minDimension {
+            let grow = max(minDimension / displayWidth, minDimension / displayHeight)
+            displayWidth *= grow
+            displayHeight *= grow
+        }
+
+        // The action toolbar below the image has its own fixed height,
+        // separate from the image area being sized here.
+        let toolbarHeight: CGFloat = 64
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: max(400, winWidth), height: max(400, winHeight)),
+            contentRect: NSRect(x: 0, y: 0, width: displayWidth, height: displayHeight + toolbarHeight),
             styleMask: [.titled, .closable, .resizable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
