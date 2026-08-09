@@ -175,6 +175,172 @@ public enum MCPServerFactory {
         ])
     )
 
+    // MARK: - WP8 documentation session / guarded AX automation tool schemas
+    // (`06-agent-documentation-security.md`)
+
+    private static let documentationSessionModeSchema: Value = .object([
+        "type": .string("string"),
+        "enum": .array([.string("readOnly"), .string("interactive")])
+    ])
+    private static let documentationCoverageStateSchema: Value = .object([
+        "type": .string("string"),
+        "enum": .array([.string("verified"), .string("conditional"), .string("blocked"), .string("not_attempted")])
+    ])
+    private static let sessionIDSchema: Value = .object([
+        "type": .string("string"), "minLength": .int(1), "maxLength": .int(200)
+    ])
+
+    private static let documentationSessionBeginTool = Tool(
+        name: "documentation_session_begin",
+        description: "Start a guarded documentation session scoped to exactly one allowlisted application bundle identifier. All later documentation/automation tools require this session's id and can never act on any other application. Redaction is always 'required' for MCP-exposed captures; this tool does not accept a weaker policy.",
+        inputSchema: .object([
+            "type": .string("object"),
+            "properties": .object([
+                "bundle_id": .object(["type": .string("string"), "minLength": .int(1), "maxLength": .int(255)]),
+                "display_name": .object(["type": .string("string"), "minLength": .int(1), "maxLength": .int(120)]),
+                "mode": documentationSessionModeSchema,
+                "redaction_style": redactionStyleSchema,
+                // Bounds duplicated as literals rather than shared with
+                // `DocumentationSessionManager` (`Sources/MCP`, part of the
+                // `BerryShot` target): `BerryShotMCP` must not depend on
+                // that target (`02-target-architecture.md` section 2), the
+                // same reason WP7's `preview_max_edge`/`deadline_ms` schema
+                // bounds above are already literals rather than shared
+                // constants. `CaptureBrokerDocumentationSessionTests`
+                // exercises the real `DocumentationSessionManager` bounds
+                // directly; this schema only needs to reject obviously
+                // out-of-range values before a request reaches the broker.
+                "ttl_seconds": .object(["type": .string("integer"), "minimum": .int(60), "maximum": .int(14_400)]),
+                "max_artifacts": .object(["type": .string("integer"), "minimum": .int(1), "maximum": .int(200)]),
+                "allow_launch": .object(["type": .string("boolean")])
+            ]),
+            "required": .array([.string("bundle_id"), .string("display_name"), .string("mode")]),
+            "additionalProperties": .bool(false)
+        ])
+    )
+
+    private static let documentationSessionStatusTool = Tool(
+        name: "documentation_session_status",
+        description: "Fetch the current manifest (steps, coverage, artifact count, status) of a documentation session by its opaque session id.",
+        inputSchema: .object([
+            "type": .string("object"),
+            "properties": .object(["session_id": sessionIDSchema]),
+            "required": .array([.string("session_id")]),
+            "additionalProperties": .bool(false)
+        ])
+    )
+
+    private static let documentationSessionCaptureStepTool = Tool(
+        name: "documentation_session_capture_step",
+        description: "Capture one window belonging to the session's allowlisted application, apply the session's locked-in redaction policy, and record it as one documented step. Rejects any window that does not belong to the session's application.",
+        inputSchema: .object([
+            "type": .string("object"),
+            "properties": .object([
+                "session_id": sessionIDSchema,
+                "window_id": .object(["type": .string("integer"), "minimum": .int(0), "maximum": .int(4_294_967_295)]),
+                "feature": .object(["type": .string("string"), "minLength": .int(1), "maxLength": .int(200)]),
+                "navigation_summary": .object(["type": .string("array"), "items": .object(["type": .string("string"), "maxLength": .int(200)]), "maxItems": .int(20)]),
+                "verification": documentationCoverageStateSchema,
+                "notes": .object(["type": .string("array"), "items": .object(["type": .string("string"), "maxLength": .int(500)]), "maxItems": .int(10)]),
+                "ocr": .object(["type": .string("boolean")])
+            ]),
+            "required": .array([.string("session_id"), .string("window_id"), .string("feature"), .string("verification")]),
+            "additionalProperties": .bool(false)
+        ])
+    )
+
+    private static let documentationSessionEndTool = Tool(
+        name: "documentation_session_end",
+        description: "Stop a documentation session immediately: revokes it for all further tool calls, invalidates its element references, and promptly cancels any in-flight wait_for_ui call for it.",
+        inputSchema: .object([
+            "type": .string("object"),
+            "properties": .object(["session_id": sessionIDSchema]),
+            "required": .array([.string("session_id")]),
+            "additionalProperties": .bool(false)
+        ])
+    )
+
+    private static let launchApplicationTool = Tool(
+        name: "launch_application",
+        description: "Launch the session's allowlisted application if it is not already running. Requires the session to have been created with allow_launch: true AND this call to set approve: true. Never accepts an application path, URL, or arguments.",
+        inputSchema: .object([
+            "type": .string("object"),
+            "properties": .object([
+                "session_id": sessionIDSchema,
+                "approve": .object(["type": .string("boolean")])
+            ]),
+            "required": .array([.string("session_id"), .string("approve")]),
+            "additionalProperties": .bool(false)
+        ])
+    )
+
+    private static let activateApplicationTool = Tool(
+        name: "activate_application",
+        description: "Bring the session's allowlisted application to the foreground. Fails if it is not already running (use launch_application first).",
+        inputSchema: .object([
+            "type": .string("object"),
+            "properties": .object(["session_id": sessionIDSchema]),
+            "required": .array([.string("session_id")]),
+            "additionalProperties": .bool(false)
+        ])
+    )
+
+    private static let inspectUITool = Tool(
+        name: "inspect_ui",
+        description: "Return a bounded, sanitized snapshot of the session's application accessibility tree: role, subrole, title/description, enabled/focused state, frame, and allowed safe actions per element. Never returns secure-field values. Element references are opaque, short-lived, and invalidated by the next inspect_ui call.",
+        inputSchema: .object([
+            "type": .string("object"),
+            "properties": .object([
+                "session_id": sessionIDSchema,
+                "element_ref": .object(["type": .string("string"), "maxLength": .int(200)]),
+                "max_depth": .object(["type": .string("integer"), "minimum": .int(1), "maximum": .int(12)]),
+                "max_nodes": .object(["type": .string("integer"), "minimum": .int(1), "maximum": .int(500)])
+            ]),
+            "required": .array([.string("session_id")]),
+            "additionalProperties": .bool(false)
+        ])
+    )
+
+    private static let performUIActionTool = Tool(
+        name: "perform_ui_action",
+        description: "Perform one allowlisted action (press, showMenu, increment, decrement, or setValue on a plain text field) on a previously returned element reference. Secure fields and destructive/external-side-effect controls are rejected by policy, not merely filtered best-effort.",
+        inputSchema: .object([
+            "type": .string("object"),
+            "properties": .object([
+                "session_id": sessionIDSchema,
+                "element_ref": .object(["type": .string("string"), "minLength": .int(1), "maxLength": .int(200)]),
+                "action": .object(["type": .string("string"), "enum": .array(UIActionKind.allCases.map { .string($0.rawValue) })]),
+                // 500 mirrors `AXAutomationTextSanitizer.maxLength`
+                // (`Sources/Capture`, part of the `BerryShot` target, not
+                // importable here) — see the `ttl_seconds`/`max_artifacts`
+                // comment above for why this is a literal, not a shared
+                // constant.
+                "value": .object(["type": .string("string"), "maxLength": .int(500)])
+            ]),
+            "required": .array([.string("session_id"), .string("element_ref"), .string("action")]),
+            "additionalProperties": .bool(false)
+        ])
+    )
+
+    private static let waitForUITool = Tool(
+        name: "wait_for_ui",
+        description: "Wait, with a hard bounded timeout, for one predicate over the session's application's accessibility metadata: an element appearing/disappearing, the focused window's title containing text, or an element's enabled/focused state. Never polls in the background; the wait only runs for the duration of this call.",
+        inputSchema: .object([
+            "type": .string("object"),
+            "properties": .object([
+                "session_id": sessionIDSchema,
+                "predicate": .object(["type": .string("string"), "enum": .array(WaitPredicateKind.allCases.map { .string($0.rawValue) })]),
+                "role_query": .object(["type": .string("string"), "maxLength": .int(200)]),
+                "title_query": .object(["type": .string("string"), "maxLength": .int(200)]),
+                "element_ref": .object(["type": .string("string"), "maxLength": .int(200)]),
+                "expected_bool": .object(["type": .string("boolean")]),
+                "timeout_ms": .object(["type": .string("integer"), "minimum": .int(100), "maximum": .int(15_000)])
+            ]),
+            "required": .array([.string("session_id"), .string("predicate")]),
+            "additionalProperties": .bool(false)
+        ])
+    )
+
     private static var tools: [Tool] {
         [
             permissionsStatusTool,
@@ -182,7 +348,16 @@ public enum MCPServerFactory {
             listWindowsTool,
             captureWindowTool,
             captureApplicationTool,
-            getCaptureManifestTool
+            getCaptureManifestTool,
+            documentationSessionBeginTool,
+            documentationSessionStatusTool,
+            documentationSessionCaptureStepTool,
+            documentationSessionEndTool,
+            launchApplicationTool,
+            activateApplicationTool,
+            inspectUITool,
+            performUIActionTool,
+            waitForUITool
         ]
     }
 
@@ -237,6 +412,75 @@ public enum MCPServerFactory {
                     return errorResult(code: .internalError, message: "Unexpected broker result shape")
                 }
                 return try successResult(manifest)
+
+            case "documentation_session_begin":
+                let request = try parseDocumentationSessionBeginArguments(params.arguments)
+                let result = try await ipcClient.send(.documentationSessionBegin(request), deadline: Date().addingTimeInterval(defaultOperationDeadline))
+                return try documentationSessionResult(result)
+
+            case "documentation_session_status":
+                let sessionID = try requiredSessionID(params.arguments, allowedExtraKeys: [])
+                let result = try await ipcClient.send(.documentationSessionStatus(DocumentationSessionStatusRequest(sessionID: sessionID)), deadline: Date().addingTimeInterval(defaultOperationDeadline))
+                return try documentationSessionResult(result)
+
+            case "documentation_session_capture_step":
+                let request = try parseDocumentationSessionCaptureStepArguments(params.arguments)
+                // Capture work needs more than the default 10s (screen
+                // capture + OCR + redaction), matching capture_window's own
+                // deadline treatment, but this tool has no client-supplied
+                // deadline_ms of its own — the session already bounds scope,
+                // so a fixed generous deadline is used instead.
+                let result = try await ipcClient.send(.documentationSessionCaptureStep(request), deadline: Date().addingTimeInterval(30))
+                return try documentationSessionResult(result)
+
+            case "documentation_session_end":
+                let sessionID = try requiredSessionID(params.arguments, allowedExtraKeys: [])
+                let result = try await ipcClient.send(.documentationSessionEnd(DocumentationSessionEndRequest(sessionID: sessionID)), deadline: Date().addingTimeInterval(defaultOperationDeadline))
+                return try documentationSessionResult(result)
+
+            case "launch_application":
+                let request = try parseLaunchApplicationArguments(params.arguments)
+                let result = try await ipcClient.send(.launchApplication(request), deadline: Date().addingTimeInterval(defaultOperationDeadline))
+                guard case .applicationLaunch(let launch) = result else {
+                    return errorResult(code: .internalError, message: "Unexpected broker result shape")
+                }
+                return try successResult(launch)
+
+            case "activate_application":
+                let sessionID = try requiredSessionID(params.arguments, allowedExtraKeys: [])
+                let result = try await ipcClient.send(.activateApplication(ActivateApplicationRequest(sessionID: sessionID)), deadline: Date().addingTimeInterval(defaultOperationDeadline))
+                guard case .applicationLaunch(let launch) = result else {
+                    return errorResult(code: .internalError, message: "Unexpected broker result shape")
+                }
+                return try successResult(launch)
+
+            case "inspect_ui":
+                let request = try parseInspectUIArguments(params.arguments)
+                let result = try await ipcClient.send(.inspectUI(request), deadline: Date().addingTimeInterval(defaultOperationDeadline))
+                guard case .uiSnapshot(let snapshot) = result else {
+                    return errorResult(code: .internalError, message: "Unexpected broker result shape")
+                }
+                return try successResult(snapshot)
+
+            case "perform_ui_action":
+                let request = try parsePerformUIActionArguments(params.arguments)
+                let result = try await ipcClient.send(.performUIAction(request), deadline: Date().addingTimeInterval(defaultOperationDeadline))
+                guard case .uiActionResult(let actionResult) = result else {
+                    return errorResult(code: .internalError, message: "Unexpected broker result shape")
+                }
+                return try successResult(actionResult)
+
+            case "wait_for_ui":
+                let request = try parseWaitForUIArguments(params.arguments)
+                // Must exceed the requested predicate timeout, or the IPC
+                // deadline could cut the wait short before it naturally
+                // times out and reports `timed_out: true` on its own.
+                let deadline = Date().addingTimeInterval(TimeInterval(request.timeoutMilliseconds) / 1000 + 5)
+                let result = try await ipcClient.send(.waitForUI(request), deadline: deadline)
+                guard case .uiWaitResult(let waitResult) = result else {
+                    return errorResult(code: .internalError, message: "Unexpected broker result shape")
+                }
+                return try successResult(waitResult)
 
             default:
                 return errorResult(code: .invalidArgument, message: "Unknown tool: \(params.name)")
@@ -551,6 +795,155 @@ public enum MCPServerFactory {
             throw ToolArgumentError(message: "capture_id is required and must be a non-empty string of at most 200 characters")
         }
         return captureID
+    }
+
+    // MARK: - WP8 argument parsing
+
+    private static func requiredSessionID(_ arguments: [String: Value]?, allowedExtraKeys: Set<String>) throws -> String {
+        let arguments = arguments ?? [:]
+        try rejectUnknownKeys(arguments, allowed: allowedExtraKeys.union(["session_id"]))
+        guard let value = arguments["session_id"], case .string(let sessionID) = value, !sessionID.isEmpty, sessionID.count <= 200 else {
+            throw ToolArgumentError(message: "session_id is required and must be a non-empty string of at most 200 characters")
+        }
+        return sessionID
+    }
+
+    private static func parseDocumentationSessionBeginArguments(_ arguments: [String: Value]?) throws -> DocumentationSessionBeginRequest {
+        let arguments = arguments ?? [:]
+        try rejectUnknownKeys(arguments, allowed: ["bundle_id", "display_name", "mode", "redaction_style", "ttl_seconds", "max_artifacts", "allow_launch"])
+
+        guard let bundleIDValue = arguments["bundle_id"], case .string(let bundleID) = bundleIDValue, !bundleID.isEmpty, bundleID.count <= 255 else {
+            throw ToolArgumentError(message: "bundle_id is required and must be a non-empty string of at most 255 characters")
+        }
+        guard let displayNameValue = arguments["display_name"], case .string(let displayName) = displayNameValue, !displayName.isEmpty, displayName.count <= 120 else {
+            throw ToolArgumentError(message: "display_name is required and must be a non-empty string of at most 120 characters")
+        }
+        let mode: DocumentationSessionMode = try requiredEnum(arguments["mode"], field: "mode")
+        let redactionStyle: IPCRedactionStyle = try optionalEnum(arguments["redaction_style"], field: "redaction_style", default: .solid)
+        let ttlSeconds = try optionalBoundedInt(arguments["ttl_seconds"], field: "ttl_seconds", defaultValue: 1800, minimum: 60, maximum: 14_400)
+        let maxArtifacts = try optionalBoundedInt(arguments["max_artifacts"], field: "max_artifacts", defaultValue: 20, minimum: 1, maximum: 200)
+        let allowLaunch = try optionalBool(arguments["allow_launch"], field: "allow_launch", defaultValue: false)
+
+        return DocumentationSessionBeginRequest(
+            bundleIdentifier: bundleID,
+            displayName: displayName,
+            mode: mode,
+            redactionPolicy: nil,
+            redactionStyle: redactionStyle,
+            ttlSeconds: ttlSeconds,
+            maxArtifacts: maxArtifacts,
+            allowLaunch: allowLaunch
+        )
+    }
+
+    private static func parseDocumentationSessionCaptureStepArguments(_ arguments: [String: Value]?) throws -> DocumentationSessionCaptureStepRequest {
+        let arguments = arguments ?? [:]
+        let sessionID = try requiredSessionID(arguments, allowedExtraKeys: ["window_id", "feature", "navigation_summary", "verification", "notes", "ocr"])
+        guard let windowIDValue = arguments["window_id"] else {
+            throw ToolArgumentError(message: "window_id is required")
+        }
+        let windowID = try requiredUInt32(windowIDValue, field: "window_id")
+        guard let featureValue = arguments["feature"], case .string(let feature) = featureValue, !feature.isEmpty, feature.count <= 200 else {
+            throw ToolArgumentError(message: "feature is required and must be a non-empty string of at most 200 characters")
+        }
+        let verification: DocumentationCoverageState = try requiredEnum(arguments["verification"], field: "verification")
+        let navigationSummary = try optionalStringArray(arguments["navigation_summary"], field: "navigation_summary", maxItems: 20, maxItemLength: 200)
+        let notes = try optionalStringArray(arguments["notes"], field: "notes", maxItems: 10, maxItemLength: 500)
+        let ocr = try optionalBool(arguments["ocr"], field: "ocr", defaultValue: false)
+
+        return DocumentationSessionCaptureStepRequest(
+            sessionID: sessionID,
+            windowID: windowID,
+            feature: feature,
+            navigationSummary: navigationSummary,
+            verification: verification,
+            notes: notes,
+            ocr: ocr
+        )
+    }
+
+    private static func parseLaunchApplicationArguments(_ arguments: [String: Value]?) throws -> LaunchApplicationRequest {
+        let arguments = arguments ?? [:]
+        let sessionID = try requiredSessionID(arguments, allowedExtraKeys: ["approve"])
+        guard let approveValue = arguments["approve"], case .bool(let approve) = approveValue else {
+            throw ToolArgumentError(message: "approve is required and must be a boolean")
+        }
+        return LaunchApplicationRequest(sessionID: sessionID, approve: approve)
+    }
+
+    private static func parseInspectUIArguments(_ arguments: [String: Value]?) throws -> InspectUIRequest {
+        let arguments = arguments ?? [:]
+        let sessionID = try requiredSessionID(arguments, allowedExtraKeys: ["element_ref", "max_depth", "max_nodes"])
+        let elementRef = try optionalString(arguments["element_ref"], field: "element_ref", maxLength: 200)
+        let maxDepth = try optionalBoundedInt(arguments["max_depth"], field: "max_depth", defaultValue: 4, minimum: 1, maximum: 12)
+        let maxNodes = try optionalBoundedInt(arguments["max_nodes"], field: "max_nodes", defaultValue: 150, minimum: 1, maximum: 500)
+        return InspectUIRequest(sessionID: sessionID, elementRef: elementRef, maxDepth: maxDepth, maxNodes: maxNodes)
+    }
+
+    private static func parsePerformUIActionArguments(_ arguments: [String: Value]?) throws -> PerformUIActionRequest {
+        let arguments = arguments ?? [:]
+        let sessionID = try requiredSessionID(arguments, allowedExtraKeys: ["element_ref", "action", "value"])
+        guard let elementRefValue = arguments["element_ref"], case .string(let elementRef) = elementRefValue, !elementRef.isEmpty, elementRef.count <= 200 else {
+            throw ToolArgumentError(message: "element_ref is required and must be a non-empty string of at most 200 characters")
+        }
+        let action: UIActionKind = try requiredEnum(arguments["action"], field: "action")
+        let value = try optionalString(arguments["value"], field: "value", maxLength: 500)
+        return PerformUIActionRequest(sessionID: sessionID, elementRef: elementRef, action: action, value: value)
+    }
+
+    private static func parseWaitForUIArguments(_ arguments: [String: Value]?) throws -> WaitForUIRequest {
+        let arguments = arguments ?? [:]
+        let sessionID = try requiredSessionID(arguments, allowedExtraKeys: ["predicate", "role_query", "title_query", "element_ref", "expected_bool", "timeout_ms"])
+        let predicate: WaitPredicateKind = try requiredEnum(arguments["predicate"], field: "predicate")
+        let roleQuery = try optionalString(arguments["role_query"], field: "role_query", maxLength: 200)
+        let titleQuery = try optionalString(arguments["title_query"], field: "title_query", maxLength: 200)
+        let elementRef = try optionalString(arguments["element_ref"], field: "element_ref", maxLength: 200)
+        let expectedBool = try optionalBoolOrNil(arguments["expected_bool"], field: "expected_bool")
+        let timeoutMilliseconds = try optionalBoundedInt(arguments["timeout_ms"], field: "timeout_ms", defaultValue: 5000, minimum: 100, maximum: 15_000)
+        return WaitForUIRequest(
+            sessionID: sessionID,
+            predicate: predicate,
+            roleQuery: roleQuery,
+            titleQuery: titleQuery,
+            elementRef: elementRef,
+            expectedBool: expectedBool,
+            timeoutMilliseconds: timeoutMilliseconds
+        )
+    }
+
+    private static func optionalStringArray(_ value: Value?, field: String, maxItems: Int, maxItemLength: Int) throws -> [String] {
+        guard let value else { return [] }
+        guard case .array(let items) = value, items.count <= maxItems else {
+            throw ToolArgumentError(message: "\(field) must be an array of at most \(maxItems) strings")
+        }
+        return try items.map { item in
+            guard case .string(let string) = item, string.count <= maxItemLength else {
+                throw ToolArgumentError(message: "\(field) entries must be strings of at most \(maxItemLength) characters")
+            }
+            return string
+        }
+    }
+
+    private static func optionalBoolOrNil(_ value: Value?, field: String) throws -> Bool? {
+        guard let value else { return nil }
+        guard case .bool(let boolValue) = value else {
+            throw ToolArgumentError(message: "\(field) must be a boolean")
+        }
+        return boolValue
+    }
+
+    private static func requiredEnum<T: RawRepresentable>(_ value: Value?, field: String) throws -> T where T.RawValue == String {
+        guard let value, case .string(let raw) = value, let parsed = T(rawValue: raw) else {
+            throw ToolArgumentError(message: "\(field) is required and must have a recognized value")
+        }
+        return parsed
+    }
+
+    private static func documentationSessionResult(_ result: BrokerResult) throws -> CallTool.Result {
+        guard case .documentationSession(let session) = result else {
+            return errorResult(code: .internalError, message: "Unexpected broker result shape")
+        }
+        return try successResult(session)
     }
 
     private static func rejectUnknownKeys(_ arguments: [String: Value], allowed: Set<String>) throws {

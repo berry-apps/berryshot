@@ -94,6 +94,10 @@ struct PrivacySettingsView: View {
                 set: { mcpSettings.isEnabled = $0 }
             ))
 
+            Text("When an agent starts a documentation session, a menu-bar item shows its target app, mode, and last action while it is active, with a one-click Stop. Interactive sessions can only launch/activate/inspect/act on the single application the session names — never an arbitrary app — and every action is limited to a small allowlist (press, show menu, increment, decrement, or setting a plain text field). Secure fields and destructive or external-side-effect controls are always rejected.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
             if mcpSettings.isRunning {
                 Text("Running — a local MCP client can now connect.")
                     .font(.caption)

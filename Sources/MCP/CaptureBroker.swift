@@ -117,6 +117,18 @@ public actor CaptureBroker {
     private let ownBundleIdentifier: String?
     public let maxQueueDepth: Int
 
+    /// WP8: session allowlist/mode/TTL/artifact-limit/redaction-policy
+    /// bookkeeping (`06-agent-documentation-security.md` section 2).
+    private let sessionManager: DocumentationSessionManager
+    /// WP8: bounded safe AX snapshot serialization and guarded action
+    /// execution (`06-agent-documentation-security.md` section 4).
+    private let axInspecting: any AXInspecting
+    /// WP8: opaque short-lived element refs bound to session/PID/generation.
+    private let elementRegistry: UIElementRegistry
+    /// WP8: `launch_application`/`activate_application`
+    /// (`06-agent-documentation-security.md` section 4).
+    private let applicationLaunching: any ApplicationLaunching
+
     private var queue: [QueueEntry] = []
     private var isDraining = false
     /// Request IDs cancelled while queued (removed immediately) or while
@@ -130,7 +142,11 @@ public actor CaptureBroker {
         artifactStore: CaptureArtifactStore = CaptureArtifactStore(),
         captureOperations: (any CaptureBrokerCaptureOperating)? = nil,
         ownBundleIdentifier: String? = Bundle.main.bundleIdentifier,
-        maxQueueDepth: Int = IPCProtocol.maxQueueDepth
+        maxQueueDepth: Int = IPCProtocol.maxQueueDepth,
+        sessionManager: DocumentationSessionManager = DocumentationSessionManager(),
+        axInspecting: any AXInspecting = LiveAXInspecting(),
+        elementRegistry: UIElementRegistry = UIElementRegistry(),
+        applicationLaunching: any ApplicationLaunching = LiveApplicationLaunching()
     ) {
         self.discovery = discovery
         self.permissions = permissions
@@ -138,17 +154,29 @@ public actor CaptureBroker {
         self.captureOperations = captureOperations ?? LiveCaptureBrokerCaptureOperations(store: artifactStore)
         self.ownBundleIdentifier = ownBundleIdentifier
         self.maxQueueDepth = maxQueueDepth
+        self.sessionManager = sessionManager
+        self.axInspecting = axInspecting
+        self.elementRegistry = elementRegistry
+        self.applicationLaunching = applicationLaunching
     }
 
     /// Enqueues `operation` and suspends until it is drained and executed,
     /// cancelled, or its deadline passes while still queued.
     ///
-    /// `.cancel` is special-cased to run immediately instead of being
-    /// enqueued: it is a control-plane action, not a unit of queued work,
-    /// and its entire purpose is to reach a request that may be stuck
-    /// behind a slow head-of-queue operation. Queueing it behind that same
-    /// operation would make it unable to ever cancel exactly the case it
-    /// exists for.
+    /// `.cancel` and `.documentationSessionEnd` are both special-cased to
+    /// run immediately instead of being enqueued: they are control-plane
+    /// actions, not units of queued work, and their entire purpose is to
+    /// reach a request that may be stuck behind a slow head-of-queue
+    /// operation — for `.documentationSessionEnd` specifically, a long-running
+    /// `wait_for_ui` sitting at the head of this exact queue
+    /// (`06-agent-documentation-security.md` section 8: "Stop button
+    /// cancels current wait/capture"). `wait_for_ui`'s own poll loop reads
+    /// `DocumentationSessionManager`'s Stop flag directly (a different
+    /// actor from this one), so ending the session out of band here still
+    /// reaches it promptly even while this queue's `execute(_:)` call for
+    /// the in-flight wait has not returned yet. Queueing `.documentationSessionEnd`
+    /// behind that same wait would make it unable to ever interrupt exactly
+    /// the case it exists for.
     ///
     /// - Throws: ``BrokerOperationError`` with `.rateLimited` if the queue
     ///   is already at ``maxQueueDepth``.
@@ -156,6 +184,9 @@ public actor CaptureBroker {
         if case .cancel(let targetID) = operation {
             cancel(requestID: targetID)
             return .cancelAcknowledged
+        }
+        if case .documentationSessionEnd(let request) = operation {
+            return try await performDocumentationSessionEnd(request)
         }
         guard queue.count < maxQueueDepth else {
             throw BrokerOperationError(code: .rateLimited, message: "Too many pending broker requests")
@@ -191,6 +222,14 @@ public actor CaptureBroker {
         for entry in pending {
             entry.continuation.resume(throwing: BrokerOperationError(code: .cancelled, message: "Broker stopped"))
         }
+        // WP8: the global Stop control also ends every active documentation
+        // session (`06-agent-documentation-security.md` section 6: "One-click
+        // Stop revokes session token, cancels queue, closes IPC clients, and
+        // removes ephemeral artifacts according to policy"). A `wait_for_ui`
+        // call still executing (not queued — the drain loop already dequeued
+        // it) notices via its own per-tick `sessionManager.isStopRequested`
+        // poll rather than through this queue-cancellation path.
+        Task { await sessionManager.stopAll() }
     }
 
     /// Current queue depth. Exposed only for tests.
@@ -252,6 +291,29 @@ public actor CaptureBroker {
             return try await performGetCaptureManifest(request)
         case .resolveArtifactResource(let request):
             return try await performResolveArtifactResource(request)
+        case .documentationSessionBegin(let request):
+            return try await performDocumentationSessionBegin(request)
+        case .documentationSessionStatus(let request):
+            return try await performDocumentationSessionStatus(request)
+        case .documentationSessionCaptureStep(let request):
+            return try await performDocumentationSessionCaptureStep(request)
+        case .documentationSessionEnd(let request):
+            // Unreachable in practice: `submit(_:requestID:deadline:)`
+            // intercepts `.documentationSessionEnd` before it is ever
+            // enqueued (see its doc comment). Handled here too so this
+            // switch stays exhaustive and behaves correctly even if a
+            // future caller reaches `execute` some other way.
+            return try await performDocumentationSessionEnd(request)
+        case .launchApplication(let request):
+            return try await performLaunchApplication(request)
+        case .activateApplication(let request):
+            return try await performActivateApplication(request)
+        case .inspectUI(let request):
+            return try await performInspectUI(request)
+        case .performUIAction(let request):
+            return try await performPerformUIAction(request)
+        case .waitForUI(let request):
+            return try await performWaitForUI(request)
         case .cancel(let targetID):
             // Unreachable in practice: `submit(_:requestID:deadline:)`
             // intercepts `.cancel` before it is ever enqueued (see its doc
@@ -419,5 +481,359 @@ public actor CaptureBroker {
             throw BrokerOperationError(code: .invalidArgument, message: "Malformed cursor")
         }
         return value
+    }
+
+    // MARK: - WP8 documentation sessions (`06-agent-documentation-security.md` section 2)
+
+    private static func mapSessionError(_ error: DocumentationSessionManager.SessionError) -> BrokerOperationError {
+        switch error {
+        case .invalidArgument(let message):
+            return BrokerOperationError(code: .invalidArgument, message: message)
+        case .notFound:
+            return BrokerOperationError(code: .sessionNotFound, message: "Unknown documentation session")
+        case .expired:
+            return BrokerOperationError(code: .sessionExpired, message: "This documentation session has expired")
+        case .stopped:
+            return BrokerOperationError(code: .sessionStopped, message: "This documentation session has been stopped")
+        case .artifactLimitReached:
+            return BrokerOperationError(code: .artifactLimitReached, message: "This session's artifact limit has been reached")
+        }
+    }
+
+    /// Every WP8 operation other than `begin` starts by resolving its
+    /// session through here, so allowlist/TTL/Stop enforcement lives in
+    /// exactly one place (`DocumentationSessionManager.activeSession(_:)`).
+    private func resolveSession(_ sessionID: String) async throws -> DocumentationSessionManager.Session {
+        do {
+            return try await sessionManager.activeSession(sessionID)
+        } catch let error as DocumentationSessionManager.SessionError {
+            throw Self.mapSessionError(error)
+        }
+    }
+
+    private func performDocumentationSessionBegin(_ request: DocumentationSessionBeginRequest) async throws -> BrokerResult {
+        do {
+            let dto = try await sessionManager.begin(request)
+            DocumentationAuditLog.record(tool: "documentation_session_begin", sessionID: dto.sessionID, target: dto.bundleIdentifier, outcome: "success")
+            return .documentationSession(dto)
+        } catch let error as DocumentationSessionManager.SessionError {
+            throw Self.mapSessionError(error)
+        }
+    }
+
+    private func performDocumentationSessionStatus(_ request: DocumentationSessionStatusRequest) async throws -> BrokerResult {
+        do {
+            let dto = try await sessionManager.status(sessionID: request.sessionID)
+            return .documentationSession(dto)
+        } catch let error as DocumentationSessionManager.SessionError {
+            throw Self.mapSessionError(error)
+        }
+    }
+
+    /// Captures one window through the exact same pipeline `captureWindow`
+    /// uses, but scoped entirely by the session: the target window's bundle
+    /// identity is re-verified against `session.bundleIdentifier` (not a
+    /// caller-supplied `expected_bundle_id`) immediately before capture —
+    /// the WP8 analogue of `performCaptureWindow`'s own staleness/identity
+    /// check — and redaction policy/style come from the session, never from
+    /// this request (`06-agent-documentation-security.md` section 8:
+    /// "Attempt action against a non-session bundle ID: rejected").
+    private func performDocumentationSessionCaptureStep(_ request: DocumentationSessionCaptureStepRequest) async throws -> BrokerResult {
+        let session = try await resolveSession(request.sessionID)
+        guard !request.feature.isEmpty, request.feature.count <= DocumentationSessionManager.maxFeatureNameLength else {
+            throw BrokerOperationError(code: .invalidArgument, message: "feature is required and must be at most \(DocumentationSessionManager.maxFeatureNameLength) characters")
+        }
+        guard permissions.screenCaptureGranted() else {
+            throw BrokerOperationError(code: .permissionDenied, message: "Screen Recording permission is required to capture content")
+        }
+
+        let windows = try await discovery.discoverWindows()
+        guard let matched = windows.first(where: { $0.id == request.windowID }) else {
+            throw BrokerOperationError(code: .windowNotAvailable, message: "The requested window is not currently available")
+        }
+        guard matched.bundleIdentifier == session.bundleIdentifier else {
+            DocumentationAuditLog.record(tool: "documentation_session_capture_step", sessionID: request.sessionID, target: matched.bundleIdentifier, outcome: "bundle_not_allowed")
+            throw BrokerOperationError(code: .bundleNotAllowed, message: "The requested window does not belong to this session's allowlisted application")
+        }
+
+        try Task.checkCancellation()
+
+        let captureRequest = CaptureWindowRequest(
+            windowID: request.windowID,
+            expectedBundleIdentifier: session.bundleIdentifier,
+            redactionPolicy: session.redactionPolicy,
+            redactionStyle: session.redactionStyle,
+            ocr: request.ocr,
+            previewMaxEdge: 960
+        )
+        let manifest = try await captureOperations.captureWindow(captureRequest, matchedWindow: matched)
+
+        do {
+            let updatedSession = try await sessionManager.recordStep(
+                sessionID: request.sessionID,
+                captureID: manifest.captureID,
+                feature: request.feature,
+                navigationSummary: request.navigationSummary,
+                redactionStatus: manifest.redactionStatus,
+                verification: request.verification,
+                notes: request.notes
+            )
+            DocumentationAuditLog.record(tool: "documentation_session_capture_step", sessionID: request.sessionID, target: manifest.captureID, outcome: "success", redactionStatus: manifest.redactionStatus.rawValue)
+            return .documentationSession(updatedSession)
+        } catch let error as DocumentationSessionManager.SessionError {
+            throw Self.mapSessionError(error)
+        }
+    }
+
+    private func performDocumentationSessionEnd(_ request: DocumentationSessionEndRequest) async throws -> BrokerResult {
+        do {
+            let dto = try await sessionManager.end(sessionID: request.sessionID)
+            await elementRegistry.clearSession(request.sessionID)
+            DocumentationAuditLog.record(tool: "documentation_session_end", sessionID: request.sessionID, target: dto.bundleIdentifier, outcome: "stopped")
+            return .documentationSession(dto)
+        } catch let error as DocumentationSessionManager.SessionError {
+            throw Self.mapSessionError(error)
+        }
+    }
+
+    // MARK: - WP8 launch_application / activate_application
+
+    private func performLaunchApplication(_ request: LaunchApplicationRequest) async throws -> BrokerResult {
+        let session = try await resolveSession(request.sessionID)
+        guard session.allowLaunch else {
+            throw BrokerOperationError(code: .launchNotApproved, message: "This session was not created with allowLaunch: true")
+        }
+        guard request.approve else {
+            throw BrokerOperationError(code: .launchNotApproved, message: "This call did not set approve: true")
+        }
+
+        let wasRunning = applicationLaunching.runningProcessID(bundleIdentifier: session.bundleIdentifier) != nil
+        do {
+            let pid = try await applicationLaunching.launch(bundleIdentifier: session.bundleIdentifier)
+            await sessionManager.touchAction(sessionID: request.sessionID, description: "Launched application")
+            DocumentationAuditLog.record(tool: "launch_application", sessionID: request.sessionID, target: session.bundleIdentifier, outcome: "success")
+            return .applicationLaunch(ApplicationLaunchResultDTO(bundleIdentifier: session.bundleIdentifier, processID: pid, wasAlreadyRunning: wasRunning, isActive: true))
+        } catch {
+            DocumentationAuditLog.record(tool: "launch_application", sessionID: request.sessionID, target: session.bundleIdentifier, outcome: "failed")
+            throw BrokerOperationError(code: .internalError, message: "Could not launch the application")
+        }
+    }
+
+    private func performActivateApplication(_ request: ActivateApplicationRequest) async throws -> BrokerResult {
+        let session = try await resolveSession(request.sessionID)
+        guard let pid = applicationLaunching.runningProcessID(bundleIdentifier: session.bundleIdentifier) else {
+            throw BrokerOperationError(code: .applicationNotRunning, message: "The session's application is not currently running")
+        }
+        let activated = applicationLaunching.activate(bundleIdentifier: session.bundleIdentifier)
+        await sessionManager.touchAction(sessionID: request.sessionID, description: "Activated application")
+        DocumentationAuditLog.record(tool: "activate_application", sessionID: request.sessionID, target: session.bundleIdentifier, outcome: activated ? "success" : "not_active")
+        return .applicationLaunch(ApplicationLaunchResultDTO(bundleIdentifier: session.bundleIdentifier, processID: pid, wasAlreadyRunning: true, isActive: activated))
+    }
+
+    // MARK: - WP8 inspect_ui / perform_ui_action / wait_for_ui
+
+    private static let minInspectDepth = 1
+    private static let maxInspectDepth = 12
+    private static let minInspectNodes = 1
+    private static let maxInspectNodes = 500
+    private static let minWaitTimeoutMilliseconds = 100
+    private static let maxWaitTimeoutMilliseconds = 15_000
+    private static let waitPollIntervalNanoseconds: UInt64 = 150_000_000
+    private static let waitSnapshotMaxDepth = 10
+    private static let waitSnapshotMaxNodes = 300
+
+    private func performInspectUI(_ request: InspectUIRequest) async throws -> BrokerResult {
+        let session = try await resolveSession(request.sessionID)
+        guard request.maxDepth >= Self.minInspectDepth, request.maxDepth <= Self.maxInspectDepth else {
+            throw BrokerOperationError(code: .invalidArgument, message: "max_depth must be between \(Self.minInspectDepth) and \(Self.maxInspectDepth)")
+        }
+        guard request.maxNodes >= Self.minInspectNodes, request.maxNodes <= Self.maxInspectNodes else {
+            throw BrokerOperationError(code: .invalidArgument, message: "max_nodes must be between \(Self.minInspectNodes) and \(Self.maxInspectNodes)")
+        }
+        guard let pid = applicationLaunching.runningProcessID(bundleIdentifier: session.bundleIdentifier) else {
+            throw BrokerOperationError(code: .applicationNotRunning, message: "The session's application is not currently running")
+        }
+
+        var rootHandle: (any Sendable)?
+        if let elementRef = request.elementRef {
+            switch await elementRegistry.resolve(ref: elementRef, sessionID: request.sessionID, pid: pid) {
+            case .success(let entry):
+                rootHandle = entry.handle
+            case .failure:
+                throw BrokerOperationError(code: .elementStale, message: "The requested root element reference is no longer valid")
+            }
+        }
+
+        let snapshot: AXInspectionSnapshot
+        do {
+            snapshot = try axInspecting.snapshot(pid: pid, root: rootHandle, maxDepth: request.maxDepth, maxNodes: request.maxNodes)
+        } catch {
+            throw BrokerOperationError(code: .applicationNotRunning, message: "Could not inspect the application's accessibility tree")
+        }
+
+        let generation = await elementRegistry.beginGeneration(sessionID: request.sessionID)
+        let rootDTO = await elementRegistry.registerTree(snapshot.root, sessionID: request.sessionID, pid: pid, generation: generation)
+        await sessionManager.touchAction(sessionID: request.sessionID, description: "Inspected UI")
+        DocumentationAuditLog.record(tool: "inspect_ui", sessionID: request.sessionID, target: session.bundleIdentifier, outcome: "success")
+
+        return .uiSnapshot(UISnapshotDTO(
+            sessionID: request.sessionID,
+            bundleIdentifier: session.bundleIdentifier,
+            processID: pid,
+            generation: generation,
+            windowTitle: snapshot.windowTitle,
+            root: rootDTO,
+            truncatedByDepth: snapshot.truncatedByDepth,
+            truncatedByNodeCount: snapshot.truncatedByNodeCount
+        ))
+    }
+
+    /// The security-critical path: every guard here must reject *before*
+    /// `axInspecting.performAction` is ever called
+    /// (`06-agent-documentation-security.md` section 8's verification
+    /// checklist maps directly onto these guards in order — stale ref,
+    /// secure field, blocked/unsupported action).
+    private func performPerformUIAction(_ request: PerformUIActionRequest) async throws -> BrokerResult {
+        let session = try await resolveSession(request.sessionID)
+        guard let pid = applicationLaunching.runningProcessID(bundleIdentifier: session.bundleIdentifier) else {
+            throw BrokerOperationError(code: .applicationNotRunning, message: "The session's application is not currently running")
+        }
+
+        if request.action == .setValue {
+            guard let value = request.value, value.count <= AXAutomationTextSanitizer.maxLength else {
+                throw BrokerOperationError(code: .invalidArgument, message: "value is required for setValue and must be at most \(AXAutomationTextSanitizer.maxLength) characters")
+            }
+        } else if request.value != nil {
+            throw BrokerOperationError(code: .invalidArgument, message: "value is only accepted for the setValue action")
+        }
+
+        let entry: UIElementRegistry.Entry
+        switch await elementRegistry.resolve(ref: request.elementRef, sessionID: request.sessionID, pid: pid) {
+        case .success(let resolved):
+            entry = resolved
+        case .failure:
+            DocumentationAuditLog.record(tool: "perform_ui_action", sessionID: request.sessionID, target: session.bundleIdentifier, outcome: "element_stale")
+            throw BrokerOperationError(code: .elementStale, message: "The requested element reference is no longer valid")
+        }
+
+        guard !SecureElementGuard.isSecure(role: entry.role, subrole: entry.subrole) else {
+            DocumentationAuditLog.record(tool: "perform_ui_action", sessionID: request.sessionID, target: session.bundleIdentifier, outcome: "action_blocked_secure")
+            throw BrokerOperationError(code: .actionBlocked, message: "This element is a secure field and cannot be acted on")
+        }
+        guard !DestructiveActionGuard.isBlocked(title: entry.title, description: entry.descriptionText) else {
+            DocumentationAuditLog.record(tool: "perform_ui_action", sessionID: request.sessionID, target: session.bundleIdentifier, outcome: "action_blocked_destructive")
+            throw BrokerOperationError(code: .actionBlocked, message: "This control is blocked by policy")
+        }
+        guard entry.advertisedActions.contains(request.action) else {
+            DocumentationAuditLog.record(tool: "perform_ui_action", sessionID: request.sessionID, target: session.bundleIdentifier, outcome: "action_blocked_unsupported")
+            throw BrokerOperationError(code: .actionBlocked, message: "This element does not support the requested action")
+        }
+
+        let performed: Bool
+        do {
+            performed = try axInspecting.performAction(pid: pid, handle: entry.handle, action: request.action, value: request.value)
+        } catch {
+            DocumentationAuditLog.record(tool: "perform_ui_action", sessionID: request.sessionID, target: session.bundleIdentifier, outcome: "action_failed")
+            throw BrokerOperationError(code: .actionBlocked, message: "The action could not be performed")
+        }
+
+        await sessionManager.touchAction(sessionID: request.sessionID, description: "Performed \(request.action.rawValue)")
+        DocumentationAuditLog.record(tool: "perform_ui_action", sessionID: request.sessionID, target: session.bundleIdentifier, outcome: performed ? "success" : "not_performed")
+        return .uiActionResult(UIActionResultDTO(sessionID: request.sessionID, elementRef: request.elementRef, action: request.action, performed: performed, role: entry.role))
+    }
+
+    /// Bounded backoff polling that only ever runs for the duration of this
+    /// one awaited call (`06-agent-documentation-security.md` section 4:
+    /// "Hard timeout and cancellation are required... No infinite/background
+    /// polling"). Checks `Task` cancellation and the session's Stop flag on
+    /// every tick — not only at entry — so a Stop invoked mid-wait ends this
+    /// call within one poll interval instead of running to the full
+    /// timeout (section 8: "Stop button cancels current wait/capture").
+    private func performWaitForUI(_ request: WaitForUIRequest) async throws -> BrokerResult {
+        let session = try await resolveSession(request.sessionID)
+        guard request.timeoutMilliseconds >= Self.minWaitTimeoutMilliseconds, request.timeoutMilliseconds <= Self.maxWaitTimeoutMilliseconds else {
+            throw BrokerOperationError(code: .invalidArgument, message: "timeout_ms must be between \(Self.minWaitTimeoutMilliseconds) and \(Self.maxWaitTimeoutMilliseconds)")
+        }
+        switch request.predicate {
+        case .enabledStateEquals, .focusedStateEquals:
+            guard request.elementRef != nil, request.expectedBool != nil else {
+                throw BrokerOperationError(code: .invalidArgument, message: "element_ref and expected_bool are required for this predicate")
+            }
+        case .elementAppears, .elementDisappears:
+            guard (request.roleQuery?.isEmpty == false) || (request.titleQuery?.isEmpty == false) else {
+                throw BrokerOperationError(code: .invalidArgument, message: "role_query or title_query is required for this predicate")
+            }
+        case .windowTitleContains:
+            guard request.titleQuery?.isEmpty == false else {
+                throw BrokerOperationError(code: .invalidArgument, message: "title_query is required for this predicate")
+            }
+        }
+        guard let pid = applicationLaunching.runningProcessID(bundleIdentifier: session.bundleIdentifier) else {
+            throw BrokerOperationError(code: .applicationNotRunning, message: "The session's application is not currently running")
+        }
+
+        let start = Date()
+        let deadline = start.addingTimeInterval(TimeInterval(request.timeoutMilliseconds) / 1000)
+
+        while true {
+            try Task.checkCancellation()
+            if await sessionManager.isStopRequested(request.sessionID) {
+                DocumentationAuditLog.record(tool: "wait_for_ui", sessionID: request.sessionID, target: session.bundleIdentifier, outcome: "stopped")
+                throw BrokerOperationError(code: .cancelled, message: "The documentation session was stopped")
+            }
+
+            if try await evaluateWaitPredicate(request, sessionID: request.sessionID, pid: pid) {
+                let elapsed = Int(Date().timeIntervalSince(start) * 1000)
+                await sessionManager.touchAction(sessionID: request.sessionID, description: "Wait satisfied: \(request.predicate.rawValue)")
+                DocumentationAuditLog.record(tool: "wait_for_ui", sessionID: request.sessionID, target: session.bundleIdentifier, outcome: "satisfied")
+                return .uiWaitResult(UIWaitResultDTO(sessionID: request.sessionID, satisfied: true, timedOut: false, elapsedMilliseconds: elapsed))
+            }
+
+            if Date() >= deadline {
+                let elapsed = Int(Date().timeIntervalSince(start) * 1000)
+                DocumentationAuditLog.record(tool: "wait_for_ui", sessionID: request.sessionID, target: session.bundleIdentifier, outcome: "timed_out")
+                return .uiWaitResult(UIWaitResultDTO(sessionID: request.sessionID, satisfied: false, timedOut: true, elapsedMilliseconds: elapsed))
+            }
+
+            try? await Task.sleep(nanoseconds: Self.waitPollIntervalNanoseconds)
+        }
+    }
+
+    private func evaluateWaitPredicate(_ request: WaitForUIRequest, sessionID: String, pid: Int32) async throws -> Bool {
+        switch request.predicate {
+        case .enabledStateEquals, .focusedStateEquals:
+            guard let ref = request.elementRef, let expected = request.expectedBool else { return false }
+            guard case .success(let entry) = await elementRegistry.resolve(ref: ref, sessionID: sessionID, pid: pid) else {
+                throw BrokerOperationError(code: .elementStale, message: "The requested element reference is no longer valid")
+            }
+            guard let state = axInspecting.currentState(pid: pid, handle: entry.handle) else { return false }
+            return request.predicate == .enabledStateEquals ? state.enabled == expected : state.focused == expected
+
+        case .elementAppears, .elementDisappears, .windowTitleContains:
+            let snapshot: AXInspectionSnapshot
+            do {
+                snapshot = try axInspecting.snapshot(pid: pid, root: nil, maxDepth: Self.waitSnapshotMaxDepth, maxNodes: Self.waitSnapshotMaxNodes)
+            } catch {
+                // The application may be transiently unavailable mid-wait
+                // (e.g. between windows); keep polling until the deadline
+                // rather than failing the whole call on one bad tick.
+                return false
+            }
+            if request.predicate == .windowTitleContains {
+                guard let query = request.titleQuery else { return false }
+                return snapshot.windowTitle.localizedCaseInsensitiveContains(query)
+            }
+            let found = Self.findNode(in: snapshot.root, roleQuery: request.roleQuery, titleQuery: request.titleQuery)
+            return request.predicate == .elementAppears ? found : !found
+        }
+    }
+
+    private static func findNode(in node: AXObservedNode, roleQuery: String?, titleQuery: String?) -> Bool {
+        let roleMatches = roleQuery.map { $0 == node.role } ?? true
+        let titleMatches = titleQuery.map { (node.title ?? "").localizedCaseInsensitiveContains($0) } ?? true
+        if roleMatches, titleMatches, roleQuery != nil || titleQuery != nil {
+            return true
+        }
+        return node.children.contains { findNode(in: $0, roleQuery: roleQuery, titleQuery: titleQuery) }
     }
 }
