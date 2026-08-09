@@ -315,6 +315,14 @@ struct HoverableDragBar: View {
                 .disabled(!viewModel.canRedo)
                 .opacity(viewModel.canRedo ? 1.0 : 0.4)
 
+                // Clear All Button
+                ActionToolButton(icon: "trash", color: .white, size: 10) {
+                    viewModel.clearAllElements()
+                }
+                .disabled(viewModel.elements.isEmpty)
+                .opacity(viewModel.elements.isEmpty ? 0.4 : 1.0)
+                .help("Clear all drawn shapes")
+
                 // Visible review badge (04-sensitive-redaction-spec.md section 6):
                 // shows how many regions are currently marked for redaction
                 // before the capture is confirmed.
