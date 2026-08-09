@@ -221,7 +221,8 @@ struct AISettingsView: View {
             }
             .padding(24)
         }
-        .frame(minWidth: 480, minHeight: 600)
+        .frame(width: 550)
+        .frame(maxHeight: SettingsSizing.maxContentHeight)
         .onAppear {
             loadKey()
             loadTranscriptionKey()

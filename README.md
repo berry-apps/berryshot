@@ -146,7 +146,7 @@ The server response should be a JSON payload. By specifying a path in **Callback
 
 BerryShot is **source-available** under the [PolyForm Noncommercial License 1.0.0](LICENSE).
 
-You may use, modify, and share it freely for **any noncommercial purpose** — personal use, study, research, hobby projects, and use by nonprofits, schools, or government. **Commercial use is not permitted.** For commercial licensing, contact [support@notex.work](mailto:support@notex.work).
+You may use, modify, and share it freely for **any noncommercial purpose** — personal use, study, research, hobby projects, and use by nonprofits, schools, or government. **Commercial use is not permitted.** For commercial licensing, contact [info@notex.work](mailto:info@notex.work).
 
 ---
 
