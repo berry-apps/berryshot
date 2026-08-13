@@ -62,6 +62,11 @@ public class CaptureCoordinator: ObservableObject {
                 self?.startApplicationWindowCapture()
             }
         }
+        HotkeyManager.shared.onAppWindowRecordingHotkey = { [weak self] in
+            Task { @MainActor in
+                self?.startApplicationWindowRecording()
+            }
+        }
         HotkeyManager.shared.registerHotkeys()
     }
 
@@ -310,6 +315,47 @@ public class CaptureCoordinator: ObservableObject {
         closeAIWindow()
     }
 
+    /// True while the current overlay session is actively recording, OR is
+    /// in the middle of starting/stopping one. `cancelCapture()` only hides/
+    /// drops the overlay — it never stops `RecordingManager` — so every
+    /// alternate capture/recording entry point below must check this first.
+    /// Skipping the check would silently deallocate the one `OverlayViewModel`
+    /// able to call `RecordingManager.stopRecording()`, orphaning its
+    /// stream/writer/mic session running forever with nothing left in the app
+    /// able to stop it.
+    ///
+    /// `isRecording` alone isn't enough: it only flips true after
+    /// `RecordingManager.startRecording(...)`'s several `await`s resolve, so
+    /// a second entry point triggered in that gap would see `isRecording ==
+    /// false` and slip through. `isProcessingRecord` is set synchronously,
+    /// before any `await`, the instant `handleRecordToggle()` is called
+    /// (`OverlayViewModel.swift`), so checking it too closes that window.
+    private var isOverlayRecording: Bool {
+        guard let viewModel = overlayWindowController?.viewModel else { return false }
+        return viewModel.isRecording || viewModel.isProcessingRecord
+    }
+
+    private func presentRecordingInProgressAlert() {
+        NSApp.activate(ignoringOtherApps: true)
+        let alert = NSAlert()
+        alert.messageText = "Recording In Progress"
+        alert.informativeText = "Stop the current recording before starting a new capture."
+        alert.alertStyle = .warning
+        alert.runModal()
+    }
+
+    /// Shared guard for every entry point below that would otherwise call
+    /// `cancelCapture()` on the current overlay — see `isOverlayRecording`'s
+    /// doc for why that's unsafe mid-recording. Returns false (after showing
+    /// the alert) when the caller must not proceed.
+    private func canReplaceOverlay() -> Bool {
+        guard !isOverlayRecording else {
+            presentRecordingInProgressAlert()
+            return false
+        }
+        return true
+    }
+
     // MARK: - Scroll Capture
 
     /// Convert an overlay-local rect (top-left origin, relative to `screen`) into global
@@ -323,7 +369,22 @@ public class CaptureCoordinator: ObservableObject {
                       height: local.height)
     }
 
+    /// The inverse of `globalRect(fromLocal:on:)` above — converts a global
+    /// CG top-left-origin rect (the space `WindowDescriptor.frameInScreenPoints`
+    /// is already in) into overlay-local coordinates for `displayID`'s screen.
+    /// Kept next to its inverse so the two coordinate conversions used by
+    /// this file can't silently drift apart from each other.
+    private static func localRect(fromGlobal global: CGRect, displayID: CGDirectDisplayID) -> CGRect {
+        let bounds = CGDisplayBounds(displayID)
+        return CGRect(x: global.minX - bounds.origin.x,
+                      y: global.minY - bounds.origin.y,
+                      width: global.width,
+                      height: global.height)
+    }
+
     public func startScrollCapture() {
+        guard canReplaceOverlay() else { return }
+
         // Save region selection (overlay-local, top-left origin) and its screen before closing overlay
         let localRegion = overlayWindowController?.viewModel?.selectionRect
         let overlayScreen = overlayWindowController?.window?.screen ?? captureScreen
@@ -362,6 +423,7 @@ public class CaptureCoordinator: ObservableObject {
     /// Opens the single-frame selector. Unlike Scroll Capture this path never
     /// requests Accessibility permission and never enters the scroll workflow.
     public func startApplicationWindowCapture() {
+        guard canReplaceOverlay() else { return }
         cancelCapture()
         showApplicationWindowSelector()
     }
@@ -459,6 +521,105 @@ public class CaptureCoordinator: ObservableObject {
                 noticeMessage: "One or more windows changed before capture. The list was refreshed once."
             )
         }
+    }
+
+    // MARK: - Application and Window Recording
+
+    /// Opens the single-window selector for recording. Like Capture App or
+    /// Window, this never requests Accessibility permission (only Scroll
+    /// Capture's scroll-simulation needs that).
+    public func startApplicationWindowRecording() {
+        guard canReplaceOverlay() else { return }
+        cancelCapture()
+        showRecordingWindowSelector()
+    }
+
+    private func showRecordingWindowSelector(noticeMessage: String? = nil) {
+        WindowSelectorPanelController.shared.show(
+            mode: .recordingTarget,
+            noticeMessage: noticeMessage
+        ) { [weak self] selection in
+            guard let self else { return }
+            Task { @MainActor in
+                await self.beginWindowRecording(selection)
+            }
+        }
+    }
+
+    /// Seeds a normal capture overlay session from a picked window instead
+    /// of a drag, then immediately starts recording — everything past that
+    /// (pause/resume, mic mute, annotate, stop, AI doc generation) is the
+    /// same overlay-driven recording session a manual region recording uses.
+    private func beginWindowRecording(_ selection: WindowSelectorSelection) async {
+        guard let route = ApplicationWindowCaptureRouter.route(for: selection) else {
+            showRecordingWindowSelector(
+                noticeMessage: "The frontmost window is no longer available. The list was refreshed once."
+            )
+            return
+        }
+
+        let descriptor: WindowDescriptor
+        switch route {
+        case let .selectedWindow(d), let .applicationWindow(d):
+            descriptor = d
+        case .applicationWindows:
+            // The `.recordingTarget` selector never offers "capture all
+            // windows" (see `WindowSelectorPresentationMode.allowsBatchAllWindows`),
+            // so this case cannot actually be produced from that UI.
+            return
+        }
+
+        guard let screen = Self.screen(containing: descriptor.frameInScreenPoints), let displayID = screen.displayID else {
+            presentApplicationWindowRecordingError(
+                NSError(domain: "CaptureCoordinator", code: 1, userInfo: [NSLocalizedDescriptionKey: "Could not determine which display \"\(descriptor.applicationName)\" is on."])
+            )
+            return
+        }
+
+        do {
+            let cgImage = try await captureManager.captureDisplay(displayID)
+            self.captureScreen = screen
+            let controller = OverlayWindowController(cgImage: cgImage, display: screen)
+            self.overlayWindowController = controller
+            controller.show()
+
+            let localRect = Self.localRect(fromGlobal: descriptor.frameInScreenPoints.cgRect, displayID: displayID)
+            controller.viewModel.selectWindow(localRect: localRect, descriptor: descriptor)
+            controller.viewModel.handleRecordToggle()
+        } catch {
+            presentApplicationWindowRecordingError(error)
+        }
+    }
+
+    /// The screen whose display bounds contain a window's global frame —
+    /// the same CG top-left-origin coordinate space `globalRect(fromLocal:on:)`
+    /// below already relies on, since `WindowDescriptor.frameInScreenPoints`
+    /// is already in that space. Internal (not private) so it's directly
+    /// unit-testable via `@testable import`.
+    static func screen(containing frameInScreenPoints: CGRectDTO) -> NSScreen? {
+        let center = CGPoint(
+            x: frameInScreenPoints.x + frameInScreenPoints.width / 2,
+            y: frameInScreenPoints.y + frameInScreenPoints.height / 2
+        )
+        return NSScreen.screens.first { screen in
+            guard let displayID = screen.displayID else { return false }
+            return CGDisplayBounds(displayID).contains(center)
+        }
+    }
+
+    private func presentApplicationWindowRecordingError(_ error: Error) {
+        if isStaleWindowError(error) {
+            showRecordingWindowSelector(
+                noticeMessage: "\(error.localizedDescription) The list was refreshed once."
+            )
+            return
+        }
+
+        let alert = NSAlert()
+        alert.messageText = "Record App or Window Failed"
+        alert.informativeText = error.localizedDescription
+        alert.alertStyle = .critical
+        alert.runModal()
     }
 
     /// Captures only the descriptor selected in the current discovery snapshot,

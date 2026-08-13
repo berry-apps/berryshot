@@ -26,6 +26,12 @@ public struct Shortcut: Codable, Equatable, Sendable {
         // macOS's own reserved Cmd+Shift+3/4/5/6 screenshot shortcuts.
         modifierFlags: NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue
     )
+
+    public static let defaultAppWindowRecordingShortcut = Shortcut(
+        keyCode: 25, // 9 — avoids the other in-app defaults (2, 7, 8) and
+        // macOS's own reserved Cmd+Shift+3/4/5/6 screenshot shortcuts.
+        modifierFlags: NSEvent.ModifierFlags.command.rawValue | NSEvent.ModifierFlags.shift.rawValue
+    )
     
     public var displayString: String {
         var str = ""
