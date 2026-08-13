@@ -8,18 +8,21 @@ public class HotkeyManager {
     private var captureHotKeyRef: EventHotKeyRef?
     private var scrollHotKeyRef: EventHotKeyRef?
     private var appWindowHotKeyRef: EventHotKeyRef?
+    private var appWindowRecordingHotKeyRef: EventHotKeyRef?
     private var eventHandler: EventHandlerRef?
     private var localMonitor: Any?
 
     public var onCaptureHotkey: (() -> Void)?
     public var onScrollCaptureHotkey: (() -> Void)?
     public var onAppWindowCaptureHotkey: (() -> Void)?
+    public var onAppWindowRecordingHotkey: (() -> Void)?
 
     private init() {}
 
     private static let captureHotKeyID: UInt32 = 1
     private static let scrollHotKeyID: UInt32 = 2
     private static let appWindowHotKeyID: UInt32 = 3
+    private static let appWindowRecordingHotKeyID: UInt32 = 4
 
     private var signature: OSType {
         OSType("bshT".utf8.reduce(0) { $0 << 8 | OSType($1) })
@@ -45,6 +48,10 @@ public class HotkeyManager {
         shortcut(forKey: "appWindowCaptureShortcut", fallback: .defaultAppWindowCaptureShortcut)
     }
 
+    private var appWindowRecordingShortcut: Shortcut {
+        shortcut(forKey: "appWindowRecordingShortcut", fallback: .defaultAppWindowRecordingShortcut)
+    }
+
     private func carbonModifiers(for shortcut: Shortcut) -> UInt32 {
         var mods: UInt32 = 0
         let flags = NSEvent.ModifierFlags(rawValue: shortcut.modifierFlags)
@@ -67,6 +74,7 @@ public class HotkeyManager {
         let capture = captureShortcut
         let scroll = scrollShortcut
         let appWindow = appWindowShortcut
+        let appWindowRecording = appWindowRecordingShortcut
 
         // Register Carbon hotkeys (global, work even when app is in background)
         let captureID = EventHotKeyID(signature: signature, id: Self.captureHotKeyID)
@@ -77,6 +85,9 @@ public class HotkeyManager {
 
         let appWindowID = EventHotKeyID(signature: signature, id: Self.appWindowHotKeyID)
         RegisterEventHotKey(UInt32(appWindow.keyCode), carbonModifiers(for: appWindow), appWindowID, GetApplicationEventTarget(), 0, &appWindowHotKeyRef)
+
+        let appWindowRecordingID = EventHotKeyID(signature: signature, id: Self.appWindowRecordingHotKeyID)
+        RegisterEventHotKey(UInt32(appWindowRecording.keyCode), carbonModifiers(for: appWindowRecording), appWindowRecordingID, GetApplicationEventTarget(), 0, &appWindowRecordingHotKeyRef)
 
         // Install a single event handler that dispatches by hotkey id
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
@@ -98,6 +109,8 @@ public class HotkeyManager {
                     HotkeyManager.shared.onScrollCaptureHotkey?()
                 } else if id == HotkeyManager.appWindowHotKeyID {
                     HotkeyManager.shared.onAppWindowCaptureHotkey?()
+                } else if id == HotkeyManager.appWindowRecordingHotKeyID {
+                    HotkeyManager.shared.onAppWindowRecordingHotkey?()
                 }
             }
             return noErr
@@ -126,6 +139,10 @@ public class HotkeyManager {
                 self.onAppWindowCaptureHotkey?()
                 return nil
             }
+            if matches(appWindowRecording) {
+                self.onAppWindowRecordingHotkey?()
+                return nil
+            }
             return event
         }
     }
@@ -142,6 +159,10 @@ public class HotkeyManager {
         if let ref = appWindowHotKeyRef {
             UnregisterEventHotKey(ref)
             appWindowHotKeyRef = nil
+        }
+        if let ref = appWindowRecordingHotKeyRef {
+            UnregisterEventHotKey(ref)
+            appWindowRecordingHotKeyRef = nil
         }
         if let handler = eventHandler {
             RemoveEventHandler(handler)

@@ -20,11 +20,13 @@ public struct WindowInfo: Identifiable, Hashable {
 public enum WindowSelectorPresentationMode: Sendable, Equatable {
     case scrollCapture
     case singleFrameCapture
+    case recordingTarget
 
     fileprivate var title: String {
         switch self {
         case .scrollCapture: "Scroll Capture"
         case .singleFrameCapture: "Capture App or Window"
+        case .recordingTarget: "Record App or Window"
         }
     }
 
@@ -32,6 +34,7 @@ public enum WindowSelectorPresentationMode: Sendable, Equatable {
         switch self {
         case .scrollCapture: "Select a window to capture its full scrollable content"
         case .singleFrameCapture: "Select one window, or capture eligible windows from one app"
+        case .recordingTarget: "Select one window to record — the recording follows it if it moves or resizes"
         }
     }
 
@@ -39,6 +42,7 @@ public enum WindowSelectorPresentationMode: Sendable, Equatable {
         switch self {
         case .scrollCapture: "scroll"
         case .singleFrameCapture: "macwindow.on.rectangle"
+        case .recordingTarget: "record.circle"
         }
     }
 
@@ -46,7 +50,15 @@ public enum WindowSelectorPresentationMode: Sendable, Equatable {
         switch self {
         case .scrollCapture: "Scroll Capture — Select Window"
         case .singleFrameCapture: "Capture App or Window"
+        case .recordingTarget: "Record App or Window"
         }
+    }
+
+    /// A single video stream can only ever target one window, so unlike
+    /// screenshots this mode never offers "capture every window of this app"
+    /// as one batch action.
+    fileprivate var allowsBatchAllWindows: Bool {
+        self == .singleFrameCapture
     }
 }
 
@@ -243,7 +255,7 @@ public struct WindowSelectorView: View {
         switch viewModel.mode {
         case .scrollCapture:
             windowGrid
-        case .singleFrameCapture:
+        case .singleFrameCapture, .recordingTarget:
             VStack(spacing: 0) {
                 if let notice = viewModel.noticeMessage {
                     Label(notice, systemImage: "arrow.clockwise")
@@ -293,7 +305,7 @@ public struct WindowSelectorView: View {
         ScrollView {
             LazyVGrid(columns: columns, spacing: 16) {
                 ForEach(viewModel.applications) { application in
-                    ApplicationCardView(application: application, onSelect: onSelect)
+                    ApplicationCardView(application: application, mode: viewModel.mode, onSelect: onSelect)
                 }
             }
             .padding(16)
@@ -372,6 +384,7 @@ struct WindowCardView: View {
 
 struct ApplicationCardView: View {
     let application: ApplicationInfo
+    let mode: WindowSelectorPresentationMode
     let onSelect: (WindowSelectorSelection) -> Void
 
     var body: some View {
@@ -397,20 +410,33 @@ struct ApplicationCardView: View {
             }
 
             if application.frontmostWindow != nil {
-                Button("Capture Frontmost Window") {
+                Button(mode == .recordingTarget ? "Record Frontmost Window" : "Capture Frontmost Window") {
                     onSelect(.application(application, policy: .frontmostWindow))
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else if mode == .recordingTarget, let firstWindow = application.windows.first {
+                // Recording (unlike screenshots) never falls back to "capture
+                // all windows" for a non-frontmost app — without this, every
+                // app card except the one system-frontmost app would render
+                // with zero buttons at all, i.e. be entirely unclickable.
+                Button("Record Window") {
+                    onSelect(.window(firstWindow))
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            Button("Capture All Windows") {
-                onSelect(.application(application, policy: .allOnScreenWindows))
+            if mode.allowsBatchAllWindows {
+                Button("Capture All Windows") {
+                    onSelect(.application(application, policy: .allOnScreenWindows))
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(12)
         .background(
@@ -443,17 +469,27 @@ public class WindowSelectorPanelController {
         noticeMessage: String? = nil,
         onSelect: @escaping (WindowSelectorSelection) -> Void
     ) {
-        // If a panel already exists and is still on screen, just bring it forward.
-        // If it exists but is no longer visible (e.g. it was closed via the native
-        // close button, which does NOT route through close()), reset our state so a
-        // fresh panel can be created instead of being blocked forever.
+        // If a panel already exists, is still on screen, AND is showing the
+        // same mode being requested again, just bring it forward. If it's
+        // visible but showing a *different* mode (e.g. "Capture App or
+        // Window" left open and "Record App or Window" is requested next),
+        // properly close it first — otherwise picking a window there would
+        // silently run the earlier request's stale onSelect action instead
+        // of this one. If it exists but is no longer visible (e.g. it was
+        // closed via the native close button, which does NOT route through
+        // close()), just reset our bookkeeping so a fresh panel can be
+        // created instead of being blocked forever.
         if let existing = panel {
             if existing.isVisible {
-                existing.makeKeyAndOrderFront(nil)
-                NSApp.activate(ignoringOtherApps: true)
-                return
+                if viewModel?.mode == mode {
+                    existing.makeKeyAndOrderFront(nil)
+                    NSApp.activate(ignoringOtherApps: true)
+                    return
+                }
+                close()
+            } else {
+                resetState()
             }
-            resetState()
         }
 
         let vm = WindowSelectorViewModel(mode: mode, noticeMessage: noticeMessage)

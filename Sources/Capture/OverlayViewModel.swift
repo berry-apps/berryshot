@@ -82,6 +82,12 @@ final class OverlayViewModel: ObservableObject {
     @Published var isPaused = false
     @Published var isProcessingRecord = false
     @Published var isMicMuted = false
+    /// Set (via `selectWindow(localRect:descriptor:)`) when this session was
+    /// started from "Record App or Window…" instead of a manual drag — nil
+    /// for every ordinary region recording. Read once, at the moment
+    /// recording actually starts in `handleRecordToggle()`.
+    var recordingWindowDescriptor: WindowDescriptor?
+    private var windowRecordingLossCancellable: AnyCancellable?
     
     @Published var isUpscaleEnabled = false
     @Published var showLiveNotes = false
@@ -351,12 +357,13 @@ final class OverlayViewModel: ObservableObject {
 
         // Stop recording if active before closing
         if isRecording {
+            stopObservingWindowRecordingLoss()
             Task { @MainActor in
                 _ = try? await RecordingManager.shared.stopRecording()
                 isRecording = false
             }
         }
-        
+
         // If the user hasn't finished selecting a region yet, ESC should always cancel the capture.
         if !isSelectingFinished {
             CaptureCoordinator.shared.cancelCapture()
@@ -439,6 +446,7 @@ final class OverlayViewModel: ObservableObject {
     
     func handleCancel() {
         if isRecording {
+            stopObservingWindowRecordingLoss()
             Task { @MainActor in
                 _ = try? await RecordingManager.shared.stopRecording()
                 isRecording = false
@@ -451,6 +459,33 @@ final class OverlayViewModel: ObservableObject {
     func toggleMicMute() {
         RecordingManager.shared.toggleMicMute()
         isMicMuted = RecordingManager.shared.isMicMuted
+    }
+
+    /// Only relevant for a window-sourced recording: watches
+    /// `RecordingManager`'s "the target window disappeared" signal and, if it
+    /// fires, stops recording through the exact same path a user clicking
+    /// Stop would (`handleRecordToggle()`) — so the save/upload/file-viewer/
+    /// AI-doc-gen logic below never needs to be duplicated. Deliberately no
+    /// `.first()`/one-shot operator here: `handleRecordToggle()` itself
+    /// no-ops while a stop is already in flight (`isProcessingRecord`), and a
+    /// self-cancelling subscription could otherwise permanently miss the
+    /// signal if it raced that in-flight guard. `stopObservingWindowRecordingLoss()`
+    /// explicitly tears this down on every stop path instead, so it never
+    /// outlives a single recording session.
+    private func observeWindowRecordingLoss() {
+        windowRecordingLossCancellable = RecordingManager.shared.$windowRecordingDidDisappear
+            .filter { $0 }
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                guard let self, self.isRecording else { return }
+                self.handleRecordToggle()
+            }
+    }
+
+    private func stopObservingWindowRecordingLoss() {
+        windowRecordingLossCancellable?.cancel()
+        windowRecordingLossCancellable = nil
+        recordingWindowDescriptor = nil
     }
 
     func toggleLiveNotes() {
@@ -537,6 +572,16 @@ final class OverlayViewModel: ObservableObject {
         let y = (cachedGeometrySize.height - h) / 2
         selectionRect = CGRect(x: x, y: y, width: w, height: h)
         isSelectingFinished = true
+    }
+
+    /// Seeds the selection from a picked "Record App or Window…" target
+    /// instead of a drag, and remembers the window so `handleRecordToggle()`
+    /// starts a window-locked recording (which tracks the window natively at
+    /// the ScreenCaptureKit level) instead of a fixed-region one.
+    func selectWindow(localRect: CGRect, descriptor: WindowDescriptor) {
+        selectionRect = localRect
+        isSelectingFinished = true
+        recordingWindowDescriptor = descriptor
     }
     
     func getHandle(at point: CGPoint) -> Handle? {
@@ -1399,11 +1444,12 @@ dragMode = .movingElements(originals)
             defer { isProcessingRecord = false }
             
             if isRecording {
+                stopObservingWindowRecordingLoss()
                 do {
                     let urls = try await RecordingManager.shared.stopRecording()
                     let localUploader = LocalUploadService()
                     let finalVideoURL = try await localUploader.uploadImage(fileURL: urls.videoURL)
-                    
+
                     print("Recording saved to: \(finalVideoURL.path)")
                     isRecording = false
                     NSWorkspace.shared.activateFileViewerSelecting([finalVideoURL])
@@ -1462,14 +1508,20 @@ dragMode = .movingElements(originals)
                 NSApp.activate(ignoringOtherApps: true)
                 
                 do {
-                    let screen = parentWindow?.screen ?? NSScreen.main
-                    let displayID = screen?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID ?? CGMainDisplayID()
-                    try await RecordingManager.shared.startRecording(region: selectionRect, displayID: displayID, excludingWindowIDs: [])
+                    if let descriptor = recordingWindowDescriptor {
+                        try await RecordingManager.shared.startRecording(windowDescriptor: descriptor)
+                        observeWindowRecordingLoss()
+                    } else {
+                        let screen = parentWindow?.screen ?? NSScreen.main
+                        let displayID = screen?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID ?? CGMainDisplayID()
+                        try await RecordingManager.shared.startRecording(region: selectionRect, displayID: displayID, excludingWindowIDs: [])
+                    }
                     isRecording = true
-                    
+
                 } catch {
                     isRecording = false
-                    
+                    recordingWindowDescriptor = nil
+
                     await MainActor.run {
                         NSApp.activate(ignoringOtherApps: true)
                         let alert = NSAlert()

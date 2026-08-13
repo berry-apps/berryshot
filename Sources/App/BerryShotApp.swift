@@ -30,6 +30,7 @@ struct MenuView: View {
     @AppStorage("captureShortcut") private var shortcutData: Data = Data()
     @AppStorage("scrollCaptureShortcut") private var scrollShortcutData: Data = Data()
     @AppStorage("appWindowCaptureShortcut") private var appWindowShortcutData: Data = Data()
+    @AppStorage("appWindowRecordingShortcut") private var appWindowRecordingShortcutData: Data = Data()
 
     private var currentShortcut: Shortcut {
         if let decoded = try? JSONDecoder().decode(Shortcut.self, from: shortcutData) {
@@ -52,10 +53,18 @@ struct MenuView: View {
         return Shortcut.defaultAppWindowCaptureShortcut
     }
 
+    private var currentAppWindowRecordingShortcut: Shortcut {
+        if let decoded = try? JSONDecoder().decode(Shortcut.self, from: appWindowRecordingShortcutData) {
+            return decoded
+        }
+        return Shortcut.defaultAppWindowRecordingShortcut
+    }
+
     var body: some View {
         let shortcut = currentShortcut
         let scrollShortcut = currentScrollShortcut
         let appWindowShortcut = currentAppWindowShortcut
+        let appWindowRecordingShortcut = currentAppWindowRecordingShortcut
         let captureButton = Button("Capture Region") {
             Task {
                 await captureCoordinator.startCapture()
@@ -84,6 +93,15 @@ struct MenuView: View {
             scrollButton.keyboardShortcut(scrollKey, modifiers: scrollShortcut.swiftuiModifiers)
         } else {
             scrollButton
+        }
+
+        let appWindowRecordingButton = Button("Record App or Window…") {
+            captureCoordinator.startApplicationWindowRecording()
+        }
+        if let appWindowRecordingKey = appWindowRecordingShortcut.swiftuiKeyEquivalent {
+            appWindowRecordingButton.keyboardShortcut(appWindowRecordingKey, modifiers: appWindowRecordingShortcut.swiftuiModifiers)
+        } else {
+            appWindowRecordingButton
         }
         
         if !documentationIndicator.activeSessions.isEmpty {

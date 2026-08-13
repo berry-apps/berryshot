@@ -28,6 +28,14 @@ struct GeneralSettingsView: View {
         return Shortcut.defaultAppWindowCaptureShortcut
     }()
 
+    @State private var appWindowRecordingShortcut: Shortcut = {
+        if let data = UserDefaults.standard.data(forKey: "appWindowRecordingShortcut"),
+           let decoded = try? JSONDecoder().decode(Shortcut.self, from: data) {
+            return decoded
+        }
+        return Shortcut.defaultAppWindowRecordingShortcut
+    }()
+
     @State private var launchAtLogin = false
 
     @State private var toolbarPosition: ToolbarPosition = {
@@ -70,6 +78,12 @@ struct GeneralSettingsView: View {
                         Text("Capture App or Window Shortcut:")
                             .frame(width: 220, alignment: .leading)
                         ShortcutRecorderView(shortcut: $appWindowShortcut, defaultsKey: "appWindowCaptureShortcut")
+                            .frame(width: 150, height: 24)
+                    }
+                    HStack {
+                        Text("Record App or Window Shortcut:")
+                            .frame(width: 220, alignment: .leading)
+                        ShortcutRecorderView(shortcut: $appWindowRecordingShortcut, defaultsKey: "appWindowRecordingShortcut")
                             .frame(width: 150, height: 24)
                     }
                     HStack {
