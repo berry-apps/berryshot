@@ -9,10 +9,25 @@ import SwiftUI
 public class CaptureResultWindowController: NSWindowController {
     public static var activeControllers: [CaptureResultWindowController] = []
 
+    /// Nothing ever closes an old result window on its own — the user has to
+    /// click Close/Esc on every single one. Each holds a full-resolution
+    /// decoded image (tens of MB for a Retina capture), and repeated
+    /// captures without dismissing the previous preview accumulate windows
+    /// without limit: this is reachable, intentional state (every window is
+    /// still in `activeControllers`), so it never shows up as a "leak" to
+    /// ARC/`leaks`, but it is exactly why memory climbs with capture count
+    /// and never comes back down on its own, even after leaving the app
+    /// idle. Generous enough to comfortably fit a real "capture all windows
+    /// of one app" batch; still a hard, finite ceiling instead of no ceiling
+    /// at all.
+    private static let maxConcurrentWindows = 12
+
     /// Batch "capture whole app" can show several of these at once (one per
     /// window); cascading instead of centering every one on top of the last
     /// keeps them all reachable instead of only the topmost being visible.
     private static var lastCascadePoint: NSPoint = .zero
+
+    private var closeObserver: NSObjectProtocol?
 
     public convenience init(
         cgImage: CGImage,
@@ -69,8 +84,14 @@ public class CaptureResultWindowController: NSWindowController {
         window.level = .floating // ensure it appears above other windows
         window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
 
-        let view = CaptureResultView(image: nsImage, filenamePrefix: filenamePrefix) {
-            window.close()
+        // `window.contentView` (transitively) holds `view`, so a *strong*
+        // capture of `window` here would retain window -> contentView ->
+        // view -> this closure -> window: a cycle keeping the window (and
+        // its full-resolution `nsImage`) alive forever, for every single
+        // capture shown, even after the window is closed and its controller
+        // removed from `activeControllers`.
+        let view = CaptureResultView(image: nsImage, filenamePrefix: filenamePrefix) { [weak window] in
+            window?.close()
         }
 
         window.contentView = NSHostingView(rootView: view)
@@ -78,11 +99,42 @@ public class CaptureResultWindowController: NSWindowController {
         self.init(window: window)
 
         CaptureResultWindowController.activeControllers.append(self)
-        NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: nil) { [weak self] _ in
+        // Enforce the ceiling by closing the oldest surviving windows first
+        // — closing (rather than just dropping the array entry) runs the
+        // exact same teardown path as the user clicking Close, so the
+        // window/image actually deallocate instead of merely losing this
+        // one reference.
+        while CaptureResultWindowController.activeControllers.count > Self.maxConcurrentWindows {
+            let oldest = CaptureResultWindowController.activeControllers.removeFirst()
+            // `oldest` is already out of `activeControllers` here, so it is
+            // the *only* strong reference keeping it alive — once this loop
+            // iteration ends, ARC can deallocate it immediately, before the
+            // `willCloseNotification` handler's `Task { @MainActor in ... }`
+            // below ever gets a run-loop turn to execute its weakly-captured
+            // `self`. That would skip `removeObserver` entirely, leaking the
+            // registration. Remove it here, synchronously, instead of
+            // relying on that handler for this path.
+            if let token = oldest.closeObserver {
+                NotificationCenter.default.removeObserver(token)
+                oldest.closeObserver = nil
+            }
+            oldest.window?.close()
+        }
+        // Every capture (single, batch-per-window, and scroll) creates one of
+        // these, and the app stays running in the menu bar all day — an
+        // observer registered without ever being removed accumulates one
+        // permanent NotificationCenter entry per screenshot for the life of
+        // the process. Self-remove it as soon as it fires.
+        let observer = NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: nil) { [weak self] _ in
             Task { @MainActor in
+                guard let self else { return }
                 CaptureResultWindowController.activeControllers.removeAll { $0 === self }
+                if let token = self.closeObserver {
+                    NotificationCenter.default.removeObserver(token)
+                }
             }
         }
+        self.closeObserver = observer
     }
 
     public func show() {
