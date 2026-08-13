@@ -12,7 +12,7 @@ public final class UpdateManager: Sendable {
     
     public func checkForUpdates(showUI: Bool = true) async {
         do {
-            let url = URL(string: "https://berryshot-download.notex.work/version.json")!
+            let url = URL(string: "https://download-shot.berryhub.app/version.json")!
             let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
             let (data, response) = try await URLSession.shared.data(for: request)
             
