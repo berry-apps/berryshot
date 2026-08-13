@@ -39,7 +39,7 @@ struct AboutSettingsView: View {
                     Text("BerryShot")
                         .font(.system(size: 28, weight: .bold))
                     
-                    Text("Version 2.0.1")
+                    Text("Version 2.1.0")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
@@ -79,7 +79,7 @@ struct AboutSettingsView: View {
                     HStack(spacing: 4) {
                         Text("Website:")
                             .foregroundColor(.secondary)
-                        Link("https://notex.work", destination: URL(string: "https://notex.work")!)
+                        Link("https://shot.berryhub.app", destination: URL(string: "https://shot.berryhub.app")!)
                             .buttonStyle(.plain)
                             .foregroundColor(.accentColor)
                     }
@@ -164,7 +164,7 @@ struct AboutSettingsView: View {
         
         Task {
             do {
-                let url = URL(string: "https://berryshot-download.notex.work/version.json")!
+                let url = URL(string: "https://download-shot.berryhub.app/version.json")!
                 let request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
                 let (data, response) = try await URLSession.shared.data(for: request)
                 
