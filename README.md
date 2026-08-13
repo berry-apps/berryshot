@@ -38,7 +38,7 @@ For precompiled releases, user guides, and developer articles, visit the officia
 
 You can download precompiled versions of BerryShot:
 
-1. **DMG Installer**: Download [BerryShot.dmg](https://berryshot-download.notex.work/BerryShot.dmg), open it, and drag BerryShot into your Applications folder.
+1. **DMG Installer**: Download [BerryShot.dmg](https://download-shot.berryhub.app/BerryShot.dmg), open it, and drag BerryShot into your Applications folder.
 2. **Official site**: Browse all releases and download from the official site — [notex.work](https://notex.work).
 
 ---

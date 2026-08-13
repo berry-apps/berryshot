@@ -645,7 +645,7 @@ struct ShortcutsHelpView: View {
             HStack {
                 Spacer()
                 Button(action: {
-                    if let url = URL(string: "https://notex.work") {
+                    if let url = URL(string: "https://shot.berryhub.app") {
                         NSWorkspace.shared.open(url)
                     }
                 }) {
