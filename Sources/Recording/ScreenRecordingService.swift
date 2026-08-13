@@ -132,9 +132,20 @@ public class ScreenRecordingService: NSObject, SCStreamOutput, SCStreamDelegate,
     public func stopRecording() async throws -> URL? {
         micSession?.stopRunning()
         micSession = nil
-        
+
         try await stream?.stopCapture()
+        // `stream`/`writer` previously stayed retained (and their
+        // SCStream/XPC connection to the system capture daemon un-torn-down)
+        // until the next `startRecording` overwrote them, instead of being
+        // released as soon as recording actually stops.
+        if let stream {
+            try? stream.removeStreamOutput(self, type: .screen)
+            try? stream.removeStreamOutput(self, type: .audio)
+        }
+        stream = nil
+        currentConfig = nil
         try await writer?.finishRecording()
+        writer = nil
         return outputURL
     }
     
