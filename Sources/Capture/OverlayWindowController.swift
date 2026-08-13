@@ -453,8 +453,12 @@ class TrackingHostingView<Content: SwiftUI.View>: NSHostingView<Content> {
             if vm.elementAt(point: swiftUIPoint) != nil {
                 return super.hitTest(point) ?? self
             }
-            // Is it over a selection handle? (To allow resizing the recording area)
-            if vm.getHandle(at: swiftUIPoint) != nil {
+            // Is it over a selection handle? (To allow resizing the recording
+            // area.) Not for a window-sourced session: the capture is locked
+            // to the window itself (RecordingManager.updateRegion no-ops for
+            // it), so grabbing this handle would only drag a selection box
+            // that no longer has any effect on what's actually recorded.
+            if vm.recordingWindowDescriptor == nil, vm.getHandle(at: swiftUIPoint) != nil {
                 return super.hitTest(point) ?? self
             }
             

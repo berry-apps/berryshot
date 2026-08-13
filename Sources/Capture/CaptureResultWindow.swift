@@ -168,13 +168,23 @@ struct CaptureResultView: View {
                 }
                 .keyboardShortcut("c", modifiers: .command)
                 .buttonStyle(.borderedProminent)
+                .focusable(false)
+
+                Button(action: {
+                    saveDirectly()
+                }) {
+                    Label("Save (⏎)", systemImage: "square.and.arrow.down")
+                }
+                .keyboardShortcut(.return, modifiers: [])
+                .focusable(false)
 
                 Button(action: {
                     saveToDisk()
                 }) {
-                    Label("Save... (⌘S)", systemImage: "square.and.arrow.down")
+                    Label("Save As... (⌘S)", systemImage: "square.and.arrow.down.on.square")
                 }
                 .keyboardShortcut("s", modifiers: .command)
+                .focusable(false)
 
                 Button(action: {
                     uploadToCloud()
@@ -182,6 +192,7 @@ struct CaptureResultView: View {
                     Label("Upload (⌘U)", systemImage: "icloud.and.arrow.up")
                 }
                 .keyboardShortcut("u", modifiers: .command)
+                .focusable(false)
 
                 Spacer()
 
@@ -189,6 +200,7 @@ struct CaptureResultView: View {
                     onClose()
                 }
                 .keyboardShortcut(.escape, modifiers: [])
+                .focusable(false)
             }
             .padding()
             .background(VisualEffectBackground().ignoresSafeArea())
@@ -211,31 +223,70 @@ struct CaptureResultView: View {
         }
     }
 
-    private func saveToDisk() {
-        let savePanel = NSSavePanel()
-        savePanel.allowedContentTypes = [.png]
-        savePanel.nameFieldStringValue = "\(filenamePrefix)-\(Int(Date().timeIntervalSince1970)).png"
+    /// Shared by every save/upload path below so the tiff → `NSBitmapImageRep`
+    /// → PNG encoding sequence exists exactly once.
+    private func encodedPNGData() -> Data? {
+        guard let tiff = image.tiffRepresentation,
+              let rep = NSBitmapImageRep(data: tiff) else { return nil }
+        return rep.representation(using: .png, properties: [:])
+    }
 
-        if savePanel.runModal() == .OK, let url = savePanel.url {
-            if let tiff = image.tiffRepresentation, let rep = NSBitmapImageRep(data: tiff) {
-                if let png = rep.representation(using: .png, properties: [:]) {
-                    try? png.write(to: url)
+    private func timestampedFileName() -> String {
+        "\(filenamePrefix)-\(Int(Date().timeIntervalSince1970)).png"
+    }
+
+    /// One-click save to the already-configured default local directory
+    /// (`StorageConfiguration.defaultLocalDirectory`, falling back to an
+    /// app-support directory) — no panel, unlike `saveToDisk()` below.
+    /// Reuses the same "write PNG to a temp file, then hand it to
+    /// `LocalUploadService`" primitive `uploadToCloud()` uses for its cloud
+    /// path, just targeting local storage directly instead of going through
+    /// `UploadServiceFactory` (which would honor the user's cloud provider
+    /// setting — Save should always land on disk regardless of that).
+    private func saveDirectly() {
+        Task {
+            guard let png = encodedPNGData() else { return }
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(timestampedFileName())
+            do {
+                try png.write(to: tempURL)
+                _ = try await LocalUploadService().uploadImage(fileURL: tempURL)
+                await MainActor.run {
                     onClose()
+                }
+            } catch {
+                // Unlike `saveToDisk()` below (a direct, user-chosen path via
+                // NSSavePanel), this goes through a configured default
+                // directory that can go stale (deleted/unwritable) — silently
+                // discarding that failure would leave the user believing an
+                // unsaved screenshot was saved, risking they discard the only
+                // copy by closing this window next.
+                await MainActor.run {
+                    NSApp.activate(ignoringOtherApps: true)
+                    let alert = NSAlert()
+                    alert.messageText = "Save Failed"
+                    alert.informativeText = error.localizedDescription
+                    alert.alertStyle = .critical
+                    alert.runModal()
                 }
             }
         }
     }
 
+    private func saveToDisk() {
+        let savePanel = NSSavePanel()
+        savePanel.allowedContentTypes = [.png]
+        savePanel.nameFieldStringValue = timestampedFileName()
+
+        if savePanel.runModal() == .OK, let url = savePanel.url, let png = encodedPNGData() {
+            try? png.write(to: url)
+            onClose()
+        }
+    }
+
     private func uploadToCloud() {
         Task {
-            let tempDir = FileManager.default.temporaryDirectory
-            let fileName = "\(filenamePrefix)-\(Int(Date().timeIntervalSince1970)).png"
-            let tempURL = tempDir.appendingPathComponent(fileName)
-
-            guard let tiff = image.tiffRepresentation,
-                  let rep = NSBitmapImageRep(data: tiff),
-                  let png = rep.representation(using: .png, properties: [:]) else { return }
-
+            guard let png = encodedPNGData() else { return }
+            let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(timestampedFileName())
             try? png.write(to: tempURL)
 
             await MainActor.run {
