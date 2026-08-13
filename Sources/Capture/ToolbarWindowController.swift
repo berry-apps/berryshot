@@ -6,6 +6,12 @@ public class ToolbarWindowController: NSWindowController, NSWindowDelegate {
     var viewModel: OverlayViewModel!
     var screenBounds: CGRect = .zero
     public var isDragging: Bool = false
+    // `nonisolated(unsafe)` only so `deinit` (always nonisolated, and
+    // Timer isn't Sendable) can invalidate it directly as a last-resort
+    // backstop. Safe here specifically because deinit only ever runs once
+    // there are zero other references to this instance, so there is no
+    // concurrent access to race with.
+    private nonisolated(unsafe) var positionTimer: Timer?
     
     convenience init(viewModel: OverlayViewModel, screenBounds: CGRect) {
         let size = CGSize(width: 440, height: 120)
@@ -49,9 +55,15 @@ public class ToolbarWindowController: NSWindowController, NSWindowDelegate {
     
     public func show() {
         window?.makeKeyAndOrderFront(nil)
-        
-        // Update position loop
-        Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+
+        // Update position loop. A fresh `ToolbarWindowController` (and thus a
+        // fresh timer) is created for every single capture session — this
+        // one was never stored or invalidated, so `hide()` released the
+        // controller while the timer itself, retained by the run loop, kept
+        // firing at 20Hz forever. Every capture taken over a session left
+        // behind one more permanent background timer running indefinitely.
+        positionTimer?.invalidate()
+        positionTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self = self, let window = self.window, let vm = self.viewModel else { return }
                 
@@ -87,6 +99,15 @@ public class ToolbarWindowController: NSWindowController, NSWindowDelegate {
     
     public func hide() {
         window?.orderOut(nil)
+        positionTimer?.invalidate()
+        positionTimer = nil
+    }
+
+    // Backstop for any future exit path that drops this controller without
+    // calling `hide()` first — without this, that path would silently
+    // resurrect the exact unbounded 20Hz-timer leak `positionTimer` fixes.
+    deinit {
+        positionTimer?.invalidate()
     }
     
     public func windowDidMove(_ notification: Notification) {
