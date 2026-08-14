@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en" class="scroll-smooth dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,7 +7,19 @@
   <meta name="description" content="BerryShot is an ultra-fast native macOS screen utility featuring ScreenCaptureKit, live annotations, 100% offline Apple Vision OCR, smart automated PII redaction, multi-model AI vision assistant, and local MCP server for AI coding agents." />
   <meta name="keywords" content="BerryShot, macOS screenshot, ScreenCaptureKit, macOS screen utility, Apple Vision OCR, screen annotation, auto redaction, MCP server, Claude Code screenshot, Mac app, BerryHub" />
   <meta name="author" content="Berry Apps" />
-  <meta name="theme-color" content="#e11d48" />
+  <meta name="theme-color" content="#080B13" />
+
+  <!-- Anti-FOUC Theme Script: Default to DARK MODE -->
+  <script>
+    (function() {
+      const theme = localStorage.getItem('berry_theme');
+      if (theme === 'light') {
+        document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
 
   <!-- Canonical URL -->
   <link rel="canonical" href="https://shot.berryhub.app" />
@@ -1494,31 +1506,24 @@ curl -X POST "https://your-api.com/v1/screenshots/upload" \
     const htmlEl = document.documentElement;
 
     function applyTheme(theme) {
-      if (theme === 'dark') {
-        htmlEl.classList.add('dark');
-      } else {
+      if (theme === 'light') {
         htmlEl.classList.remove('dark');
+        localStorage.setItem('berry_theme', 'light');
+      } else {
+        htmlEl.classList.add('dark');
+        localStorage.setItem('berry_theme', 'dark');
       }
-      localStorage.setItem('berryshot-theme', theme);
-      lucide.createIcons();
     }
 
-    // Determine initial theme
-    const savedTheme = localStorage.getItem('berryshot-theme');
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (savedTheme) {
-      applyTheme(savedTheme);
-    } else if (systemPrefersDark) {
-      applyTheme('dark');
-    } else {
-      applyTheme('light');
-    }
+    const savedTheme = localStorage.getItem('berry_theme') || 'dark';
+    applyTheme(savedTheme);
 
-    // Toggle Theme Click
-    themeToggleBtn.addEventListener('click', () => {
-      const isDark = htmlEl.classList.contains('dark');
-      applyTheme(isDark ? 'light' : 'dark');
-    });
+    if (themeToggleBtn) {
+      themeToggleBtn.addEventListener('click', () => {
+        const isDark = htmlEl.classList.contains('dark');
+        applyTheme(isDark ? 'light' : 'dark');
+      });
+    }
 
     // Feature Tabs Switching
     function switchTab(tabId) {

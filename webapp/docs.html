@@ -1,13 +1,25 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en" class="scroll-smooth dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BerryShot Documentation 🍓 — User Guide, Architecture & AI Reference</title>
-  <meta name="description" content="Complete documentation and reference manual for BerryShot: ScreenCaptureKit, live annotations, Vision OCR, auto-redaction, AI vision integrations, and local MCP server setup." />
-  <meta name="keywords" content="BerryShot Docs, macOS ScreenCaptureKit tutorial, offline OCR Mac, MCP server setup, AI vision screenshot" />
+  <title>BerryShot Documentation 🍓 — Complete User & Developer Manual</title>
+  <meta name="description" content="Official developer and user documentation for BerryShot: ScreenCaptureKit, annotations, offline Apple Vision OCR, auto PII redaction, AI vision models, and local MCP server." />
+  <meta name="keywords" content="BerryShot Docs, macOS ScreenCaptureKit tutorial, Apple Vision OCR offline guide, MCP server screenshots, local AI vision" />
   <meta name="author" content="Berry Apps" />
-  <meta name="theme-color" content="#e11d48" />
+  <meta name="theme-color" content="#080B13" />
+
+  <!-- Anti-FOUC Theme Script: Default to DARK MODE -->
+  <script>
+    (function() {
+      const theme = localStorage.getItem('berry_theme');
+      if (theme === 'light') {
+        document.documentElement.classList.remove('dark');
+      } else {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  </script>
 
   <!-- Canonical URL -->
   <link rel="canonical" href="https://shot.berryhub.app/docs.html" />
@@ -653,23 +665,24 @@
     const htmlEl = document.documentElement;
 
     function applyTheme(theme) {
-      if (theme === 'dark') {
-        htmlEl.classList.add('dark');
-        localStorage.setItem('berry_theme', 'dark');
-      } else {
+      if (theme === 'light') {
         htmlEl.classList.remove('dark');
         localStorage.setItem('berry_theme', 'light');
+      } else {
+        htmlEl.classList.add('dark');
+        localStorage.setItem('berry_theme', 'dark');
       }
-      lucide.createIcons();
     }
 
-    const savedTheme = localStorage.getItem('berry_theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+    const savedTheme = localStorage.getItem('berry_theme') || 'dark';
     applyTheme(savedTheme);
 
-    themeToggleBtn.addEventListener('click', () => {
-      const isDark = htmlEl.classList.contains('dark');
-      applyTheme(isDark ? 'light' : 'dark');
-    });
+    if (themeToggleBtn) {
+      themeToggleBtn.addEventListener('click', () => {
+        const isDark = htmlEl.classList.contains('dark');
+        applyTheme(isDark ? 'light' : 'dark');
+      });
+    }
 
     // Real-time Docs Search Filter
     const docSearch = document.getElementById('docSearch');
