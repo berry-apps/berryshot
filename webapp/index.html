@@ -245,7 +245,7 @@
       <!-- Action Buttons & Theme Toggle -->
       <div class="flex items-center gap-2 sm:gap-3">
         <!-- Theme Toggle Button -->
-        <button id="themeToggleBtn" aria-label="Toggle Dark/Light Mode" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 transition shadow-sm">
+        <button id="themeToggleBtn" onclick="toggleTheme()" type="button" aria-label="Toggle Dark/Light Mode" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 transition shadow-sm cursor-pointer">
           <svg class="w-4 h-4 hidden dark:block text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
           <svg class="w-4 h-4 block dark:hidden text-slate-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path></svg>
         </button>
@@ -1498,11 +1498,7 @@ curl -X POST "https://your-api.com/v1/screenshots/upload" \
 
   <!-- ==================== JAVASCRIPT LOGIC ==================== -->
   <script>
-    // Initialize Lucide Icons
-    lucide.createIcons();
-
     // Dark/Light Mode Management
-    const themeToggleBtn = document.getElementById('themeToggleBtn');
     const htmlEl = document.documentElement;
 
     function applyTheme(theme) {
@@ -1515,15 +1511,31 @@ curl -X POST "https://your-api.com/v1/screenshots/upload" \
       }
     }
 
+    window.toggleTheme = function() {
+      const isDark = htmlEl.classList.contains('dark');
+      applyTheme(isDark ? 'light' : 'dark');
+    };
+
     const savedTheme = localStorage.getItem('berry_theme') || 'dark';
     applyTheme(savedTheme);
 
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
     if (themeToggleBtn) {
-      themeToggleBtn.addEventListener('click', () => {
-        const isDark = htmlEl.classList.contains('dark');
-        applyTheme(isDark ? 'light' : 'dark');
+      themeToggleBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        window.toggleTheme();
       });
     }
+
+    // Safe Lucide Icons Initialization
+    function initIcons() {
+      if (window.lucide && typeof lucide.createIcons === 'function') {
+        lucide.createIcons();
+      }
+    }
+    initIcons();
+    document.addEventListener('DOMContentLoaded', initIcons);
+    window.addEventListener('load', initIcons);
 
     // Feature Tabs Switching
     function switchTab(tabId) {
