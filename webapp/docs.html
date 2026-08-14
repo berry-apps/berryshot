@@ -78,7 +78,19 @@
       box-shadow: 0 2px 0 rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.15);
     }
     section[id] {
-      scroll-margin-top: 5rem;
+      scroll-margin-top: 5.5rem;
+    }
+    .active-doc-link {
+      color: #e11d48 !important;
+      background-color: rgba(255, 241, 242, 0.95) !important;
+      font-weight: 700 !important;
+      border-left: 3px solid #e11d48 !important;
+      padding-left: 0.625rem !important;
+    }
+    .dark .active-doc-link {
+      color: #fb7185 !important;
+      background-color: rgba(30, 41, 59, 0.95) !important;
+      border-left-color: #fb7185 !important;
     }
   </style>
 </head>
@@ -559,6 +571,48 @@
         }
       });
     }
+
+    // ScrollSpy for Active Sidebar Link
+    const docLinks = document.querySelectorAll('aside .doc-link');
+    const docSections = document.querySelectorAll('main section[id]');
+
+    function updateActiveSidebar() {
+      const scrollPosition = window.scrollY + 130;
+      let currentSectionId = '';
+
+      docSections.forEach((section) => {
+        const top = section.offsetTop;
+        const height = section.offsetHeight;
+        if (scrollPosition >= top && scrollPosition < top + height) {
+          currentSectionId = section.getAttribute('id');
+        }
+      });
+
+      if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 60) {
+        if (docSections.length > 0) {
+          currentSectionId = docSections[docSections.length - 1].getAttribute('id');
+        }
+      }
+
+      if (!currentSectionId && docSections.length > 0) {
+        currentSectionId = docSections[0].getAttribute('id');
+      }
+
+      if (currentSectionId) {
+        docLinks.forEach((link) => {
+          const href = link.getAttribute('href').replace('#', '');
+          if (href === currentSectionId) {
+            link.classList.add('active-doc-link');
+          } else {
+            link.classList.remove('active-doc-link');
+          }
+        });
+      }
+    }
+
+    window.addEventListener('scroll', updateActiveSidebar, { passive: true });
+    window.addEventListener('load', updateActiveSidebar);
+    updateActiveSidebar();
   </script>
 
 </body>
