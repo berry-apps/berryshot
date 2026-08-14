@@ -3,8 +3,31 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BerryShot Documentation — Complete User & Developer Manual</title>
-  <meta name="description" content="Official developer and user documentation for BerryShot: ScreenCaptureKit, live annotations, Vision OCR, auto-redaction, AI vision integrations, and local MCP server setup with screenshot guides." />
+  <title>BerryShot Documentation 🍓 — User Guide, Architecture & AI Reference</title>
+  <meta name="description" content="Complete documentation and reference manual for BerryShot: ScreenCaptureKit, live annotations, Vision OCR, auto-redaction, AI vision integrations, and local MCP server setup." />
+  <meta name="keywords" content="BerryShot Docs, macOS ScreenCaptureKit tutorial, offline OCR Mac, MCP server setup, AI vision screenshot" />
+  <meta name="author" content="Berry Apps" />
+  <meta name="theme-color" content="#e11d48" />
+
+  <!-- Canonical URL -->
+  <link rel="canonical" href="https://shot.berryhub.app/docs.html" />
+
+  <!-- OpenGraph -->
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://shot.berryhub.app/docs.html" />
+  <meta property="og:site_name" content="BerryHub Documentation" />
+  <meta property="og:title" content="BerryShot Documentation 🍓 — Complete User & Developer Manual" />
+  <meta property="og:description" content="Explore ScreenCaptureKit setup, live canvas tools, offline OCR, automated PII redaction, and local MCP server for AI coding agents." />
+  <meta property="og:image" content="https://shot.berryhub.app/public/images/og-preview.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale" content="en_US" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="BerryShot Documentation 🍓 — Complete Guide" />
+  <meta name="twitter:description" content="User and developer documentation for BerryShot: Native macOS capture, OCR, redaction & AI tools." />
+  <meta name="twitter:image" content="https://shot.berryhub.app/public/images/og-preview.png" />
 
   <!-- Google Fonts: Inter & Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -126,9 +149,21 @@
       </div>
 
       <!-- Right Actions -->
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 sm:gap-3">
         <a href="index.html" class="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-berry-600 dark:hover:text-berry-400 transition hidden sm:inline">
           Home
+        </a>
+
+        <!-- BerryDB Cross Link -->
+        <a href="https://db.berryhub.app" target="_blank" rel="noopener" class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 px-2.5 py-1.5 rounded-lg transition hidden md:flex items-center gap-1.5">
+          <i data-lucide="database" class="w-3.5 h-3.5"></i>
+          <span>BerryDB</span>
+        </a>
+
+        <!-- BerryHub Cross Link -->
+        <a href="https://berryhub.app" target="_blank" rel="noopener" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 px-2.5 py-1.5 rounded-lg transition hidden md:flex items-center gap-1">
+          <i data-lucide="globe" class="w-3.5 h-3.5"></i>
+          <span>BerryHub</span>
         </a>
 
         <!-- Theme Toggle -->
@@ -137,18 +172,64 @@
           <i data-lucide="moon" class="w-4 h-4 block dark:hidden text-slate-700"></i>
         </button>
 
-        <!-- GitHub -->
-        <a href="https://github.com/berry-apps/berryshot" target="_blank" rel="noopener" class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition">
-          <i data-lucide="github" class="w-4 h-4"></i>
-          <span class="hidden sm:inline">GitHub</span>
+        <!-- Download CTA -->
+        <a href="https://download-shot.berryhub.app/BerryShot.dmg" class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-berry-600 to-berry-500 hover:from-berry-700 hover:to-berry-600 shadow-glow-berry transition">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">Get App</span>
         </a>
 
-        <!-- Download CTA -->
-        <a href="https://download-shot.berryhub.app/BerryShot.dmg" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-berry-600 to-berry-500 hover:from-berry-700 hover:to-berry-600 shadow-glow-berry transition">
-          <i data-lucide="download" class="w-4 h-4"></i>
-          <span>Get App</span>
-        </a>
+        <!-- Mobile Table of Contents Toggle -->
+        <button id="mobileTocBtn" aria-label="Open Table of Contents" class="lg:hidden w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition">
+          <i data-lucide="list" class="w-5 h-5"></i>
+        </button>
       </div>
+
+    </div>
+
+    <!-- Mobile Table of Contents Drawer -->
+    <div id="mobileTocDrawer" class="lg:hidden hidden border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-dark-bg/95 backdrop-blur-xl px-4 py-5 max-h-[75vh] overflow-y-auto space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between">
+        <span class="font-display font-bold text-xs uppercase tracking-wider text-slate-900 dark:text-white">Documentation Navigation</span>
+        <button onclick="document.getElementById('mobileTocDrawer').classList.add('hidden')" class="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-white">Close</button>
+      </div>
+      <div class="space-y-3 text-xs">
+        <div>
+          <span class="font-bold text-slate-400 uppercase text-[10px] block mb-1">Getting Started</span>
+          <div class="space-y-1 pl-2">
+            <a href="#intro" class="mobile-doc-link block py-1 text-slate-700 dark:text-slate-300">Overview & Architecture</a>
+            <a href="#installation" class="mobile-doc-link block py-1 text-slate-700 dark:text-slate-300">Installation & Build</a>
+            <a href="#permissions" class="mobile-doc-link block py-1 text-slate-700 dark:text-slate-300">macOS Permissions</a>
+          </div>
+        </div>
+        <div>
+          <span class="font-bold text-slate-400 uppercase text-[10px] block mb-1">Capture & Annotations</span>
+          <div class="space-y-1 pl-2">
+            <a href="#capture-bar" class="mobile-doc-link block py-1 text-slate-700 dark:text-slate-300">Quick Capture Bar</a>
+            <a href="#annotation-tools" class="mobile-doc-link block py-1 text-slate-700 dark:text-slate-300">Canvas Annotation Suite</a>
+            <a href="#studio-editor" class="mobile-doc-link block py-1 text-slate-700 dark:text-slate-300">Studio Editor & Loupe</a>
+            <a href="#window-picker" class="mobile-doc-link block py-1 text-slate-700 dark:text-slate-300">Window & App Picker</a>
+            <a href="#ocr-engine" class="mobile-doc-link block py-1 text-slate-700 dark:text-slate-300">Offline Vision OCR</a>
+          </div>
+        </div>
+        <div>
+          <span class="font-bold text-slate-400 uppercase text-[10px] block mb-1">Privacy & AI</span>
+          <div class="space-y-1 pl-2">
+            <a href="#auto-redaction" class="mobile-doc-link block py-1 text-slate-700 dark:text-slate-300">Smart Auto-Redaction</a>
+            <a href="#ai-vision" class="mobile-doc-link block py-1 text-slate-700 dark:text-slate-300">AI Vision Actions</a>
+            <a href="#ai-setup" class="mobile-doc-link block py-1 text-slate-700 dark:text-slate-300">AI Provider Configuration</a>
+          </div>
+        </div>
+        <div>
+          <span class="font-bold text-slate-400 uppercase text-[10px] block mb-1">Integrations</span>
+          <div class="space-y-1 pl-2">
+            <a href="#mcp" class="mobile-doc-link block py-1 text-slate-700 dark:text-slate-300">Local MCP Server Agent</a>
+            <a href="#cloud-storage" class="mobile-doc-link block py-1 text-slate-700 dark:text-slate-300">Storage & HTTP Webhooks</a>
+            <a href="#settings-hotkeys" class="mobile-doc-link block py-1 text-slate-700 dark:text-slate-300">Settings & Shortcuts</a>
+            <a href="#about-license" class="mobile-doc-link block py-1 text-slate-700 dark:text-slate-300">About & License</a>
+          </div>
+        </div>
+      </div>
+    </div>
 
     </div>
   </header>
@@ -613,6 +694,20 @@
     window.addEventListener('scroll', updateActiveSidebar, { passive: true });
     window.addEventListener('load', updateActiveSidebar);
     updateActiveSidebar();
+
+    // Mobile Table of Contents Toggle
+    const mobileTocBtn = document.getElementById('mobileTocBtn');
+    const mobileTocDrawer = document.getElementById('mobileTocDrawer');
+    if (mobileTocBtn && mobileTocDrawer) {
+      mobileTocBtn.addEventListener('click', () => {
+        mobileTocDrawer.classList.toggle('hidden');
+      });
+      document.querySelectorAll('.mobile-doc-link').forEach(l => {
+        l.addEventListener('click', () => {
+          mobileTocDrawer.classList.add('hidden');
+        });
+      });
+    }
   </script>
 
 </body>

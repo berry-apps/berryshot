@@ -3,8 +3,58 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BerryShot 🍓 - Native macOS Screen Capture, Annotations & AI Intelligence</title>
-  <meta name="description" content="BerryShot is a powerful native macOS screen utility featuring ScreenCaptureKit, live annotations, 100% offline OCR, smart automated redaction, multi-model AI assistant, and local MCP server for AI agents." />
+  <title>BerryShot 🍓 — Native macOS Screen Capture, Annotations & AI Intelligence</title>
+  <meta name="description" content="BerryShot is an ultra-fast native macOS screen utility featuring ScreenCaptureKit, live annotations, 100% offline Apple Vision OCR, smart automated PII redaction, multi-model AI vision assistant, and local MCP server for AI coding agents." />
+  <meta name="keywords" content="BerryShot, macOS screenshot, ScreenCaptureKit, macOS screen utility, Apple Vision OCR, screen annotation, auto redaction, MCP server, Claude Code screenshot, Mac app, BerryHub" />
+  <meta name="author" content="Berry Apps" />
+  <meta name="theme-color" content="#e11d48" />
+
+  <!-- Canonical URL -->
+  <link rel="canonical" href="https://shot.berryhub.app" />
+
+  <!-- OpenGraph / Facebook / LinkedIn / Discord -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://shot.berryhub.app" />
+  <meta property="og:site_name" content="BerryHub — Native macOS Apps Ecosystem" />
+  <meta property="og:title" content="BerryShot 🍓 — Native macOS Screen Capture, Annotations & AI Intelligence" />
+  <meta property="og:description" content="Lightning-fast macOS screen capture (<100ms), 100% offline Vision OCR, smart automated PII redaction, Claude/Gemini/GPT-4o vision, and local MCP server." />
+  <meta property="og:image" content="https://shot.berryhub.app/public/images/og-preview.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="BerryShot Native macOS Screen Studio and AI Intelligence" />
+  <meta property="og:locale" content="en_US" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://shot.berryhub.app" />
+  <meta name="twitter:title" content="BerryShot 🍓 — Native macOS Screen Capture & AI Utility" />
+  <meta name="twitter:description" content="High-performance native capture, 100% offline Vision OCR, smart redaction, multi-model AI vision, and local MCP server for Claude & Codex." />
+  <meta name="twitter:image" content="https://shot.berryhub.app/public/images/og-preview.png" />
+
+  <!-- Schema.org JSON-LD Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "BerryShot",
+    "operatingSystem": "macOS 14.0+",
+    "applicationCategory": "UtilitiesApplication",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "description": "Native macOS screen utility with ScreenCaptureKit, live annotations, offline Vision OCR, auto-redaction, and AI MCP server.",
+    "url": "https://shot.berryhub.app",
+    "downloadUrl": "https://download-shot.berryhub.app/BerryShot.dmg",
+    "image": "https://shot.berryhub.app/public/images/og-preview.png",
+    "author": {
+      "@type": "Organization",
+      "name": "Berry Apps",
+      "url": "https://berryhub.app"
+    }
+  }
+  </script>
 
   <!-- Google Fonts: Inter & Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -153,21 +203,35 @@
       </a>
 
       <!-- Desktop Navigation -->
-      <nav class="hidden md:flex items-center gap-1 lg:gap-2">
-        <a href="#features" class="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-berry-600 dark:hover:text-berry-400 hover:bg-berry-50/50 dark:hover:bg-slate-800/60 transition">Features</a>
-        <a href="#ai-engine" class="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-berry-600 dark:hover:text-berry-400 hover:bg-berry-50/50 dark:hover:bg-slate-800/60 transition">AI Assistant</a>
-        <a href="#redaction" class="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-berry-600 dark:hover:text-berry-400 hover:bg-berry-50/50 dark:hover:bg-slate-800/60 transition">Privacy & OCR</a>
-        <a href="#mcp-agent" class="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-berry-600 dark:hover:text-berry-400 hover:bg-berry-50/50 dark:hover:bg-slate-800/60 transition">MCP Server</a>
-        <a href="#gallery" class="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-berry-600 dark:hover:text-berry-400 hover:bg-berry-50/50 dark:hover:bg-slate-800/60 transition">UI Gallery</a>
-        <a href="#shortcuts" class="px-3 py-1.5 rounded-lg text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-berry-600 dark:hover:text-berry-400 hover:bg-berry-50/50 dark:hover:bg-slate-800/60 transition">Hotkeys</a>
-        <a href="docs.html" class="px-3 py-1.5 rounded-lg text-sm font-semibold text-berry-600 dark:text-berry-400 bg-berry-50/70 dark:bg-berry-950/60 hover:bg-berry-100 dark:hover:bg-berry-900/50 transition flex items-center gap-1.5">
+      <nav class="hidden lg:flex items-center gap-1">
+        <a href="#features" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-berry-600 dark:hover:text-berry-400 hover:bg-berry-50/50 dark:hover:bg-slate-800/60 transition">Features</a>
+        <a href="#ai-engine" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-berry-600 dark:hover:text-berry-400 hover:bg-berry-50/50 dark:hover:bg-slate-800/60 transition">AI Assistant</a>
+        <a href="#redaction" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-berry-600 dark:hover:text-berry-400 hover:bg-berry-50/50 dark:hover:bg-slate-800/60 transition">Privacy & OCR</a>
+        <a href="#mcp-agent" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-berry-600 dark:hover:text-berry-400 hover:bg-berry-50/50 dark:hover:bg-slate-800/60 transition">MCP Server</a>
+        <a href="#shortcuts" class="px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-berry-600 dark:hover:text-berry-400 hover:bg-berry-50/50 dark:hover:bg-slate-800/60 transition">Hotkeys</a>
+        <a href="docs.html" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-berry-600 dark:text-berry-400 bg-berry-50/70 dark:bg-berry-950/60 hover:bg-berry-100 dark:hover:bg-berry-900/50 transition flex items-center gap-1">
           <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
           <span>Docs</span>
+        </a>
+
+        <!-- Ecosystem Links Divider -->
+        <span class="w-px h-4 bg-slate-200 dark:bg-slate-800 mx-1"></span>
+
+        <!-- BerryDB App Link -->
+        <a href="https://db.berryhub.app" target="_blank" rel="noopener" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition flex items-center gap-1.5" title="Explore BerryDB - Native macOS Database Client">
+          <i data-lucide="database" class="w-3.5 h-3.5"></i>
+          <span>BerryDB</span>
+        </a>
+
+        <!-- BerryHub Ecosystem Portal -->
+        <a href="https://berryhub.app" target="_blank" rel="noopener" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 transition flex items-center gap-1" title="BerryHub macOS Apps Portal">
+          <i data-lucide="globe" class="w-3.5 h-3.5"></i>
+          <span>BerryHub</span>
         </a>
       </nav>
 
       <!-- Action Buttons & Theme Toggle -->
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 sm:gap-3">
         <!-- Theme Toggle Button -->
         <button id="themeToggleBtn" aria-label="Toggle Dark/Light Mode" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 transition shadow-sm">
           <i data-lucide="sun" class="w-4 h-4 hidden dark:block text-amber-400"></i>
@@ -181,11 +245,45 @@
         </a>
 
         <!-- Download CTA -->
-        <a href="https://download-shot.berryhub.app/BerryShot.dmg" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-berry-600 to-berry-500 hover:from-berry-700 hover:to-berry-600 shadow-glow-berry hover:shadow-glow-berry-lg transform hover:-translate-y-0.5 active:translate-y-0 transition">
+        <a href="https://download-shot.berryhub.app/BerryShot.dmg" class="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-berry-600 to-berry-500 hover:from-berry-700 hover:to-berry-600 shadow-glow-berry transition duration-200 transform hover:-translate-y-0.5">
           <i data-lucide="download" class="w-4 h-4"></i>
-          <span class="hidden sm:inline">Download</span> (.DMG)
+          <span>Download</span>
         </a>
+
+        <!-- Mobile Hamburger Menu Button -->
+        <button id="mobileMenuBtn" aria-label="Open Mobile Menu" class="lg:hidden w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 transition">
+          <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
       </div>
+
+    </div>
+
+    <!-- Mobile Drawer Menu -->
+    <div id="mobileMenuDrawer" class="lg:hidden hidden border-t border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-dark-bg/95 backdrop-blur-xl px-4 py-5 space-y-3 shadow-xl transition-all">
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <a href="#features" class="mobile-nav-link p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 font-medium text-slate-700 dark:text-slate-200">Features</a>
+        <a href="#ai-engine" class="mobile-nav-link p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 font-medium text-slate-700 dark:text-slate-200">AI Assistant</a>
+        <a href="#redaction" class="mobile-nav-link p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 font-medium text-slate-700 dark:text-slate-200">Privacy & OCR</a>
+        <a href="#mcp-agent" class="mobile-nav-link p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 font-medium text-slate-700 dark:text-slate-200">MCP Server</a>
+        <a href="#shortcuts" class="mobile-nav-link p-2.5 rounded-lg bg-slate-50 dark:bg-slate-800/60 font-medium text-slate-700 dark:text-slate-200">Hotkeys</a>
+        <a href="docs.html" class="mobile-nav-link p-2.5 rounded-lg bg-berry-50 dark:bg-berry-950 font-bold text-berry-600 dark:text-berry-400">Documentation</a>
+      </div>
+
+      <!-- Berry Ecosystem Mobile Section -->
+      <div class="pt-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+        <span class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Berry Ecosystem</span>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <a href="https://db.berryhub.app" target="_blank" rel="noopener" class="flex items-center gap-2 p-2.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 font-semibold">
+            <i data-lucide="database" class="w-4 h-4"></i>
+            <span>BerryDB</span>
+          </a>
+          <a href="https://berryhub.app" target="_blank" rel="noopener" class="flex items-center gap-2 p-2.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-semibold">
+            <i data-lucide="globe" class="w-4 h-4"></i>
+            <span>BerryHub</span>
+          </a>
+        </div>
+      </div>
+    </div>
 
     </div>
   </header>
@@ -1240,28 +1338,74 @@ curl -X POST "https://your-api.com/v1/screenshots/upload" \
 
   <!-- ==================== FOOTER ==================== -->
   <footer class="py-12 bg-slate-100 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 text-xs">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       
-      <!-- Brand & Copyright -->
-      <div class="flex items-center gap-3">
-        <div class="w-7 h-7 rounded-lg bg-berry-500 text-white flex items-center justify-center text-sm shadow-sm">
-          🍓
-        </div>
-        <div>
-          <span class="font-bold text-slate-800 dark:text-slate-200">BerryShot</span> — Native macOS Capture & AI Utility.
-          <p class="text-[11px] text-slate-400 dark:text-slate-500">Built with ❤️ by <a href="https://github.com/quangtaned" target="_blank" class="hover:text-berry-500 transition font-medium">@quangtaned</a> and <a href="https://github.com/trungdv96" target="_blank" class="hover:text-berry-500 transition font-medium">@trungdv96</a>.</p>
+      <!-- Berry Ecosystem Highlight Strip -->
+      <div class="mb-12 p-6 sm:p-8 rounded-3xl bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-800/80 shadow-sm">
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+          <div>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-50 dark:bg-rose-950/60 text-berry-600 dark:text-rose-400 text-[11px] font-bold uppercase tracking-wider mb-2">
+              <span>Berry Ecosystem</span>
+            </div>
+            <h3 class="font-display font-bold text-lg text-slate-900 dark:text-white">Part of the Berry Native macOS Ecosystem</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xl">
+              Lightweight, high-performance native macOS tools built with Swift 6 and modern Apple frameworks.
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            <!-- BerryDB Link -->
+            <a href="https://db.berryhub.app" target="_blank" rel="noopener" class="flex-1 sm:flex-none flex items-center gap-3 p-3 sm:px-4 sm:py-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 border border-slate-200 dark:border-slate-700/80 transition group">
+              <div class="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition">
+                <i data-lucide="database" class="w-4 h-4"></i>
+              </div>
+              <div class="text-left">
+                <span class="block text-xs font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400">BerryDB</span>
+                <span class="block text-[10px] text-slate-500">Native DB Client for Mac</span>
+              </div>
+            </a>
+
+            <!-- BerryHub Link -->
+            <a href="https://berryhub.app" target="_blank" rel="noopener" class="flex-1 sm:flex-none flex items-center gap-3 p-3 sm:px-4 sm:py-3 rounded-2xl bg-slate-50 dark:bg-slate-800/80 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 border border-slate-200 dark:border-slate-700/80 transition group">
+              <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition">
+                <i data-lucide="globe" class="w-4 h-4"></i>
+              </div>
+              <div class="text-left">
+                <span class="block text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400">BerryHub</span>
+                <span class="block text-[10px] text-slate-500">Apps & Tools Portal</span>
+              </div>
+            </a>
+          </div>
         </div>
       </div>
 
-      <!-- Links -->
-      <div class="flex flex-wrap items-center gap-6">
-        <a href="docs.html" class="hover:text-berry-500 transition font-semibold text-berry-600 dark:text-berry-400">Documentation</a>
-        <a href="https://notex.work" target="_blank" rel="noopener" class="hover:text-berry-500 transition">notex.work</a>
-        <a href="https://github.com/berry-apps/berryshot" target="_blank" rel="noopener" class="hover:text-berry-500 transition">GitHub</a>
-        <a href="https://ko-fi.com/dautay" target="_blank" rel="noopener" class="hover:text-berry-500 transition">Ko-fi Support</a>
-        <a href="https://github.com/berry-apps/berryshot/blob/main/LICENSE" target="_blank" rel="noopener" class="hover:text-berry-500 transition">PolyForm License</a>
-      </div>
+      <!-- Main Footer Bar -->
+      <div class="flex flex-col md:flex-row items-center justify-between gap-6 text-xs text-slate-500 dark:text-slate-400">
+        
+        <!-- Brand & Creator -->
+        <div class="flex items-center gap-3 text-left">
+          <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-berry-600 to-rose-400 p-[1px] flex items-center justify-center text-sm shadow-sm">
+            <div class="w-full h-full bg-white dark:bg-dark-surface rounded-[11px] flex items-center justify-center">
+              🍓
+            </div>
+          </div>
+          <div>
+            <span class="font-bold text-slate-800 dark:text-slate-200">BerryShot</span> — Native macOS Capture & AI Utility.
+            <p class="text-[11px] text-slate-400 dark:text-slate-500">Part of <a href="https://berryhub.app" target="_blank" class="hover:text-berry-500 transition font-medium">BerryHub Ecosystem</a>. Built by <a href="https://github.com/quangtaned" target="_blank" class="hover:text-berry-500 transition font-medium">@quangtaned</a> & <a href="https://github.com/trungdv96" target="_blank" class="hover:text-berry-500 transition font-medium">@trungdv96</a>.</p>
+          </div>
+        </div>
 
+        <!-- Links -->
+        <div class="flex flex-wrap items-center gap-6">
+          <a href="docs.html" class="hover:text-berry-500 transition font-semibold text-berry-600 dark:text-berry-400">Documentation</a>
+          <a href="https://db.berryhub.app" target="_blank" rel="noopener" class="hover:text-emerald-500 transition">BerryDB</a>
+          <a href="https://berryhub.app" target="_blank" rel="noopener" class="hover:text-indigo-500 transition">BerryHub.app</a>
+          <a href="https://github.com/berry-apps/berryshot" target="_blank" rel="noopener" class="hover:text-berry-500 transition">GitHub</a>
+          <a href="https://ko-fi.com/dautay" target="_blank" rel="noopener" class="hover:text-berry-500 transition">Ko-fi</a>
+          <a href="https://github.com/berry-apps/berryshot/blob/main/LICENSE" target="_blank" rel="noopener" class="hover:text-berry-500 transition">PolyForm License</a>
+        </div>
+
+      </div>
     </div>
   </footer>
 
@@ -1415,12 +1559,19 @@ curl -X POST "https://your-api.com/v1/screenshots/upload" \
       }
     });
 
-    // Close lightbox on Escape key
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !lightboxModal.classList.contains('hidden')) {
-        closeLightbox();
-      }
-    });
+    // Mobile Menu Toggle
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const mobileMenuDrawer = document.getElementById('mobileMenuDrawer');
+    if (mobileMenuBtn && mobileMenuDrawer) {
+      mobileMenuBtn.addEventListener('click', () => {
+        mobileMenuDrawer.classList.toggle('hidden');
+      });
+      document.querySelectorAll('.mobile-nav-link').forEach(l => {
+        l.addEventListener('click', () => {
+          mobileMenuDrawer.classList.add('hidden');
+        });
+      });
+    }
   </script>
 </body>
 </html>
