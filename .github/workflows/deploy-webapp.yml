@@ -29,9 +29,6 @@ jobs:
     name: "Build, Sync Version & Deploy WebApp"
     runs-on: [self-hosted, berryshot]
     timeout-minutes: 10
-    environment:
-      name: production
-      url: https://shot.berryhub.app
 
     steps:
       - name: "Checkout source"
