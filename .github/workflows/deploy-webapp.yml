@@ -1,0 +1,136 @@
+name: Deploy BerryShot WebApp
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "webapp/**"
+      - "Sources/App/Settings/AboutSettingsView.swift"
+      - ".github/workflows/deploy-webapp.yml"
+  workflow_dispatch:
+    inputs:
+      force_version:
+        description: "Force specific version (leave empty for auto-detect from AboutSettingsView.swift)"
+        required: false
+        default: ""
+
+concurrency:
+  group: berryshot-webapp-deploy
+  cancel-in-progress: false
+
+env:
+  APP_NAME: berryshot-webapp
+  DEPLOY_PATH: /var/www/berryshot
+  DOMAIN: shot.berryhub.app
+
+jobs:
+  deploy:
+    name: "Build, Sync Version & Deploy WebApp"
+    runs-on: [self-hosted, berryshot]
+    timeout-minutes: 10
+    environment:
+      name: production
+      url: https://shot.berryhub.app
+
+    steps:
+      - name: "Checkout source"
+        uses: actions/checkout@v4
+        with:
+          clean: true
+
+      - name: "Reset sparse checkout"
+        run: |
+          git sparse-checkout disable 2>/dev/null || true
+          git read-tree --reset -u HEAD 2>/dev/null || git checkout HEAD -- . 2>/dev/null || true
+
+      - name: "Extract & Sync Version"
+        id: version_step
+        run: |
+          FORCE_VER="${{ github.event.inputs.force_version }}"
+          SWIFT_FILE="Sources/App/Settings/AboutSettingsView.swift"
+          if [ ! -f "$SWIFT_FILE" ]; then
+            SWIFT_FILE="app/Sources/App/Settings/AboutSettingsView.swift"
+          fi
+
+          if [ -n "$FORCE_VER" ]; then
+            VERSION="$FORCE_VER"
+            echo "Using manual version input: v$VERSION"
+          elif [ -f "$SWIFT_FILE" ]; then
+            DETECTED=$(grep -oE 'Version [0-9]+\.[0-9]+\.[0-9]+' "$SWIFT_FILE" | awk '{print $2}' || true)
+            VERSION="${DETECTED:-2.1.0}"
+            echo "Auto-detected version from Swift source: v$VERSION"
+          else
+            VERSION="2.1.0"
+            echo "Fallback version: v$VERSION"
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          # Generate version.json
+          cat <<EOF > webapp/public/version.json
+          {
+            "name": "BerryShot",
+            "version": "$VERSION",
+            "releaseDate": "$(date -u +"%Y-%m-%d")",
+            "commit": "${{ github.sha }}",
+            "downloadUrl": "https://download-shot.berryhub.app/BerryShot.dmg",
+            "downloadZipUrl": "https://download-shot.berryhub.app/BerryShot.zip",
+            "minMacOS": "14.0"
+          }
+          EOF
+          cp webapp/public/version.json webapp/version.json
+
+          # Replace version in HTML templates
+          if [ -f "webapp/index.html" ]; then
+            sed -i -E "s/BerryShot v[0-9]+\.[0-9]+(\.[0-9]+)?/BerryShot v$VERSION/g" webapp/index.html
+          fi
+          if [ -f "webapp/docs.html" ]; then
+            sed -i -E "s/BerryShot v[0-9]+\.[0-9]+(\.[0-9]+)?/BerryShot v$VERSION/g" webapp/docs.html
+          fi
+          echo "✅ Version synchronization complete."
+
+      - name: "Deploy Nginx Configuration"
+        run: |
+          CONF_SRC="webapp/deploy/nginx.conf"
+          CONF_DST="/etc/nginx/sites-available/shot.berryhub.app"
+          CONF_LINK="/etc/nginx/sites-enabled/shot.berryhub.app"
+
+          if [ -f "$CONF_SRC" ]; then
+            echo "Deploying Nginx config from $CONF_SRC to $CONF_DST..."
+            sudo mkdir -p /etc/nginx/sites-available /etc/nginx/sites-enabled
+            sudo cp "$CONF_SRC" "$CONF_DST"
+
+            if [ ! -L "$CONF_LINK" ]; then
+              sudo ln -sf "$CONF_DST" "$CONF_LINK"
+              echo "Created symlink $CONF_LINK"
+            fi
+
+            # Test Nginx
+            sudo nginx -t
+            echo "✅ Nginx configuration syntax is valid."
+          fi
+
+      - name: "Deploy WebApp to Production Slot"
+        run: |
+          chmod +x webapp/deploy/deploy.sh
+          bash webapp/deploy/deploy.sh
+
+      - name: "Verify Deployment & Health Check"
+        run: |
+          CURRENT_SLOT=$(readlink "${{ env.DEPLOY_PATH }}/current" || echo "unknown")
+          echo "Active Production Target: $CURRENT_SLOT"
+
+          test -f "${{ env.DEPLOY_PATH }}/current/index.html" || { echo "❌ index.html is missing!"; exit 1; }
+          test -f "${{ env.DEPLOY_PATH }}/current/docs.html" || { echo "❌ docs.html is missing!"; exit 1; }
+          test -f "${{ env.DEPLOY_PATH }}/current/version.json" || { echo "❌ version.json is missing!"; exit 1; }
+
+          echo "🎉 Deployment successfully verified!"
+          echo "🌍 Production URL: https://${{ env.DOMAIN }}"
+          echo "📖 Documentation: https://${{ env.DOMAIN }}/docs"
+          echo "📦 Version Endpoint: https://${{ env.DOMAIN }}/version.json"
+
+      - name: "Cleanup workspace"
+        if: always()
+        run: |
+          find "${GITHUB_WORKSPACE}" -mindepth 1 -maxdepth 1 -name ".git" -prune -o -exec rm -rf {} + 2>/dev/null || true

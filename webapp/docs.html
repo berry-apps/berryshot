@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BerryShot Documentation 🍓 - Native macOS Screen Utility & AI Guide</title>
+  <meta name="description" content="Official developer and user documentation for BerryShot: ScreenCaptureKit, live annotations, Vision OCR, auto-redaction, AI vision integrations, and local MCP server setup." />
+
+  <!-- Google Fonts: Inter & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            display: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
+          },
+          colors: {
+            berry: {
+              50: '#fff1f2',
+              100: '#ffe4e6',
+              200: '#fecdd3',
+              300: '#fda4af',
+              400: '#fb7185',
+              500: '#e11d48',
+              600: '#be123c',
+              700: '#9f1239',
+              800: '#881337',
+              900: '#4c0519',
+              950: '#2b020c',
+            },
+            dark: {
+              bg: '#080B13',
+              surface: '#0D121F',
+              card: '#0E1424',
+              cardHover: '#141C30',
+              border: '#1E293B',
+              muted: '#94A3B8',
+            }
+          },
+          boxShadow: {
+            'glow-berry': '0 0 40px -10px rgba(225, 29, 72, 0.35)',
+            'glow-berry-lg': '0 0 60px -15px rgba(225, 29, 72, 0.5)',
+            'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.08)',
+            'glass-dark': '0 8px 32px 0 rgba(0, 0, 0, 0.55)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    .glass-nav {
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    .dark .glass-nav {
+      background: rgba(8, 11, 19, 0.92);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    .kbd-tag {
+      box-shadow: 0 2px 0 rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.4);
+    }
+    .dark .kbd-tag {
+      box-shadow: 0 2px 0 rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.15);
+    }
+    /* Scroll margin for smooth anchor jump */
+    section[id] {
+      scroll-margin-top: 5rem;
+    }
+  </style>
+</head>
+
+<body class="bg-[#FCFAF9] dark:bg-dark-bg text-slate-800 dark:text-slate-100 font-sans antialiased transition-colors duration-300 selection:bg-berry-500 selection:text-white">
+
+  <!-- ==================== HEADER ==================== -->
+  <header class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 glass-nav border-b border-rose-100/60 dark:border-slate-800/80">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Brand Logo -->
+      <a href="index.html" class="flex items-center gap-3 group">
+        <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-berry-600 via-berry-500 to-rose-400 p-[1.5px] shadow-glow-berry transition-transform group-hover:scale-105">
+          <div class="w-full h-full bg-white dark:bg-dark-surface rounded-[14px] flex items-center justify-center text-xl">
+            🍓
+          </div>
+        </div>
+        <div class="flex flex-col">
+          <div class="flex items-center gap-2">
+            <span class="font-display font-bold text-xl tracking-tight text-slate-900 dark:text-white">BerryShot</span>
+            <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-berry-500 text-white">Docs</span>
+          </div>
+          <span class="text-[11px] text-slate-500 dark:text-slate-400 -mt-0.5">Developer & User Guide</span>
+        </div>
+      </a>
+
+      <!-- Quick Search Bar -->
+      <div class="hidden md:flex items-center relative max-w-xs w-full">
+        <i data-lucide="search" class="w-4 h-4 absolute left-3 text-slate-400"></i>
+        <input type="text" id="docSearch" placeholder="Search documentation..." onkeyup="filterDocs()" class="w-full pl-9 pr-4 py-1.5 rounded-xl text-xs bg-slate-100 dark:bg-slate-800/80 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-berry-500 transition" />
+      </div>
+
+      <!-- Action Buttons & Theme Toggle -->
+      <div class="flex items-center gap-3">
+        <!-- Back to Homepage -->
+        <a href="index.html" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition border border-slate-200/80 dark:border-slate-700/80">
+          <i data-lucide="home" class="w-3.5 h-3.5"></i>
+          <span>Homepage</span>
+        </a>
+
+        <!-- Theme Toggle -->
+        <button id="themeToggleBtn" aria-label="Toggle Dark/Light Mode" class="w-9 h-9 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700/80 transition shadow-sm">
+          <i data-lucide="sun" class="w-4 h-4 hidden dark:block text-amber-400"></i>
+          <i data-lucide="moon" class="w-4 h-4 block dark:hidden text-slate-700"></i>
+        </button>
+
+        <!-- GitHub -->
+        <a href="https://github.com/berry-apps/berryshot" target="_blank" rel="noopener" class="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 transition">
+          <i data-lucide="github" class="w-4 h-4"></i>
+          <span class="hidden sm:inline">GitHub</span>
+        </a>
+
+        <!-- Download CTA -->
+        <a href="https://download-shot.berryhub.app/BerryShot.dmg" class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-berry-600 to-berry-500 hover:from-berry-700 hover:to-berry-600 shadow-glow-berry transition">
+          <i data-lucide="download" class="w-4 h-4"></i>
+          <span>Get App</span>
+        </a>
+      </div>
+
+    </div>
+  </header>
+
+
+  <!-- ==================== MAIN CONTENT WITH SIDEBAR ==================== -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- SIDEBAR NAVIGATION -->
+      <aside class="lg:col-span-3">
+        <div class="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pr-2 pb-8 space-y-6 text-sm text-slate-600 dark:text-slate-400">
+          
+          <div>
+            <h3 class="font-display font-bold text-xs uppercase tracking-wider text-slate-900 dark:text-white mb-2">Getting Started</h3>
+            <ul class="space-y-1">
+              <li><a href="#intro" class="doc-link block px-2.5 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-slate-800/80 hover:text-berry-600 dark:hover:text-berry-400 font-medium transition text-berry-600 dark:text-berry-400 bg-rose-50/50 dark:bg-slate-800/50">Overview & Architecture</a></li>
+              <li><a href="#installation" class="doc-link block px-2.5 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-slate-800/80 hover:text-berry-600 dark:hover:text-berry-400 font-medium transition">Installation & Build</a></li>
+              <li><a href="#permissions" class="doc-link block px-2.5 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-slate-800/80 hover:text-berry-600 dark:hover:text-berry-400 font-medium transition">macOS Permissions</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 class="font-display font-bold text-xs uppercase tracking-wider text-slate-900 dark:text-white mb-2">Capture & Annotations</h3>
+            <ul class="space-y-1">
+              <li><a href="#capture-modes" class="doc-link block px-2.5 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-slate-800/80 hover:text-berry-600 dark:hover:text-berry-400 font-medium transition">Capture Modes & Loupe</a></li>
+              <li><a href="#annotation-tools" class="doc-link block px-2.5 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-slate-800/80 hover:text-berry-600 dark:hover:text-berry-400 font-medium transition">Live Annotation Suite</a></li>
+              <li><a href="#ocr-engine" class="doc-link block px-2.5 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-slate-800/80 hover:text-berry-600 dark:hover:text-berry-400 font-medium transition">100% Offline Vision OCR</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 class="font-display font-bold text-xs uppercase tracking-wider text-slate-900 dark:text-white mb-2">Privacy & AI Intelligence</h3>
+            <ul class="space-y-1">
+              <li><a href="#auto-redaction" class="doc-link block px-2.5 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-slate-800/80 hover:text-berry-600 dark:hover:text-berry-400 font-medium transition">Smart Auto-Redaction</a></li>
+              <li><a href="#ai-setup" class="doc-link block px-2.5 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-slate-800/80 hover:text-berry-600 dark:hover:text-berry-400 font-medium transition">AI Provider Configuration</a></li>
+              <li><a href="#prompts" class="doc-link block px-2.5 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-slate-800/80 hover:text-berry-600 dark:hover:text-berry-400 font-medium transition">Custom Prompt Presets</a></li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 class="font-display font-bold text-xs uppercase tracking-wider text-slate-900 dark:text-white mb-2">Agent & Cloud Integrations</h3>
+            <ul class="space-y-1">
+              <li><a href="#mcp" class="doc-link block px-2.5 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-slate-800/80 hover:text-berry-600 dark:hover:text-berry-400 font-medium transition">Local MCP Server Setup</a></li>
+              <li><a href="#storage-webhook" class="doc-link block px-2.5 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-slate-800/80 hover:text-berry-600 dark:hover:text-berry-400 font-medium transition">Cloud & Custom Webhook API</a></li>
+              <li><a href="#troubleshooting" class="doc-link block px-2.5 py-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-slate-800/80 hover:text-berry-600 dark:hover:text-berry-400 font-medium transition">Troubleshooting & FAQ</a></li>
+            </ul>
+          </div>
+
+        </div>
+      </aside>
+
+      <!-- DOCUMENTATION ARTICLES -->
+      <main class="lg:col-span-9 space-y-16 text-left">
+        
+        <!-- SECTION 1: OVERVIEW -->
+        <section id="intro" class="space-y-4">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-berry-100 dark:bg-berry-950 text-berry-600 dark:text-berry-400 text-xs font-bold uppercase">
+            <span>Introduction</span>
+          </div>
+          <h1 class="font-display text-3xl sm:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+            BerryShot Documentation
+          </h1>
+          <p class="text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+            <strong>BerryShot</strong> is a native, source-available macOS utility built with Swift 6.0 that delivers lightning-fast region screen captures (&lt;100ms latency), rich canvas annotations, 100% offline Optical Character Recognition (OCR), automated PII redaction, and multi-provider AI vision integrations directly from your Menu Bar.
+          </p>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+            <div class="p-4 rounded-2xl bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 shadow-sm">
+              <h4 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2"><i data-lucide="zap" class="w-4 h-4 text-amber-500"></i> ScreenCaptureKit</h4>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">GPU-accelerated native capture without memory leaks or UI lag.</p>
+            </div>
+            <div class="p-4 rounded-2xl bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 shadow-sm">
+              <h4 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2"><i data-lucide="shield-check" class="w-4 h-4 text-emerald-500"></i> Privacy First</h4>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">On-device OCR and Keychain Enclave encryption for all API keys.</p>
+            </div>
+            <div class="p-4 rounded-2xl bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 shadow-sm">
+              <h4 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2"><i data-lucide="bot" class="w-4 h-4 text-indigo-500"></i> AI & MCP Ready</h4>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Direct bridge for Claude Code, Codex, Gemini 2.0, and GPT-4o.</p>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- SECTION 2: INSTALLATION -->
+        <section id="installation" class="space-y-5 pt-8 border-t border-slate-200 dark:border-slate-800">
+          <div class="flex items-center gap-2">
+            <i data-lucide="download" class="w-5 h-5 text-berry-500"></i>
+            <h2 class="font-display text-2xl font-bold text-slate-900 dark:text-white">Installation & Building From Source</h2>
+          </div>
+
+          <h3 class="font-bold text-base text-slate-900 dark:text-white">Option 1: Official DMG Release (Recommended)</h3>
+          <p class="text-sm text-slate-600 dark:text-slate-300">
+            Download the pre-built universal binary for macOS Sonoma (14.0+) & Sequoia:
+          </p>
+          <div class="p-4 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <span class="text-xs font-mono text-slate-800 dark:text-slate-200">https://download-shot.berryhub.app/BerryShot.dmg</span>
+            <a href="https://download-shot.berryhub.app/BerryShot.dmg" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-berry-500 text-white hover:bg-berry-600 transition">Download .DMG</a>
+          </div>
+
+          <h3 class="font-bold text-base text-slate-900 dark:text-white pt-3">Option 2: Build From Source with Swift SPM</h3>
+          <div class="rounded-xl bg-slate-950 p-4 border border-slate-800 text-xs font-mono text-slate-200 space-y-2 overflow-x-auto">
+            <p class="text-slate-500"># 1. Clone repository</p>
+            <p>git clone https://github.com/berry-apps/berryshot.git && cd berryshot</p>
+            <p class="text-slate-500 pt-2"># 2. Compile release build</p>
+            <p>swift build -c release</p>
+            <p class="text-slate-500 pt-2"># 3. Assemble macOS .app bundle</p>
+            <p>./build_app.sh</p>
+            <p class="text-slate-500 pt-2"># 4. Run your native build</p>
+            <p>open dist/BerryShot.app</p>
+          </div>
+        </section>
+
+
+        <!-- SECTION 3: PERMISSIONS -->
+        <section id="permissions" class="space-y-5 pt-8 border-t border-slate-200 dark:border-slate-800">
+          <div class="flex items-center gap-2">
+            <i data-lucide="lock" class="w-5 h-5 text-emerald-500"></i>
+            <h2 class="font-display text-2xl font-bold text-slate-900 dark:text-white">macOS System Permissions</h2>
+          </div>
+          <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+            Upon first launch, macOS requires explicit user authorization for screen capture and accessibility features:
+          </p>
+
+          <div class="space-y-3 text-sm">
+            <div class="p-4 rounded-xl bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80">
+              <h4 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-berry-500"></span> 1. Screen Recording (Required)
+              </h4>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Go to <strong>System Settings → Privacy & Security → Screen Recording</strong> and toggle on <strong>BerryShot</strong>. This enables ScreenCaptureKit frame capture.
+              </p>
+            </div>
+
+            <div class="p-4 rounded-xl bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80">
+              <h4 class="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span class="w-2 h-2 rounded-full bg-indigo-500"></span> 2. Accessibility (Optional for Auto-Redaction & MCP)
+              </h4>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                Go to <strong>System Settings → Privacy & Security → Accessibility</strong> to grant UI inspection permissions for automatic password mask detection and Agent guarded sessions.
+              </p>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- SECTION 4: CAPTURE MODES -->
+        <section id="capture-modes" class="space-y-5 pt-8 border-t border-slate-200 dark:border-slate-800">
+          <div class="flex items-center gap-2">
+            <i data-lucide="crop" class="w-5 h-5 text-berry-500"></i>
+            <h2 class="font-display text-2xl font-bold text-slate-900 dark:text-white">Capture Modes & Shortcuts</h2>
+          </div>
+          <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+            BerryShot provides multiple capture triggers with instant global hotkey access:
+          </p>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs text-left border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+              <thead class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold">
+                <tr>
+                  <th class="p-3">Capture Mode</th>
+                  <th class="p-3">Default Shortcut</th>
+                  <th class="p-3">Description</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-200 dark:divide-slate-800 bg-white dark:bg-dark-card text-slate-600 dark:text-slate-300">
+                <tr>
+                  <td class="p-3 font-semibold text-slate-900 dark:text-white">Region Capture</td>
+                  <td class="p-3"><kbd class="kbd-tag px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded font-mono font-bold">⌘ ⇧ 2</kbd></td>
+                  <td class="p-3">Interactive crosshair with pixel loupe, coordinates, and aspect ratio lock (hold Shift).</td>
+                </tr>
+                <tr>
+                  <td class="p-3 font-semibold text-slate-900 dark:text-white">Window Picker</td>
+                  <td class="p-3"><kbd class="kbd-tag px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded font-mono font-bold">⌘ ⇧ 7</kbd></td>
+                  <td class="p-3">Hover and select any application window with transparent alpha borders or batch capture.</td>
+                </tr>
+                <tr>
+                  <td class="p-3 font-semibold text-slate-900 dark:text-white">Scrolling Capture</td>
+                  <td class="p-3"><kbd class="kbd-tag px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded font-mono font-bold">⌘ ⇧ 8</kbd></td>
+                  <td class="p-3">Auto-scrolls document or webpage and stitches into a tall single image.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+
+        <!-- SECTION 5: ANNOTATION TOOLS -->
+        <section id="annotation-tools" class="space-y-5 pt-8 border-t border-slate-200 dark:border-slate-800">
+          <div class="flex items-center gap-2">
+            <i data-lucide="palette" class="w-5 h-5 text-berry-500"></i>
+            <h2 class="font-display text-2xl font-bold text-slate-900 dark:text-white">Live Annotation Tools</h2>
+          </div>
+          <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+            Immediately after capturing a region or window, BerryShot renders a floating overlay toolbar featuring:
+          </p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div class="p-4 rounded-xl bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 space-y-1">
+              <h4 class="font-bold text-slate-900 dark:text-white flex items-center gap-1.5"><i data-lucide="square" class="w-3.5 h-3.5 text-berry-500"></i> Geometric Shapes</h4>
+              <p class="text-slate-500 dark:text-slate-400">Draw rectangles, circles, straight lines, and directional arrows with stroke width control.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 space-y-1">
+              <h4 class="font-bold text-slate-900 dark:text-white flex items-center gap-1.5"><i data-lucide="list-ordered" class="w-3.5 h-3.5 text-berry-500"></i> Numbered Step Badges</h4>
+              <p class="text-slate-500 dark:text-slate-400">Click to stamp ordered step numbers (1, 2, 3...) with customizable badge background colors.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 space-y-1">
+              <h4 class="font-bold text-slate-900 dark:text-white flex items-center gap-1.5"><i data-lucide="type" class="w-3.5 h-3.5 text-berry-500"></i> Typography & Highlighting</h4>
+              <p class="text-slate-500 dark:text-slate-400">Rich text overlay with transparent highlighter pens to emphasize key information.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 space-y-1">
+              <h4 class="font-bold text-slate-900 dark:text-white flex items-center gap-1.5"><i data-lucide="eye-off" class="w-3.5 h-3.5 text-berry-500"></i> Manual Redaction</h4>
+              <p class="text-slate-500 dark:text-slate-400">Select Gaussian Blur, Mosaic Pixelate, or Solid Cover to mask private regions.</p>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- SECTION 6: SMART REDACTION -->
+        <section id="auto-redaction" class="space-y-5 pt-8 border-t border-slate-200 dark:border-slate-800">
+          <div class="flex items-center gap-2">
+            <i data-lucide="shield-alert" class="w-5 h-5 text-rose-500"></i>
+            <h2 class="font-display text-2xl font-bold text-slate-900 dark:text-white">Smart Automated Redaction</h2>
+          </div>
+          <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+            BerryShot integrates on-device pattern matching combined with Apple Vision OCR to automatically detect and protect sensitive PII and developer secrets before sharing:
+          </p>
+
+          <div class="space-y-2 text-xs text-slate-600 dark:text-slate-300">
+            <div class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-500"></i> <strong>Credit & Debit Cards</strong>: Luhn algorithm verification for Visa, MasterCard, Amex.</div>
+            <div class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-500"></i> <strong>API Keys & Tokens</strong>: OpenAI (`sk-...`), GitHub, AWS Access Keys, Bearer JWTs.</div>
+            <div class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-500"></i> <strong>Credentials</strong>: Password input fields and masked password strings.</div>
+            <div class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-emerald-500"></i> <strong>Personal PII</strong>: Email addresses, phone numbers, and custom regex terms.</div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-900/60 text-xs text-amber-800 dark:text-amber-200">
+            <strong>Policy Modes:</strong> Under <em>Settings → Privacy</em>, choose between <strong>Off</strong>, <strong>Suggest</strong> (shows highlight prompts with 1-click apply), or <strong>Required</strong> (automatically redacts before copying/saving).
+          </div>
+        </section>
+
+
+        <!-- SECTION 7: AI INTEGRATION -->
+        <section id="ai-setup" class="space-y-5 pt-8 border-t border-slate-200 dark:border-slate-800">
+          <div class="flex items-center gap-2">
+            <i data-lucide="bot" class="w-5 h-5 text-amber-500"></i>
+            <h2 class="font-display text-2xl font-bold text-slate-900 dark:text-white">AI Vision Assistant Setup</h2>
+          </div>
+          <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+            Send captured frames directly to leading multimodal AI models. Navigate to <strong>Settings → AI</strong> to configure your preferred providers:
+          </p>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+            <div class="p-4 rounded-xl bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80">
+              <h4 class="font-bold text-slate-900 dark:text-white">Supported AI Providers</h4>
+              <ul class="mt-2 space-y-1 text-slate-500 dark:text-slate-400">
+                <li>• <strong>Anthropic</strong>: Claude 3.5 Sonnet / Haiku</li>
+                <li>• <strong>Google Gemini</strong>: Gemini 2.0 Flash / Pro</li>
+                <li>• <strong>OpenAI</strong>: GPT-4o / GPT-4o-mini</li>
+                <li>• <strong>OpenRouter</strong>: Custom endpoint & model IDs</li>
+                <li>• <strong>Xiaomi Mimo</strong>: High-speed edge vision</li>
+              </ul>
+            </div>
+
+            <div class="p-4 rounded-xl bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80">
+              <h4 class="font-bold text-slate-900 dark:text-white">Keychain Enclave Security</h4>
+              <p class="mt-2 text-slate-500 dark:text-slate-400 leading-relaxed">
+                All API keys are securely written to the native macOS Keychain. BerryShot communicates directly with official API endpoints via HTTPS with zero intermediate servers.
+              </p>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- SECTION 8: MCP SERVER -->
+        <section id="mcp" class="space-y-5 pt-8 border-t border-slate-200 dark:border-slate-800">
+          <div class="flex items-center gap-2">
+            <i data-lucide="terminal" class="w-5 h-5 text-indigo-500"></i>
+            <h2 class="font-display text-2xl font-bold text-slate-900 dark:text-white">Local MCP Server (Claude Code & Codex)</h2>
+          </div>
+          <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+            BerryShot includes a lightweight stdio executable for the <strong>Model Context Protocol</strong> located at:
+          </p>
+          <div class="p-3 rounded-lg bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-mono text-slate-900 dark:text-slate-200">
+            /Applications/BerryShot.app/Contents/Helpers/BerryShotMCP
+          </div>
+
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white pt-2">Quick Setup for Claude Code</h3>
+          <div class="rounded-xl bg-slate-950 p-4 border border-slate-800 text-xs font-mono text-slate-200">
+            claude mcp add berryshot -- /Applications/BerryShot.app/Contents/Helpers/BerryShotMCP
+          </div>
+
+          <h3 class="font-bold text-sm text-slate-900 dark:text-white pt-2">Quick Setup for OpenAI Codex (config.toml)</h3>
+          <div class="rounded-xl bg-slate-950 p-4 border border-slate-800 text-xs font-mono text-slate-200">
+[mcp_servers.berryshot]
+command = "/Applications/BerryShot.app/Contents/Helpers/BerryShotMCP"
+startup_timeout_sec = 10
+tool_timeout_sec = 60
+required = false
+          </div>
+        </section>
+
+
+        <!-- SECTION 9: CLOUD & WEBHOOK -->
+        <section id="storage-webhook" class="space-y-5 pt-8 border-t border-slate-200 dark:border-slate-800">
+          <div class="flex items-center gap-2">
+            <i data-lucide="cloud" class="w-5 h-5 text-blue-500"></i>
+            <h2 class="font-display text-2xl font-bold text-slate-900 dark:text-white">Custom Webhook & Storage API Spec</h2>
+          </div>
+          <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+            When configuring custom enterprise upload endpoints under <em>Settings → Cloud</em>, BerryShot transmits binary images as standard multipart form data:
+          </p>
+
+          <div class="rounded-xl bg-slate-950 p-4 border border-slate-800 text-xs font-mono text-slate-200 space-y-1">
+            <p><span class="text-rose-400">POST</span> /v1/screenshots/upload</p>
+            <p>Content-Type: multipart/form-data</p>
+            <p>Authorization: Bearer &lt;YOUR_API_TOKEN&gt;</p>
+            <p class="pt-2 text-slate-400"># Form field:</p>
+            <p>file: &lt;Screenshot.png&gt;</p>
+          </div>
+
+          <p class="text-xs text-slate-500 dark:text-slate-400">
+            Set <strong>Callback URL Path</strong> (e.g., <code>data.url</code> or <code>{json:data.url}</code>) to automatically parse the return JSON and place the link onto your clipboard.
+          </p>
+        </section>
+
+
+        <!-- SECTION 10: TROUBLESHOOTING -->
+        <section id="troubleshooting" class="space-y-5 pt-8 border-t border-slate-200 dark:border-slate-800">
+          <div class="flex items-center gap-2">
+            <i data-lucide="help-circle" class="w-5 h-5 text-berry-500"></i>
+            <h2 class="font-display text-2xl font-bold text-slate-900 dark:text-white">Troubleshooting & FAQ</h2>
+          </div>
+
+          <div class="space-y-4 text-xs">
+            <div class="p-4 rounded-xl bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 space-y-1">
+              <h4 class="font-bold text-slate-900 dark:text-white">Q: Screen capture returns a blank or wallpaper-only image?</h4>
+              <p class="text-slate-600 dark:text-slate-300">
+                macOS Screen Recording permission may need to be reset. Open <em>System Settings → Privacy & Security → Screen Recording</em>, remove BerryShot using the minus (-) button, and re-add it.
+              </p>
+            </div>
+
+            <div class="p-4 rounded-xl bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 space-y-1">
+              <h4 class="font-bold text-slate-900 dark:text-white">Q: Is my OCR text or screen capture uploaded anywhere?</h4>
+              <p class="text-slate-600 dark:text-slate-300">
+                No. All OCR runs 100% locally via Apple's Vision framework. Images are only transmitted if you explicitly configure an AI prompt or custom cloud webhook.
+              </p>
+            </div>
+
+            <div class="p-4 rounded-xl bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 space-y-1">
+              <h4 class="font-bold text-slate-900 dark:text-white">Q: How do I report a bug or request a feature?</h4>
+              <p class="text-slate-600 dark:text-slate-300">
+                Please open an issue on the official <a href="https://github.com/berry-apps/berryshot/issues" target="_blank" class="text-berry-600 dark:text-berry-400 font-semibold underline">GitHub Repository</a>.
+              </p>
+            </div>
+          </div>
+        </section>
+
+      </main>
+
+    </div>
+  </div>
+
+
+  <!-- ==================== FOOTER ==================== -->
+  <footer class="py-12 bg-slate-100 dark:bg-slate-950 border-t border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 text-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+      
+      <!-- Brand & Copyright -->
+      <div class="flex items-center gap-3">
+        <div class="w-7 h-7 rounded-lg bg-berry-500 text-white flex items-center justify-center text-sm shadow-sm">
+          🍓
+        </div>
+        <div>
+          <span class="font-bold text-slate-800 dark:text-slate-200">BerryShot Docs</span> — Official Documentation.
+          <p class="text-[11px] text-slate-400 dark:text-slate-500">Maintained by <a href="https://github.com/quangtaned" target="_blank" class="hover:text-berry-500 transition font-medium">@quangtaned</a> and <a href="https://github.com/trungdv96" target="_blank" class="hover:text-berry-500 transition font-medium">@trungdv96</a>.</p>
+        </div>
+      </div>
+
+      <!-- Links -->
+      <div class="flex flex-wrap items-center gap-6">
+        <a href="index.html" class="hover:text-berry-500 transition">Homepage</a>
+        <a href="https://notex.work" target="_blank" rel="noopener" class="hover:text-berry-500 transition">notex.work</a>
+        <a href="https://github.com/berry-apps/berryshot" target="_blank" rel="noopener" class="hover:text-berry-500 transition">GitHub</a>
+        <a href="https://ko-fi.com/dautay" target="_blank" rel="noopener" class="hover:text-berry-500 transition">Ko-fi Coffee</a>
+        <a href="https://github.com/berry-apps/berryshot/blob/main/LICENSE" target="_blank" rel="noopener" class="hover:text-berry-500 transition">PolyForm License</a>
+      </div>
+
+    </div>
+  </footer>
+
+
+  <!-- ==================== JAVASCRIPT LOGIC ==================== -->
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Dark/Light Mode Management
+    const themeToggleBtn = document.getElementById('themeToggleBtn');
+    const htmlEl = document.documentElement;
+
+    function applyTheme(theme) {
+      if (theme === 'dark') {
+        htmlEl.classList.add('dark');
+      } else {
+        htmlEl.classList.remove('dark');
+      }
+      localStorage.setItem('berryshot-theme', theme);
+      lucide.createIcons();
+    }
+
+    const savedTheme = localStorage.getItem('berryshot-theme');
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if (savedTheme) {
+      applyTheme(savedTheme);
+    } else if (systemPrefersDark) {
+      applyTheme('dark');
+    } else {
+      applyTheme('light');
+    }
+
+    themeToggleBtn.addEventListener('click', () => {
+      const isDark = htmlEl.classList.contains('dark');
+      applyTheme(isDark ? 'light' : 'dark');
+    });
+
+    // Quick Search Filter in Docs
+    function filterDocs() {
+      const query = document.getElementById('docSearch').value.toLowerCase();
+      const sections = document.querySelectorAll('main section');
+      sections.forEach(sec => {
+        const text = sec.innerText.toLowerCase();
+        if (text.includes(query)) {
+          sec.style.display = 'block';
+        } else {
+          sec.style.display = 'none';
+        }
+      });
+    }
+  </script>
+</body>
+</html>

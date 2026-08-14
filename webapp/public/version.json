@@ -1,0 +1,9 @@
+{
+  "name": "BerryShot",
+  "version": "2.1.0",
+  "releaseDate": "2026-08-14",
+  "commit": "latest",
+  "downloadUrl": "https://download-shot.berryhub.app/BerryShot.dmg",
+  "downloadZipUrl": "https://download-shot.berryhub.app/BerryShot.zip",
+  "minMacOS": "14.0"
+}
